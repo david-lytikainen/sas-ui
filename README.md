@@ -1,5 +1,8 @@
 # sas-ui
 
+To start:
+speed-dating-app/client && npm start
+
 React Native
 
 npm --version
