@@ -1,0 +1,14 @@
+{
+  "users": [
+    {
+      "id": "admin123",
+      "name": "Admin User",
+      "email": "admin@example.com",
+      "password": "admin123",
+      "role": "admin"
+    }
+  ],
+  "events": [],
+  "notes": [],
+  "matches": []
+} 
