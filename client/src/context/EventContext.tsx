@@ -10,7 +10,7 @@ interface Event {
   address: string;
   name: string;
   max_capacity: number;
-  status: 'draft' | 'published' | 'cancelled' | 'completed';
+  status: 'draft' | 'published' | 'cancelled' | 'completed' | 'in_progress';
   price_per_person: number;
   registration_deadline: string;
   description: string;
@@ -27,6 +27,7 @@ interface EventContextType {
   deleteEvent: (eventId: string) => Promise<void>;
   getEventById: (eventId: string) => Event | undefined;
   getMyEvents: () => Promise<Event[]>;
+  refreshEvents: () => Promise<void>;
 }
 
 const EventContext = createContext<EventContextType | undefined>(undefined);
@@ -140,6 +141,18 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const refreshEvents = async () => {
+    setLoading(true);
+    try {
+      const data = await eventsApi.getAll();
+      setEvents(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to refresh events');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <EventContext.Provider
       value={{
@@ -151,6 +164,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         deleteEvent,
         getEventById,
         getMyEvents,
+        refreshEvents,
       }}
     >
       {children}

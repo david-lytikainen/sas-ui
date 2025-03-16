@@ -15,7 +15,6 @@ import {
   DialogActions,
 } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
-import { useAuth } from '../../context/AuthContext';
 
 interface DateNote {
   id: string;
@@ -28,8 +27,7 @@ interface DateNote {
   updatedAt: string;
 }
 
-const DateNotes = () => {
-  const { user } = useAuth();
+const DateNotes: React.FC = () => {
   const [notes, setNotes] = useState<DateNote[]>([]);
   const [selectedNote, setSelectedNote] = useState<DateNote | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);

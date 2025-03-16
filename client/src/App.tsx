@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -10,17 +10,26 @@ import Register from './components/auth/Register';
 import Dashboard from './components/dashboard/Dashboard';
 import DateSchedule from './components/dates/DateSchedule';
 import Matches from './components/matches/Matches';
+import AttendeeMatches from './components/matches/AttendeeMatches';
 import EventList from './components/events/EventList';
 import EventForm from './components/events/EventForm';
 import PrivateRoute from './components/routing/PrivateRoute';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { EventProvider } from './context/EventContext';
 import Navigation from './components/Navigation';
 import { ColorModeContext } from './context/ColorModeContext';
 import EventManagement from './components/events/EventManagement';
 import DateNotes from './components/notes/DateNotes';
-import CheckInPage from './components/check-in/CheckInPage';
 import EventCheckInStatus from './components/check-in/EventCheckInStatus';
+import CheckInDashboard from './components/check-in/CheckInDashboard';
+import AccountManagement from './components/profile/AccountManagement';
+import AnimatedWrapper from './components/common/AnimatedWrapper';
+import PageTransition from './components/common/PageTransition';
+import LiveEventView from './components/events/LiveEventView';
+import UserManagement from './components/admin/UserManagement';
+import { initializeMockData } from './services/mockApi';
+import EventSchedule from './components/events/EventSchedule';
+import TestModeNotification from './components/common/TestModeNotification';
 
 // Add global styles for animations
 const GlobalStyles = {
@@ -100,8 +109,220 @@ const GlobalStyles = {
   },
 };
 
+// Role constants
+const ROLES = {
+  ADMIN: { id: 1, name: 'admin', permission_level: 100 },
+  ORGANIZER: { id: 2, name: 'organizer', permission_level: 50 },
+  ATTENDEE: { id: 3, name: 'attendee', permission_level: 10 },
+} as const;
+
+// Create a separate component for the protected routes
+const ProtectedRoutes = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role_id === ROLES.ADMIN.id;
+
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      
+      {/* Check-in routes - accessible to admins and organizers */}
+      <Route
+        path="/check-in"
+        element={
+          <PrivateRoute>
+            <AnimatedWrapper>
+              <CheckInDashboard />
+            </AnimatedWrapper>
+          </PrivateRoute>
+        }
+      />
+      
+      <Route
+        path="/events/:eventId/check-in"
+        element={
+          <PrivateRoute>
+            <AnimatedWrapper>
+              <EventCheckInStatus />
+            </AnimatedWrapper>
+          </PrivateRoute>
+        }
+      />
+
+      {/* Live Event View */}
+      <Route
+        path="/events/:eventId/live"
+        element={
+          <PrivateRoute>
+            <AnimatedWrapper>
+              <LiveEventView />
+            </AnimatedWrapper>
+          </PrivateRoute>
+        }
+      />
+
+      {/* Event Schedule View */}
+      <Route
+        path="/events/:eventId/schedule"
+        element={
+          <PrivateRoute>
+            <AnimatedWrapper>
+              <EventSchedule />
+            </AnimatedWrapper>
+          </PrivateRoute>
+        }
+      />
+
+      {/* Event Participants View */}
+      <Route
+        path="/events/:eventId/participants"
+        element={
+          <PrivateRoute>
+            <AnimatedWrapper>
+              <UserManagement />
+            </AnimatedWrapper>
+          </PrivateRoute>
+        }
+      />
+
+      {/* Admin routes - only accessible to admins */}
+      <Route
+        path="/admin/users"
+        element={
+          <PrivateRoute>
+            <AnimatedWrapper>
+              <UserManagement />
+            </AnimatedWrapper>
+          </PrivateRoute>
+        }
+      />
+
+      {/* Admin and Organizer specific routes */}
+      {isAdmin && (
+        <>
+          <Route
+            path="/events/new"
+            element={
+              <PrivateRoute>
+                <AnimatedWrapper>
+                  <EventForm />
+                </AnimatedWrapper>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/events/edit/:id"
+            element={
+              <PrivateRoute>
+                <AnimatedWrapper>
+                  <EventForm />
+                </AnimatedWrapper>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/events/manage/:eventId"
+            element={
+              <PrivateRoute>
+                <AnimatedWrapper>
+                  <EventManagement />
+                </AnimatedWrapper>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/schedule"
+            element={
+              <PrivateRoute>
+                <AnimatedWrapper>
+                  <EventSchedule />
+                </AnimatedWrapper>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/matches"
+            element={
+              <PrivateRoute>
+                <AnimatedWrapper>
+                  {user?.role_id === ROLES.ATTENDEE.id ? (
+                    <AttendeeMatches />
+                  ) : (
+                    <Matches />
+                  )}
+                </AnimatedWrapper>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/notes"
+            element={
+              <PrivateRoute>
+                <AnimatedWrapper>
+                  <DateNotes />
+                </AnimatedWrapper>
+              </PrivateRoute>
+            }
+          />
+        </>
+      )}
+
+      <Route
+        path="/"
+        element={
+          <PrivateRoute>
+            <AnimatedWrapper>
+              {user?.role_id === ROLES.ATTENDEE.id ? (
+                <Navigate to="/events" replace />
+              ) : (
+                <Dashboard />
+              )}
+            </AnimatedWrapper>
+          </PrivateRoute>
+        }
+      />
+      
+      <Route
+        path="/events"
+        element={
+          <PrivateRoute>
+            <AnimatedWrapper>
+              <EventList />
+            </AnimatedWrapper>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/account"
+        element={
+          <PrivateRoute>
+            <AnimatedWrapper>
+              <AccountManagement />
+            </AnimatedWrapper>
+          </PrivateRoute>
+        }
+      />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+};
+
 function App() {
   const [mode, setMode] = useState<'light' | 'dark'>('dark');
+
+  // Initialize mock data when app starts
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        initializeMockData();
+        console.log('Mock data initialized successfully');
+      } catch (error) {
+        console.error('Failed to initialize mock data:', error);
+      }
+    }
+  }, []);
 
   const colorMode = useMemo(
     () => ({
@@ -253,9 +474,11 @@ function App() {
           MuiAppBar: {
             styleOverrides: {
               root: {
-                backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                backgroundColor: mode === 'dark' ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.85)',
                 backdropFilter: 'blur(20px)',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                borderBottom: mode === 'dark' 
+                  ? '1px solid rgba(255, 255, 255, 0.1)' 
+                  : '1px solid rgba(0, 0, 0, 0.1)',
               },
             },
           },
@@ -306,65 +529,30 @@ function App() {
 
   return (
     <ColorModeContext.Provider value={colorMode}>
-      <AuthProvider>
-        <EventProvider>
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <ThemeProvider theme={theme}>
-              <CssBaseline />
-              <Router>
-                <Navigation />
-                <Routes>
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
-                  <Route path="/" element={
-                    <PrivateRoute>
-                      <Dashboard />
-                    </PrivateRoute>
-                  } />
-                  <Route path="/events" element={
-                    <PrivateRoute>
-                      <EventList />
-                    </PrivateRoute>
-                  } />
-                  <Route path="/events/new" element={
-                    <PrivateRoute>
-                      <EventForm />
-                    </PrivateRoute>
-                  } />
-                  <Route path="/events/edit/:id" element={
-                    <PrivateRoute>
-                      <EventForm />
-                    </PrivateRoute>
-                  } />
-                  <Route path="/events/manage/:id" element={
-                    <PrivateRoute>
-                      <EventManagement />
-                    </PrivateRoute>
-                  } />
-                  <Route path="/schedule" element={
-                    <PrivateRoute>
-                      <DateSchedule />
-                    </PrivateRoute>
-                  } />
-                  <Route path="/notes" element={
-                    <PrivateRoute>
-                      <DateNotes />
-                    </PrivateRoute>
-                  } />
-                  <Route path="/matches" element={
-                    <PrivateRoute>
-                      <Matches />
-                    </PrivateRoute>
-                  } />
-                  <Route path="/check-in" element={<CheckInPage />} />
-                  <Route path="/check-in/:id" element={<EventCheckInStatus />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </Router>
-            </ThemeProvider>
-          </LocalizationProvider>
-        </EventProvider>
-      </AuthProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <Router>
+            <AuthProvider>
+              <EventProvider>
+                <div style={{ 
+                  minHeight: '100vh',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}>
+                  <Navigation />
+                  <TestModeNotification />
+                  <PageTransition>
+                    <ProtectedRoutes />
+                  </PageTransition>
+                </div>
+              </EventProvider>
+            </AuthProvider>
+          </Router>
+        </LocalizationProvider>
+      </ThemeProvider>
     </ColorModeContext.Provider>
   );
 }

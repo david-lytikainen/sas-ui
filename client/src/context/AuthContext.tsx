@@ -40,6 +40,9 @@ interface AuthContextType {
   isAdmin: () => boolean;
   isOrganizer: () => boolean;
   hasRole: (roleId: number) => boolean;
+  mockAttendeeMode: boolean;
+  enableMockAttendeeMode: () => void;
+  disableMockAttendeeMode: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -56,10 +59,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mockAttendeeMode, setMockAttendeeMode] = useState(false);
 
-  const isAdmin = () => user?.role_id === ROLES.ADMIN.id;
-  const isOrganizer = () => user?.role_id === ROLES.ORGANIZER.id;
-  const hasRole = (roleId: number) => user?.role_id === roleId;
+  const isAdmin = () => !mockAttendeeMode && user?.role_id === ROLES.ADMIN.id;
+  const isOrganizer = () => !mockAttendeeMode && user?.role_id === ROLES.ORGANIZER.id;
+  const hasRole = (roleId: number) => !mockAttendeeMode && user?.role_id === roleId;
+  
+  const enableMockAttendeeMode = () => {
+    setMockAttendeeMode(true);
+    localStorage.setItem('mockAttendeeMode', 'true');
+  };
+  
+  const disableMockAttendeeMode = () => {
+    setMockAttendeeMode(false);
+    localStorage.removeItem('mockAttendeeMode');
+  };
 
   // Check for existing session using token
   useEffect(() => {
@@ -69,9 +83,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const { user } = await authApi.validateToken(token);
           setUser(user);
+          
+          // Check if mock attendee mode was previously enabled
+          const mockMode = localStorage.getItem('mockAttendeeMode');
+          if (mockMode === 'true') {
+            setMockAttendeeMode(true);
+          }
         } catch (err) {
           console.error('Token validation failed:', err);
           localStorage.removeItem('token');
+          localStorage.removeItem('mockAttendeeMode');
         }
       }
       setLoading(false);
@@ -122,7 +143,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     setUser(null);
+    setMockAttendeeMode(false);
     localStorage.removeItem('token');
+    localStorage.removeItem('mockAttendeeMode');
   };
 
   return (
@@ -137,6 +160,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAdmin,
         isOrganizer,
         hasRole,
+        mockAttendeeMode,
+        enableMockAttendeeMode,
+        disableMockAttendeeMode,
       }}
     >
       {!loading && children}

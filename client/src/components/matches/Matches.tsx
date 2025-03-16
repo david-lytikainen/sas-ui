@@ -3,11 +3,9 @@ import {
   Container,
   Box,
   Typography,
-  Paper,
   Card,
   CardContent,
   Grid,
-  IconButton,
   Collapse,
   Divider,
   List,
@@ -15,14 +13,22 @@ import {
   ListItemIcon,
   ListItemText,
   useTheme,
+  Avatar,
+  Button,
+  Stack,
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import EmailIcon from '@mui/icons-material/Email';
-import PhoneIcon from '@mui/icons-material/Phone';
-import ChurchIcon from '@mui/icons-material/Church';
-import CakeIcon from '@mui/icons-material/Cake';
+import {
+  Person as PersonIcon,
+  Cake as CakeIcon,
+  Phone as PhoneIcon,
+  Email as EmailIcon,
+} from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
+import { animated, useSpring } from '@react-spring/web';
+
+const AnimatedCard = animated(Card);
 
 interface Participant {
   id: string;
@@ -40,6 +46,7 @@ interface Match {
   event: {
     id: string;
     name: string;
+    date?: string;
   };
   compatibility_score: number;
   notes?: string;
@@ -51,8 +58,13 @@ export const Matches = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [expandedMatch, setExpandedMatch] = useState<string | null>(null);
 
+  const cardSpring = useSpring({
+    from: { opacity: 0, transform: 'translate3d(0,40px,0)' },
+    to: { opacity: 1, transform: 'translate3d(0,0,0)' },
+    config: { tension: 280, friction: 20 },
+  });
+
   useEffect(() => {
-    // Mock API call to get matches
     const fetchMatches = async () => {
       try {
         const response = await getMockMatches();
@@ -66,7 +78,6 @@ export const Matches = () => {
   }, []);
 
   const getMockMatches = async (): Promise<Match[]> => {
-    // Mock data - replace with actual API call
     return Promise.resolve([
       {
         id: 'match1',
@@ -76,7 +87,7 @@ export const Matches = () => {
           email: 'jamie@example.com',
           phone: '(555) 123-4567',
           age: 28,
-          church: 'First Presbyterian Church'
+          church: 'First Presbyterian Church',
         },
         female: {
           id: 'female1',
@@ -84,14 +95,15 @@ export const Matches = () => {
           email: 'laura@example.com',
           phone: '(555) 987-6543',
           age: 26,
-          church: 'Grace Community Church'
+          church: 'Grace Community Church',
         },
         event: {
           id: 'event1',
-          name: 'First Presbyterian Church',
+          name: 'First Presbyterian Church Speed Dating',
+          date: '2024-03-08',
         },
         compatibility_score: 85,
-        notes: 'Great conversation about travel',
+        notes: 'Great conversation about travel and shared interest in photography.',
       },
     ]);
   };
@@ -111,45 +123,69 @@ export const Matches = () => {
 
   const userMatches = getUserMatches();
 
+  const ParticipantInfo = ({ participant }: { participant: Participant }) => (
+    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+      <Avatar 
+        sx={{ 
+          width: 48, 
+          height: 48,
+          bgcolor: theme.palette.primary.main,
+          fontSize: '1.25rem',
+        }}
+      >
+        {participant.name.charAt(0)}
+      </Avatar>
+      <Box sx={{ flex: 1 }}>
+        <Typography variant="h6">
+          {participant.name}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {participant.church}
+        </Typography>
+      </Box>
+    </Box>
+  );
+
   const ContactInfo = ({ participant }: { participant: Participant }) => (
     <List dense>
       {participant.email && (
         <ListItem>
           <ListItemIcon>
-            <EmailIcon />
+            <EmailIcon color="primary" />
           </ListItemIcon>
-          <ListItemText primary="Email" secondary={participant.email} />
+          <ListItemText 
+            primary={participant.email}
+            primaryTypographyProps={{ variant: 'body2' }}
+          />
         </ListItem>
       )}
       {participant.phone && (
         <ListItem>
           <ListItemIcon>
-            <PhoneIcon />
+            <PhoneIcon color="primary" />
           </ListItemIcon>
-          <ListItemText primary="Phone" secondary={participant.phone} />
-        </ListItem>
-      )}
-      {participant.church && (
-        <ListItem>
-          <ListItemIcon>
-            <ChurchIcon />
-          </ListItemIcon>
-          <ListItemText primary="Church" secondary={participant.church} />
+          <ListItemText 
+            primary={participant.phone}
+            primaryTypographyProps={{ variant: 'body2' }}
+          />
         </ListItem>
       )}
       {participant.age && (
         <ListItem>
           <ListItemIcon>
-            <CakeIcon />
+            <CakeIcon color="primary" />
           </ListItemIcon>
-          <ListItemText primary="Age" secondary={participant.age} />
+          <ListItemText 
+            primary={`${participant.age} years old`}
+            primaryTypographyProps={{ variant: 'body2' }}
+          />
         </ListItem>
       )}
     </List>
   );
 
   return (
-    <Container>
+    <Container maxWidth="lg">
       <Box sx={{ mt: 4, mb: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           {isAdmin() ? 'All Matches' : 'Your Matches'}
@@ -175,76 +211,94 @@ export const Matches = () => {
 
               return (
                 <Grid item xs={12} key={matchId}>
-                  <Card>
+                  <AnimatedCard style={cardSpring}>
                     <CardContent>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="h6" gutterBottom>
-                          Match #{index + 1}
-                        </Typography>
-                        {(isAdmin() || userIsParticipant) && (
-                          <IconButton
-                            onClick={() => toggleNotes(matchId)}
-                            aria-label="show details"
-                          >
-                            {isExpanded ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
-                          </IconButton>
-                        )}
+                      <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'flex-start',
+                        mb: 3
+                      }}>
+                        <Box>
+                          <Typography variant="h5" gutterBottom>
+                            Match #{index + 1}
+                          </Typography>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <PersonIcon color="primary" fontSize="small" />
+                            <Typography variant="body2" color="text.secondary">
+                              {match.event.name}
+                            </Typography>
+                          </Stack>
+                        </Box>
                       </Box>
-                      
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography>
-                          <strong>Male:</strong> {match.male.name}
-                        </Typography>
-                        <Typography>
-                          <strong>Female:</strong> {match.female.name}
-                        </Typography>
+
+                      <Grid container spacing={3} sx={{ mb: 2 }}>
+                        <Grid item xs={12} md={6}>
+                          <ParticipantInfo participant={match.male} />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <ParticipantInfo participant={match.female} />
+                        </Grid>
+                      </Grid>
+
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          onClick={() => toggleNotes(matchId)}
+                          endIcon={isExpanded ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+                          size="small"
+                        >
+                          {isExpanded ? 'Hide Details' : 'Show Details'}
+                        </Button>
                       </Box>
 
                       <Collapse in={isExpanded}>
                         <Divider sx={{ my: 2 }} />
                         <Box sx={{ mt: 2 }}>
-                          {isAdmin() ? (
+                          {(isAdmin() || userIsParticipant) && (
                             <>
-                              <Typography variant="h6" gutterBottom>
-                                Male Participant
-                              </Typography>
-                              <ContactInfo participant={match.male} />
-                              <Divider sx={{ my: 2 }} />
-                              <Typography variant="h6" gutterBottom>
-                                Female Participant
-                              </Typography>
-                              <ContactInfo participant={match.female} />
-                              <Divider sx={{ my: 2 }} />
-                              <Typography variant="subtitle2" gutterBottom>
-                                Notes:
-                              </Typography>
-                              <Typography color="text.secondary" paragraph>
-                                {match.notes || 'No notes'}
-                              </Typography>
-                            </>
-                          ) : userIsParticipant && (
-                            <>
-                              <Typography variant="h6" gutterBottom>
+                              <Typography variant="subtitle1" gutterBottom>
                                 Contact Information
                               </Typography>
-                              <ContactInfo 
-                                participant={
-                                  user?.id === match.male.id ? match.female : match.male
-                                }
-                              />
-                              <Divider sx={{ my: 2 }} />
-                              <Typography variant="subtitle2" gutterBottom>
-                                Notes:
-                              </Typography>
-                              <Typography color="text.secondary" paragraph>
-                                {match.notes || 'No notes'}
-                              </Typography>
+                              <Grid container spacing={3}>
+                                {isAdmin() ? (
+                                  <>
+                                    <Grid item xs={12} md={6}>
+                                      <ContactInfo participant={match.male} />
+                                    </Grid>
+                                    <Grid item xs={12} md={6}>
+                                      <ContactInfo participant={match.female} />
+                                    </Grid>
+                                  </>
+                                ) : (
+                                  <Grid item xs={12}>
+                                    <ContactInfo 
+                                      participant={
+                                        user?.id === match.male.id ? match.female : match.male
+                                      }
+                                    />
+                                  </Grid>
+                                )}
+                              </Grid>
+                              
+                              {match.notes && (
+                                <>
+                                  <Divider sx={{ my: 2 }} />
+                                  <Typography variant="subtitle1" gutterBottom>
+                                    Notes
+                                  </Typography>
+                                  <Typography color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                    {match.notes}
+                                  </Typography>
+                                </>
+                              )}
                             </>
                           )}
                         </Box>
                       </Collapse>
                     </CardContent>
-                  </Card>
+                  </AnimatedCard>
                 </Grid>
               );
             })}

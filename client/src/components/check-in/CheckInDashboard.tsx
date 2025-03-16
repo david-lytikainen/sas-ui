@@ -12,16 +12,18 @@ import {
   TableRow,
   Button,
   Alert,
+  Chip,
+  CircularProgress,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { HowToReg as CheckInIcon } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import { useEvents } from '../../context/EventContext';
-import { HowToReg as CheckInIcon } from '@mui/icons-material';
 
-const CheckInPage = () => {
-  const { isAdmin } = useAuth();
-  const { events, loading, error } = useEvents();
+const CheckInDashboard = () => {
   const navigate = useNavigate();
+  const { isAdmin, isOrganizer } = useAuth();
+  const { events, loading, error } = useEvents();
   const [activeEvents, setActiveEvents] = useState<any[]>([]);
 
   useEffect(() => {
@@ -32,7 +34,7 @@ const CheckInPage = () => {
     setActiveEvents(filtered);
   }, [events]);
 
-  if (!isAdmin()) {
+  if (!isAdmin() && !isOrganizer()) {
     return (
       <Container>
         <Box sx={{ mt: 4 }}>
@@ -44,15 +46,52 @@ const CheckInPage = () => {
     );
   }
 
-  const handleCheckIn = (eventId: string) => {
-    navigate(`/check-in/${eventId}`);
+  const handleManageCheckIn = (eventId: string) => {
+    navigate(`/events/${eventId}/check-in`);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'published':
+        return 'success';
+      case 'in_progress':
+        return 'primary';
+      case 'draft':
+        return 'default';
+      default:
+        return 'default';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'published':
+        return 'UPCOMING';
+      case 'in_progress':
+        return 'IN PROGRESS';
+      case 'draft':
+        return 'DRAFT';
+      default:
+        return status.toUpperCase();
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   return (
     <Container>
       <Box sx={{ mt: 4, mb: 4 }}>
         <Typography variant="h4" gutterBottom>
-          Event Check-in Management
+          Check-in Management
         </Typography>
 
         {error && (
@@ -62,7 +101,9 @@ const CheckInPage = () => {
         )}
 
         {loading ? (
-          <Typography>Loading events...</Typography>
+          <Box display="flex" justifyContent="center" my={4}>
+            <CircularProgress />
+          </Box>
         ) : activeEvents.length === 0 ? (
           <Alert severity="info">
             No active events found. Create an event to start managing check-ins.
@@ -83,17 +124,21 @@ const CheckInPage = () => {
                 {activeEvents.map((event) => (
                   <TableRow key={event.id}>
                     <TableCell>{event.name}</TableCell>
+                    <TableCell>{formatDate(event.starts_at)}</TableCell>
                     <TableCell>
-                      {new Date(event.starts_at).toLocaleDateString()}
+                      <Chip
+                        label={getStatusLabel(event.status)}
+                        color={getStatusColor(event.status)}
+                        size="small"
+                      />
                     </TableCell>
-                    <TableCell>{event.status}</TableCell>
                     <TableCell>{event.address}</TableCell>
                     <TableCell align="center">
                       <Button
                         variant="contained"
                         color="primary"
                         startIcon={<CheckInIcon />}
-                        onClick={() => handleCheckIn(event.id)}
+                        onClick={() => handleManageCheckIn(event.id)}
                       >
                         Manage Check-in
                       </Button>
@@ -109,4 +154,4 @@ const CheckInPage = () => {
   );
 };
 
-export default CheckInPage; 
+export default CheckInDashboard; 

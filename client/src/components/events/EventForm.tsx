@@ -18,7 +18,6 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import { SelectChangeEvent } from '@mui/material';
-import { eventsApi } from '../../services/api';
 
 interface EventFormData {
   name: string;
@@ -29,7 +28,7 @@ interface EventFormData {
   max_capacity: number;
   price_per_person: number;
   registration_deadline: string;
-  status: 'draft' | 'published' | 'cancelled' | 'completed';
+  status: 'draft' | 'published' | 'cancelled' | 'completed' | 'in_progress';
 }
 
 const ROLES = {
@@ -44,6 +43,8 @@ const EventForm: React.FC = () => {
   const { user } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [saveCompleted, setSaveCompleted] = useState(false);
 
   const [formData, setFormData] = useState<EventFormData>({
     name: '',
@@ -96,7 +97,9 @@ const EventForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
     setLoading(true);
+    setSaveCompleted(false);
 
     try {
       if (!user) throw new Error('You must be logged in');
@@ -106,11 +109,19 @@ const EventForm: React.FC = () => {
 
       if (id) {
         await updateEvent(id, formData);
+        setSuccess('Event updated successfully!');
       } else {
         await createEvent(formData);
+        setSuccess('Event created successfully!');
       }
 
-      navigate('/events');
+      // Set a flag that save was completed
+      setSaveCompleted(true);
+      
+      // Navigate after a short delay to allow the user to see the success message
+      setTimeout(() => {
+        navigate('/events');
+      }, 1500);
     } catch (err: any) {
       setError(err.message || 'An error occurred');
     } finally {
@@ -129,6 +140,12 @@ const EventForm: React.FC = () => {
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {error}
+            </Alert>
+          )}
+
+          {success && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              {success}
             </Alert>
           )}
 
@@ -232,20 +249,32 @@ const EventForm: React.FC = () => {
                     <MenuItem value="published">Published</MenuItem>
                     <MenuItem value="cancelled">Cancelled</MenuItem>
                     <MenuItem value="completed">Completed</MenuItem>
+                    <MenuItem value="in_progress">In Progress</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
 
               <Grid item xs={12}>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  size="large"
-                  fullWidth
-                  disabled={loading}
-                >
-                  {loading ? 'Saving...' : id ? 'Update Event' : 'Create Event'}
-                </Button>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    size="large"
+                    fullWidth
+                    disabled={loading || saveCompleted}
+                  >
+                    {loading ? 'Saving...' : id ? 'Update Event' : 'Create Event'}
+                  </Button>
+                  
+                  <Button
+                    variant="outlined"
+                    size="large"
+                    onClick={() => navigate('/events')}
+                    disabled={loading}
+                  >
+                    Cancel
+                  </Button>
+                </Box>
               </Grid>
             </Grid>
           </Box>
