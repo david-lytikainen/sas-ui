@@ -24,6 +24,10 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
+    <script>
+      window.REACT_APP_API_URL = 'http://localhost:5001/api';
+      localStorage.setItem('apiBaseUrl', 'http://localhost:5001/api');
+    </script>
     <title>Speed Dating App</title>
   </head>
   <body>

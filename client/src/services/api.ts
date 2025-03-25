@@ -1,14 +1,18 @@
 import axios, { AxiosError } from 'axios';
 import { mockAuthApi, mockEventsApi } from './mockApi';
+import { AuthResponse, TokenValidationResponse } from '../types/user';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-const USE_MOCK_API = true; // Force mock API usage until backend is ready
+// Use relative URL with proxy in package.json
+const apiBaseUrl = '/api';
+const API_BASE_URL = apiBaseUrl;
+const USE_MOCK_API = false; // Always use real API
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true
 });
 
 // Add auth token to requests if available
@@ -32,9 +36,24 @@ api.interceptors.response.use(
     if (error.response) {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
-      const errorData = error.response.data as { message?: string };
+      const errorData = error.response.data as { message?: string, error?: string };
       console.error('API Error Response:', errorData);
-      throw new Error(errorData.message || 'An error occurred with the request');
+      
+      // Use the backend's error message if available
+      const errorMessage = errorData.message || errorData.error;
+      
+      // For authentication errors, provide a friendly message
+      if (error.response.status === 401) {
+        throw new Error(errorMessage || 'Invalid email or password');
+      }
+      
+      // For bad requests, extract the validation error
+      if (error.response.status === 400) {
+        throw new Error(errorMessage || 'Please check your input and try again');
+      }
+      
+      // General error with message from backend if available
+      throw new Error(errorMessage || `Error ${error.response.status}: ${error.response.statusText}`);
     } else if (error.request) {
       // The request was made but no response was received
       console.error('No response received:', error.request);
@@ -47,13 +66,30 @@ api.interceptors.response.use(
   }
 );
 
-// Auth API interfaces and implementations are defined in mockApi.ts
-// The real implementation would look like this:
-/*
+// Real Auth API implementation to connect with Flask backend
 const realAuthApi = {
-  login: async (email: string, password: string) => {
-    const response = await api.post('/auth/login', { email, password });
-    return response.data;
+  login: async (email: string, password: string): Promise<AuthResponse> => {
+    try {
+      const response = await api.post('/user/signin', { email, password });
+      const { token, user } = response.data;
+      
+      // Store token
+      localStorage.setItem('token', token);
+      
+      return {
+        user,
+        token
+      };
+    } catch (error: any) {
+      // Handle 401 Unauthorized error specifically
+      if (error.response && error.response.status === 401) {
+        // Extract the error message from the backend if available
+        const errorMessage = error.response.data?.message || error.response.data?.error || 'Invalid email or password';
+        throw new Error(errorMessage);
+      }
+      // For other errors, rethrow
+      throw error;
+    }
   },
 
   register: async (userData: {
@@ -66,19 +102,110 @@ const realAuthApi = {
     church: string;
     denomination?: string;
     role: 'attendee' | 'organizer' | 'admin';
-  }) => {
-    const response = await api.post('/auth/register', userData);
-    return response.data;
+  }): Promise<AuthResponse> => {
+    // Map role name to role ID
+    let role_id: number;
+    switch (userData.role) {
+      case 'admin':
+        role_id = 1; // Admin role ID
+        break;
+      case 'organizer':
+        role_id = 2; // Organizer role ID
+        break;
+      case 'attendee':
+        role_id = 3; // Attendee role ID
+        break;
+      default:
+        throw new Error('Invalid role');
+    }
+    
+    // Prepare data for backend format
+    const backendUserData = {
+      email: userData.email,
+      password: userData.password,
+      role_id: role_id,
+      first_name: userData.first_name,
+      last_name: userData.last_name,
+      phone: userData.phone || "",
+      gender: "NOT_SPECIFIED", // Must match the enum value exactly (uppercase)
+      age: userData.age,
+      church_id: null, // This would need to be populated if you have church IDs
+      denomination_id: null // This would need to be populated if you have denomination IDs
+    };
+    
+    try {
+      console.log('Sending registration data:', backendUserData);
+      // Register the user
+      const response = await api.post('/user/signup', backendUserData);
+      console.log('Registration response:', response.data);
+      
+      // After signup, log in to get the token
+      return await realAuthApi.login(userData.email, userData.password);
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
   },
 
-  validateToken: async (token: string) => {
-    const response = await api.get('/auth/validate-token', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    return response.data;
+  validateToken: async (token: string): Promise<TokenValidationResponse | null> => {
+    try {
+      // Since there's no /user/validate-token endpoint yet, we'll use a simple check
+      // Just verify we can access a protected endpoint
+      const response = await api.get('/health');
+      
+      // If we get a successful response, the token is valid
+      // For a proper implementation, we should have a dedicated endpoint 
+      // that returns the current user's data
+      return null; // Return null so the user has to log in explicitly
+    } catch (error) {
+      // If the request fails, the token is invalid
+      console.error('Token validation failed:', error);
+      localStorage.removeItem('token');
+      throw new Error('Invalid or expired token');
+    }
   },
+
+  // Additional methods to match the mock API structure
+  getRoles: async () => {
+    // This would call a backend endpoint to get roles
+    // For now, return default roles
+    return [
+      { id: 1, name: 'admin', permission_level: 100 },
+      { id: 2, name: 'organizer', permission_level: 50 },
+      { id: 3, name: 'attendee', permission_level: 10 },
+    ];
+  },
+  
+  getUsers: async () => {
+    // This would call a backend endpoint to get users
+    // For now, return an empty array
+    return [];
+  },
+  
+  updateUser: async (userId: string, userData: any) => {
+    // This would call a backend endpoint to update a user
+    // For now, return the userData
+    return { ...userData, id: userId };
+  },
+  
+  createUser: async (userData: any) => {
+    // This would call a backend endpoint to create a user
+    // For now, return the userData with a mock ID
+    return { ...userData, id: 'new-user-id' };
+  },
+  
+  deleteUser: async (userId: string) => {
+    // This would call a backend endpoint to delete a user
+    // For now, return success
+    return { success: true };
+  }
 };
-*/
+
+// Export the appropriate API implementation
+// For development, you can switch between mock and real APIs
+// export const authApi = USE_MOCK_API ? mockAuthApi : realAuthApi;
+// For production, always use the real API
+export const authApi = realAuthApi;
 
 interface Event {
   id: string;
@@ -286,12 +413,6 @@ const realEventsApi: EventsApi = {
     return response.data;
   }
 };
-
-// Export the appropriate implementation based on environment
-export const authApi = mockAuthApi;
-
-// In a production environment, we would use the real API implementation:
-// export const authApi = process.env.NODE_ENV === 'production' ? realAuthApi : mockAuthApi;
 
 export const eventsApi: EventsApi = USE_MOCK_API 
   ? {

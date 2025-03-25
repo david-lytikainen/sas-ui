@@ -1,17 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { authApi } from '../services/api';
-
-interface User {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role_id: number;
-  phone: string | null;
-  age: number;
-  church: string;
-  denomination: string | null;
-}
+import { User, AuthResponse, TokenValidationResponse } from '../types/user';
 
 // Role constants to match the mockApi
 const ROLES = {
@@ -81,8 +70,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          const { user } = await authApi.validateToken(token);
-          setUser(user);
+          const response: TokenValidationResponse | null = await authApi.validateToken(token);
+          // Check if response exists and has user data
+          if (response && response.user) {
+            setUser(response.user);
+          } else {
+            // No valid response or user data, clear token
+            localStorage.removeItem('token');
+          }
           
           // Check if mock attendee mode was previously enabled
           const mockMode = localStorage.getItem('mockAttendeeMode');
@@ -105,9 +100,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     setError(null);
     try {
-      const { user, token } = await authApi.login(email, password);
-      setUser(user);
-      localStorage.setItem('token', token);
+      const response = await authApi.login(email, password);
+      
+      // We've updated the API service to ensure it returns a complete user object
+      if (response.user) {
+        setUser(response.user);
+      }
+      
+      localStorage.setItem('token', response.token);
     } catch (err: any) {
       setError(err.message || 'Failed to login');
       throw err;
@@ -130,9 +130,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     setError(null);
     try {
-      const { user, token } = await authApi.register(userData);
-      setUser(user);
-      localStorage.setItem('token', token);
+      const response = await authApi.register(userData);
+      
+      // We've updated the API service to ensure it returns a complete user object
+      if (response.user) {
+        setUser(response.user);
+      }
+      
+      localStorage.setItem('token', response.token);
     } catch (err: any) {
       setError(err.message || 'Failed to register');
       throw err;
