@@ -1,6 +1,5 @@
 import axios, { AxiosError } from 'axios';
 import { mockAuthApi, mockEventsApi } from './mockApi';
-import { getToken } from '../utils/auth';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 const USE_MOCK_API = true; // Force mock API usage until backend is ready
@@ -48,7 +47,9 @@ api.interceptors.response.use(
   }
 );
 
-// Real API implementations
+// Auth API interfaces and implementations are defined in mockApi.ts
+// The real implementation would look like this:
+/*
 const realAuthApi = {
   login: async (email: string, password: string) => {
     const response = await api.post('/auth/login', { email, password });
@@ -77,6 +78,7 @@ const realAuthApi = {
     return response.data;
   },
 };
+*/
 
 interface Event {
   id: string;
@@ -287,11 +289,16 @@ const realEventsApi: EventsApi = {
 
 // Export the appropriate implementation based on environment
 export const authApi = mockAuthApi;
+
+// In a production environment, we would use the real API implementation:
+// export const authApi = process.env.NODE_ENV === 'production' ? realAuthApi : mockAuthApi;
+
 export const eventsApi: EventsApi = USE_MOCK_API 
   ? {
     ...mockEventsApi,
     runMatching: mockEventsApi.runMatching || (async () => ({})),
-    getEventMatches: mockEventsApi.getEventMatches || (async () => [])
+    getEventMatches: mockEventsApi.getEventMatches || (async () => []),
+    getEventParticipants: mockEventsApi.getEventParticipants || (async () => [])
   }
   : realEventsApi;
 

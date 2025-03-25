@@ -19,12 +19,25 @@ import {
   Schedule as ScheduleIcon,
   Notes as NotesIcon,
   Favorite as MatchesIcon,
-  Add as AddIcon,
   People as PeopleIcon,
   Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import { useEvents } from '../../context/EventContext';
+import { useTheme } from '@mui/material/styles';
+
+interface Participant {
+  user_id: string;
+  status: string;
+}
+
+interface Event {
+  id: string;
+  status: 'draft' | 'published' | 'in_progress' | 'completed';
+  creator_id: string;
+  max_capacity: number;
+  participants?: Participant[];
+}
 
 const DashboardCard = ({ 
   title, 
@@ -83,12 +96,48 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { events } = useEvents();
+  const theme = useTheme();
 
   const isAdmin = user?.role_id === 10;
   const isOrganizer = user?.role_id === 20;
   const isAttendee = user?.role_id === 30;
 
-  const activeEventsCount = events.filter(e => e.status === 'published' || e.status === 'in_progress').length;
+  // Filter events based on user role
+  const userEvents = (events as unknown as Event[]).filter(event => {
+    if (isAdmin) return true; // Admins see all events
+    if (isOrganizer) return event.creator_id === user?.id; // Organizers see their events
+    if (isAttendee) return event.participants?.some((p: Participant) => p.user_id === user?.id); // Attendees see events they're in
+    return false;
+  });
+
+  const activeEventsCount = userEvents.filter(e => e.status === 'published' || e.status === 'in_progress').length;
+  const upcomingEventsCount = userEvents.filter(e => e.status === 'published').length;
+  const completedEventsCount = userEvents.filter(e => e.status === 'completed').length;
+
+  // Role-specific stats
+  const getRoleSpecificStats = () => {
+    if (isAdmin) {
+      return [
+        { label: 'Active Events', value: activeEventsCount },
+        { label: 'Total Capacity', value: totalParticipants },
+        { label: 'Total Events', value: events.length }
+      ];
+    }
+    if (isOrganizer) {
+      return [
+        { label: 'My Events', value: userEvents.length },
+        { label: 'Active Events', value: activeEventsCount },
+        { label: 'Completed Events', value: completedEventsCount }
+      ];
+    }
+    // Attendee stats
+    return [
+      { label: 'Upcoming Events', value: upcomingEventsCount },
+      { label: 'Active Events', value: activeEventsCount },
+      { label: 'Past Events', value: completedEventsCount }
+    ];
+  };
+
   const totalParticipants = events.reduce((acc, event) => acc + (event.max_capacity || 0), 0);
 
   return (
@@ -98,70 +147,117 @@ const Dashboard = () => {
           Welcome, {user?.first_name}!
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          You have {activeEventsCount} active events and {totalParticipants} total participant capacity.
+          {isAdmin && `Managing ${activeEventsCount} active events with ${totalParticipants} total participant capacity.`}
+          {isOrganizer && `You have ${activeEventsCount} active events and ${upcomingEventsCount} upcoming events.`}
+          {isAttendee && `You have ${upcomingEventsCount} upcoming events to attend.`}
         </Typography>
       </Box>
 
-      <Grid container spacing={3}>
-        {/* Events Management */}
-        <Grid item xs={12} md={6} lg={4}>
-          <DashboardCard
-            title="Events"
-            description="Manage your speed dating events, view registrations, and monitor event status."
-            icon={<EventIcon color="primary" />}
-            buttonText="View Events"
-            onClick={() => navigate('/events')}
-            secondaryButton={{
-              text: "Create Event",
-              onClick: () => navigate('/events/new')
-            }}
-          />
-        </Grid>
+      {/* Management Section */}
+      <Typography variant="h5" gutterBottom color="primary">
+        Management Tools
+      </Typography>
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        {/* Events Management - Admin & Organizer Only */}
+        {(isAdmin || isOrganizer) && (
+          <Grid item xs={12} md={6} lg={4}>
+            <DashboardCard
+              title="Events"
+              description={isAdmin 
+                ? "Manage all speed dating events, view registrations, and monitor event status."
+                : "Manage your speed dating events and monitor their status."}
+              icon={<EventIcon color="primary" />}
+              buttonText="View Events"
+              onClick={() => navigate('/events')}
+              secondaryButton={{
+                text: "Create Event",
+                onClick: () => navigate('/events/new')
+              }}
+            />
+          </Grid>
+        )}
 
-        {/* Check-in Management */}
-        <Grid item xs={12} md={6} lg={4}>
-          <DashboardCard
-            title="Check-in"
-            description="Manage participant check-ins for your events. Track attendance and verify participants."
-            icon={<CheckInIcon color="primary" />}
-            buttonText="Manage Check-ins"
-            onClick={() => navigate('/check-in')}
-          />
-        </Grid>
+        {/* Event Registration - Attendee Only */}
+        {isAttendee && (
+          <Grid item xs={12} md={6} lg={4}>
+            <DashboardCard
+              title="Event Registration"
+              description="Browse and register for upcoming speed dating events in your area."
+              icon={<EventIcon color="primary" />}
+              buttonText="Browse Events"
+              onClick={() => navigate('/events')}
+            />
+          </Grid>
+        )}
 
-        {/* Schedule Management */}
+        {/* Check-in Management - Admin & Organizer Only */}
+        {(isAdmin || isOrganizer) && (
+          <Grid item xs={12} md={6} lg={4}>
+            <DashboardCard
+              title="Check-in"
+              description="Manage participant check-ins for your events. Track attendance and verify participants."
+              icon={<CheckInIcon color="primary" />}
+              buttonText="Manage Check-ins"
+              onClick={() => navigate('/check-in')}
+            />
+          </Grid>
+        )}
+      </Grid>
+
+      <Divider sx={{ my: 4 }} />
+
+      {/* Event Activities Section */}
+      <Typography variant="h5" gutterBottom color="primary">
+        Event Activities
+      </Typography>
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        {/* Schedule View - All Users */}
         <Grid item xs={12} md={6} lg={4}>
           <DashboardCard
             title="Schedule"
-            description="View and manage event schedules. Organize dates and track timing."
+            description={isAttendee 
+              ? "View your event schedules and upcoming matches."
+              : "View and manage event schedules. Organize dates and track timing."}
             icon={<ScheduleIcon color="primary" />}
-            buttonText="View Schedules"
+            buttonText="View Schedule"
             onClick={() => navigate('/schedule')}
           />
         </Grid>
 
-        {/* Notes Management */}
+        {/* Notes Management - All Users */}
         <Grid item xs={12} md={6} lg={4}>
           <DashboardCard
             title="Notes"
-            description="Access and manage participant notes and feedback from events."
+            description={isAttendee
+              ? "Take notes during your dates and review them later."
+              : "Access and manage participant notes and feedback from events."}
             icon={<NotesIcon color="primary" />}
             buttonText="View Notes"
             onClick={() => navigate('/notes')}
           />
         </Grid>
 
-        {/* Matches Management */}
+        {/* Matches Management - All Users */}
         <Grid item xs={12} md={6} lg={4}>
           <DashboardCard
             title="Matches"
-            description="Review and manage matches from your events. Track success rates."
+            description={isAttendee
+              ? "View your matches and connect with people you liked."
+              : "Review and manage matches from your events. Track success rates."}
             icon={<MatchesIcon color="primary" />}
             buttonText="View Matches"
             onClick={() => navigate('/matches')}
           />
         </Grid>
+      </Grid>
 
+      <Divider sx={{ my: 4 }} />
+
+      {/* System Settings Section */}
+      <Typography variant="h5" gutterBottom color="primary">
+        System Settings
+      </Typography>
+      <Grid container spacing={3} sx={{ mb: 4 }}>
         {/* User Management - Admin Only */}
         {isAdmin && (
           <Grid item xs={12} md={6} lg={4}>
@@ -171,35 +267,58 @@ const Dashboard = () => {
               icon={<PeopleIcon color="primary" />}
               buttonText="Manage Users"
               onClick={() => navigate('/users')}
+              secondaryButton={{
+                text: "Add User",
+                onClick: () => navigate('/users/new')
+              }}
             />
           </Grid>
         )}
+
+        {/* Settings - All Users */}
+        <Grid item xs={12} md={6} lg={4}>
+          <DashboardCard
+            title="Settings"
+            description={isAttendee
+              ? "Manage your profile, preferences, and notification settings."
+              : "Configure event settings, notifications, and system preferences."}
+            icon={<SettingsIcon color="primary" />}
+            buttonText="Open Settings"
+            onClick={() => navigate('/settings')}
+          />
+        </Grid>
       </Grid>
+
+      <Divider sx={{ my: 4 }} />
 
       {/* Quick Stats */}
       <Box sx={{ mt: 4 }}>
-        <Typography variant="h5" gutterBottom>
+        <Typography variant="h5" gutterBottom color="primary">
           Quick Stats
         </Typography>
         <Grid container spacing={3}>
-          <Grid item xs={12} md={4}>
-            <Paper sx={{ p: 2, textAlign: 'center' }}>
-              <Typography variant="h6">{activeEventsCount}</Typography>
-              <Typography color="text.secondary">Active Events</Typography>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Paper sx={{ p: 2, textAlign: 'center' }}>
-              <Typography variant="h6">{totalParticipants}</Typography>
-              <Typography color="text.secondary">Total Capacity</Typography>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Paper sx={{ p: 2, textAlign: 'center' }}>
-              <Typography variant="h6">{events.length}</Typography>
-              <Typography color="text.secondary">Total Events</Typography>
-            </Paper>
-          </Grid>
+          {getRoleSpecificStats().map((stat, index) => (
+            <Grid item xs={12} md={4} key={index}>
+              <Paper 
+                sx={{ 
+                  p: 2, 
+                  textAlign: 'center',
+                  borderTop: `4px solid ${theme.palette.primary.main}`,
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center'
+                }}
+              >
+                <Typography variant="h4" color="primary" gutterBottom>
+                  {stat.value}
+                </Typography>
+                <Typography color="text.secondary">
+                  {stat.label}
+                </Typography>
+              </Paper>
+            </Grid>
+          ))}
         </Grid>
       </Box>
     </Container>

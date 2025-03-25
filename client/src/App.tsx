@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -23,6 +23,7 @@ import DateNotes from './components/notes/DateNotes';
 import EventCheckInStatus from './components/check-in/EventCheckInStatus';
 import CheckInDashboard from './components/check-in/CheckInDashboard';
 import AccountManagement from './components/profile/AccountManagement';
+import SystemSettings from './components/profile/SystemSettings';
 import AnimatedWrapper from './components/common/AnimatedWrapper';
 import PageTransition from './components/common/PageTransition';
 import LiveEventView from './components/events/LiveEventView';
@@ -144,6 +145,18 @@ const ProtectedRoutes = () => {
           <PrivateRoute>
             <AnimatedWrapper>
               <EventCheckInStatus />
+            </AnimatedWrapper>
+          </PrivateRoute>
+        }
+      />
+
+      {/* Settings Route */}
+      <Route
+        path="/settings"
+        element={
+          <PrivateRoute>
+            <AnimatedWrapper>
+              <SystemSettings />
             </AnimatedWrapper>
           </PrivateRoute>
         }
@@ -293,12 +306,25 @@ const ProtectedRoutes = () => {
         }
       />
 
+      {/* Account Management Route */}
       <Route
         path="/account"
         element={
           <PrivateRoute>
             <AnimatedWrapper>
               <AccountManagement />
+            </AnimatedWrapper>
+          </PrivateRoute>
+        }
+      />
+
+      {/* Date Schedule Route */}
+      <Route
+        path="/dates/:dateId/schedule"
+        element={
+          <PrivateRoute>
+            <AnimatedWrapper>
+              <DateSchedule />
             </AnimatedWrapper>
           </PrivateRoute>
         }

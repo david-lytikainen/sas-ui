@@ -10,12 +10,6 @@ import {
   Paper,
   Divider,
   CircularProgress,
-  Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
   FormControl,
   InputLabel,
   Select,
@@ -25,7 +19,7 @@ import {
 } from '@mui/material';
 import {
   Save as SaveIcon,
-  Delete as DeleteIcon,
+  ExitToApp as LogoutIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import { animated, useSpring } from '@react-spring/web';
@@ -54,11 +48,9 @@ const AccountManagement = () => {
     church: '',
     denomination: '',
   });
-  const [loading, setLoading] = useState(false);
+
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof ProfileFormData, string>>>({});
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [formSubmitting, setFormSubmitting] = useState(false);
 
   const formAnimation = useSpring({
@@ -314,16 +306,28 @@ const AccountManagement = () => {
                 </FormControl>
               </Grid>
               <Grid item xs={12}>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="primary"
-                  startIcon={<SaveIcon />}
-                  disabled={formSubmitting}
-                  sx={{ mt: 2 }}
-                >
-                  {formSubmitting ? 'Saving...' : 'Save Changes'}
-                </Button>
+                <Box sx={{ display: 'flex', gap: 2, justifyContent: 'space-between' }}>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    color="primary"
+                    startIcon={<SaveIcon />}
+                    disabled={formSubmitting}
+                  >
+                    {formSubmitting ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<LogoutIcon />}
+                    onClick={() => {
+                      logout();
+                      navigate('/login');
+                    }}
+                  >
+                    Logout
+                  </Button>
+                </Box>
               </Grid>
             </Grid>
           </Box>

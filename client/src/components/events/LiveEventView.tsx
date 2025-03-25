@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -11,35 +11,18 @@ import {
   Alert,
   Chip,
   Button,
-  Divider,
-  Avatar,
   Stack,
-  LinearProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Tooltip,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Container,
-  Slider,
-  FormHelperText,
-  CardActions,
   DialogContentText,
   List,
   ListItem,
-  ListItemText
+  ListItemText,
+  LinearProgress
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -47,30 +30,18 @@ import {
   Event as EventIcon,
   Timer as TimerIcon,
   PlayArrow as PlayIcon,
-  FlashOn as FlashOnIcon,
   Check as CheckIcon,
   Settings as SettingsIcon,
-  Edit as EditIcon,
   ViewList as ViewListIcon,
-  ViewModule as ViewModuleIcon,
-  SupervisorAccount as SupervisorAccountIcon,
   People as PeopleIcon,
   TableChart as TableIcon,
   Pause as PauseIcon,
-  AccessTime as TimeIcon,
-  AddCircle as AddIcon,
-  RemoveCircle as RemoveIcon,
-  Save as SaveIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import { useEvents } from '../../context/EventContext';
 import { eventsApi } from '../../services/api';
-import { LocalizationProvider, DateTimePicker } from '@mui/x-date-pickers';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import NextPlanIcon from '@mui/icons-material/NextPlan';
 import StopIcon from '@mui/icons-material/Stop';
-import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
 import BreakfastDiningIcon from '@mui/icons-material/BreakfastDining';
 
 // Type definitions
@@ -84,15 +55,6 @@ interface ScheduleItem {
   tableNumber: number;
   status: 'upcoming' | 'current' | 'completed' | 'paused';
   isPaused?: boolean;
-}
-
-interface Match {
-  id: string;
-  eventId: string;
-  participant1Id: string;
-  participant2Id: string;
-  compatibilityScore: number;
-  createdAt: string;
 }
 
 interface Participant {
@@ -124,6 +86,13 @@ interface Event {
   created_at: string;
 }
 
+interface Match {
+  id: string;
+  participant1Id: string;
+  participant2Id: string;
+  compatibilityScore: number;
+}
+
 const LiveEventView: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
@@ -132,25 +101,14 @@ const LiveEventView: React.FC = () => {
   
   const [event, setEvent] = useState<Event | null>(null);
   const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
-  const [matches, setMatches] = useState<Match[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
-  const [participantsMap, setParticipantsMap] = useState<Record<string, Participant>>({});
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<string>('');
   const [progressPercent, setProgressPercent] = useState<number>(0);
   
-  // State for dialogs and modals
-  const [fullScheduleDialogOpen, setFullScheduleDialogOpen] = useState(false);
-  const [editRoundDialogOpen, setEditRoundDialogOpen] = useState(false);
-  const [currentEditingRound, setCurrentEditingRound] = useState<ScheduleItem | null>(null);
-  const [adjustTimeDialogOpen, setAdjustTimeDialogOpen] = useState(false);
-  const [adjustRoundIndex, setAdjustRoundIndex] = useState<number | null>(null);
-  const [adjustTimeValue, setAdjustTimeValue] = useState<number>(0);
-
   // Add a loader notification for when the event is first started
   const [isNewEvent, setIsNewEvent] = useState(false);
 
@@ -164,6 +122,11 @@ const LiveEventView: React.FC = () => {
     roundLengthMinutes: 5,
     breakLengthMinutes: 2
   });
+
+  // Match management state
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [matchesLoading, setMatchesLoading] = useState(false);
+  const [showMatchesDialog, setShowMatchesDialog] = useState(false);
 
   // Helpers to check roles
   const checkIsAdmin = () => {
@@ -188,6 +151,23 @@ const LiveEventView: React.FC = () => {
     return checkIsAdmin() || checkIsOrganizer();
   };
 
+  // Function to refresh event data
+  const refreshEventData = useCallback(async () => {
+    if (!eventId) return;
+    
+    try {
+      // Fetch schedule
+      const scheduleData = await eventsApi.getEventSchedule(eventId);
+      setSchedule(scheduleData);
+      
+      // Also refresh the event in case its status has changed
+      const eventData = await eventsApi.getEvent(eventId);
+      setEvent(eventData);
+    } catch (error) {
+      console.error('Error refreshing event data:', error);
+    }
+  }, [eventId]);
+
   // Load event data, schedule, matches and participants
   useEffect(() => {
     const fetchEventData = async () => {
@@ -205,22 +185,13 @@ const LiveEventView: React.FC = () => {
         const scheduleData = await eventsApi.getEventSchedule(eventId);
         setSchedule(scheduleData);
         
-        // Fetch matches if this is a live event
-        if (eventData.status === 'in_progress') {
-          const matchesData = await eventsApi.getEventMatches(eventId);
-          setMatches(matchesData);
-        }
-        
         // Fetch participants
         const participantsData = await eventsApi.getEventParticipants(eventId);
         setParticipants(participantsData);
         
-        // Create a map of participant IDs to participant objects for easy lookup
-        const participantsMapData: Record<string, Participant> = {};
-        participantsData.forEach(participant => {
-          participantsMapData[participant.id] = participant;
-        });
-        setParticipantsMap(participantsMapData);
+        // Fetch matches
+        const matchesData = await eventsApi.getEventMatches(eventId);
+        setMatches(matchesData);
         
         // Check if this is a newly started event
         if (eventData.status === 'in_progress' && scheduleData.length > 0) {
@@ -324,24 +295,7 @@ const LiveEventView: React.FC = () => {
     }, 1000);
     
     return () => clearInterval(interval);
-  }, [currentRound, nextRound]);
-
-  // Function to refresh event data
-  const refreshEventData = async () => {
-    if (!eventId) return;
-    
-    try {
-      // Fetch schedule
-      const scheduleData = await eventsApi.getEventSchedule(eventId);
-      setSchedule(scheduleData);
-      
-      // Also refresh the event in case its status has changed
-      const eventData = await eventsApi.getEvent(eventId);
-      setEvent(eventData);
-    } catch (error) {
-      console.error('Error refreshing event data:', error);
-    }
-  };
+  }, [currentRound, nextRound, refreshEventData, eventId]);
 
   // Handle pausing a round
   const handlePauseRound = async (roundId: string) => {
@@ -379,13 +333,6 @@ const LiveEventView: React.FC = () => {
     });
   };
 
-  // Get participant name helper
-  const getParticipantName = (participantId: string) => {
-    const participant = participantsMap[participantId];
-    if (!participant) return 'Unknown';
-    return `${participant.first_name} ${participant.last_name}`;
-  };
-
   // Get status color for visual indication
   const getStatusColor = (status: 'upcoming' | 'current' | 'completed' | 'paused') => {
     switch (status) {
@@ -402,89 +349,27 @@ const LiveEventView: React.FC = () => {
     }
   };
 
-  // Get status icon for visual indication
-  const getStatusIcon = (status: 'upcoming' | 'current' | 'completed' | 'paused') => {
-    switch (status) {
-      case 'current':
-        return <PlayIcon fontSize="small" />;
-      case 'upcoming':
-        return <TimerIcon fontSize="small" />;
-      case 'completed':
-        return <CheckIcon fontSize="small" />;
-      case 'paused':
-        return <PauseIcon fontSize="small" />;
-      default:
-        return null;
-    }
-  };
-
   // Handle generating a new schedule
-  const handleGenerateNewSchedule = () => {
-    // Implementation for generating a new schedule
-    console.log("Generate new schedule logic would go here");
-  };
-
-  // Handle editing a round's times
-  const handleEditRound = (round: ScheduleItem) => {
-    setCurrentEditingRound(round);
-    setEditRoundDialogOpen(true);
-  };
-
-  // Handle saving the edited round times
-  const handleSaveRoundTimes = () => {
-    // Implementation for saving round times
-    setEditRoundDialogOpen(false);
-    setCurrentEditingRound(null);
-  };
-
-  // Add a function to format countdown time nicely
-  const formatCountdown = (seconds: number): string => {
-    if (seconds < 0) return '0s';
+  const handleGenerateNewSchedule = async () => {
+    if (!eventId) return;
     
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds = Math.floor(seconds % 60);
-    
-    if (hours > 0) {
-      return `${hours}h ${minutes}m ${remainingSeconds}s`;
-    } else if (minutes > 0) {
-      return `${minutes}m ${remainingSeconds}s`;
-    } else {
-      return `${remainingSeconds}s`;
+    try {
+      // In a real app, this would call an API endpoint
+      console.log('Generating new schedule for event:', eventId);
+      
+      // Update local state with new settings
+      setRoundSettings({
+        ...roundSettings,
+      });
+      
+      setSuccessMessage('Schedule generated successfully');
+      setRoundSettingsDialogOpen(false);
+      
+      // Refresh data to get the new schedule
+      await refreshEventData();
+    } catch (error: any) {
+      setError(error.message || 'Failed to generate new schedule');
     }
-  };
-
-  // Find upcoming rounds for the current user
-  const getAttendeeRounds = (): {current: ScheduleItem | null, next: ScheduleItem | null} => {
-    if (!user) return {current: null, next: null};
-    
-    // Find rounds where the current user is a participant
-    const userRounds = sortedSchedule.filter(
-      round => round.participant1Id === user.id || round.participant2Id === user.id
-    );
-    
-    const current = userRounds.find(round => round.status === 'current') || null;
-    const upcoming = userRounds
-      .filter(round => round.status === 'upcoming')
-      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0];
-    
-    return {
-      current,
-      next: upcoming || null
-    };
-  };
-
-  // Get partner ID for the current user
-  const getPartnerIdForUser = (round: ScheduleItem | null): string | null => {
-    if (!round || !user) return null;
-    
-    if (round.participant1Id === user.id) {
-      return round.participant2Id;
-    } else if (round.participant2Id === user.id) {
-      return round.participant1Id;
-    }
-    
-    return null;
   };
 
   // Handle ending the event
@@ -568,22 +453,6 @@ const LiveEventView: React.FC = () => {
     }
   };
   
-  // Function to regenerate schedule with new settings
-  const handleRegenerateSchedule = async () => {
-    try {
-      // In a real app, this would call an API endpoint
-      console.log('Regenerating schedule with settings:', roundSettings);
-      
-      setSuccessMessage('Schedule regenerated successfully');
-      setRoundSettingsDialogOpen(false);
-      
-      // Refresh data
-      await refreshEventData();
-    } catch (error: any) {
-      setError(error.message || 'Failed to regenerate schedule');
-    }
-  };
-
   // Function to start the next round
   const handleStartNextRound = async () => {
     if (!eventId || !nextRound) return;
@@ -596,6 +465,50 @@ const LiveEventView: React.FC = () => {
     } catch (error: any) {
       setError(error.message || 'Failed to start next round');
     }
+  };
+
+  // Load matches data
+  useEffect(() => {
+    const fetchMatches = async () => {
+      if (!eventId || !event?.status) return;
+      
+      setMatchesLoading(true);
+      try {
+        const matchesData = await eventsApi.getEventMatches(eventId);
+        setMatches(matchesData);
+      } catch (error: any) {
+        console.error('Error loading matches:', error);
+        setError(error.message || 'Failed to load matches');
+      } finally {
+        setMatchesLoading(false);
+      }
+    };
+
+    fetchMatches();
+  }, [eventId, event?.status]);
+
+  // Handle running the matching algorithm
+  const handleRunMatching = async () => {
+    if (!eventId) return;
+    
+    setMatchesLoading(true);
+    try {
+      await eventsApi.runMatching(eventId);
+      // Refresh matches after running algorithm
+      const matchesData = await eventsApi.getEventMatches(eventId);
+      setMatches(matchesData);
+      setSuccessMessage('Matching completed successfully');
+    } catch (error: any) {
+      setError(error.message || 'Failed to run matching');
+    } finally {
+      setMatchesLoading(false);
+    }
+  };
+
+  // Get participant name helper
+  const getParticipantName = (participantId: string) => {
+    const participant = participants.find(p => p.id === participantId);
+    return participant ? `${participant.first_name} ${participant.last_name}` : 'Unknown';
   };
 
   // Component layout
@@ -680,19 +593,37 @@ const LiveEventView: React.FC = () => {
               </Alert>
             )}
             
+            {/* New Event Alert */}
+            {isNewEvent && (
+              <Alert severity="info" sx={{ mb: 3 }} onClose={() => setIsNewEvent(false)}>
+                Event has been started. Please configure your rounds in the Round Management section.
+              </Alert>
+            )}
+            
             {/* Event Info Card */}
             <Paper elevation={2} sx={{ mb: 3, p: 3 }}>
               <Grid container spacing={2}>
                 <Grid item xs={12} md={8}>
-                  <Typography variant="h5" gutterBottom>{event.name}</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <EventIcon color="primary" />
+                    <Typography variant="h5">{event.name}</Typography>
+                  </Box>
                   <Typography variant="body1" color="text.secondary">
                     {new Date(event.starts_at).toLocaleDateString()} {formatTime(event.starts_at)} - {formatTime(event.ends_at)}
                   </Typography>
                   <Typography variant="body2">Location: {event.address}</Typography>
                   {currentRound && (
-                    <Typography variant="h6" sx={{ mt: 2, color: 'primary.main' }}>
-                      Round {sortedSchedule.findIndex(item => item.id === currentRound.id) + 1} of {sortedSchedule.length}
-                    </Typography>
+                    <>
+                      <Typography variant="h6" sx={{ mt: 2, color: 'primary.main' }}>
+                        Round {sortedSchedule.findIndex(item => item.id === currentRound.id) + 1} of {sortedSchedule.length}
+                      </Typography>
+                      <Box sx={{ mt: 2, width: '100%' }}>
+                        <LinearProgress variant="determinate" value={progressPercent} />
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                          Time Remaining: {timeRemaining}
+                        </Typography>
+                      </Box>
+                    </>
                   )}
                 </Grid>
                 <Grid item xs={12} md={4} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
@@ -705,7 +636,7 @@ const LiveEventView: React.FC = () => {
                     <Chip 
                       icon={<TableIcon />}
                       label={`${sortedSchedule.length} Rounds`} 
-                      color="primary" 
+                      color={getStatusColor(currentRound?.status || 'completed')} 
                     />
                   </Stack>
                 </Grid>
@@ -714,7 +645,11 @@ const LiveEventView: React.FC = () => {
             
             {/* Status information and other content would go here */}
             <Typography variant="h5" gutterBottom>
-              Event Status: {event.status.toUpperCase()}
+              Event Status: <Chip 
+                label={event.status.toUpperCase()} 
+                color={getStatusColor(event.status === 'in_progress' ? 'current' : 'completed')}
+                size="small"
+              />
             </Typography>
             
             {event.status === 'in_progress' && (
@@ -788,6 +723,41 @@ const LiveEventView: React.FC = () => {
                   </Card>
                 </Grid>
                 
+                {/* Match Management Card */}
+                <Grid item xs={12} md={6}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" component="h2" gutterBottom>
+                        Match Management
+                      </Typography>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          View and manage participant matches
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          onClick={() => setShowMatchesDialog(true)}
+                          startIcon={<PeopleIcon />}
+                        >
+                          View Matches
+                        </Button>
+                        <Button
+                          variant="contained"
+                          color="secondary"
+                          onClick={handleRunMatching}
+                          disabled={matchesLoading}
+                          startIcon={<SettingsIcon />}
+                        >
+                          Run Matching
+                        </Button>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
                 {/* Round Management Card */}
                 <Grid item xs={12} md={6}>
                   <Card>
@@ -833,8 +803,6 @@ const LiveEventView: React.FC = () => {
                     </CardContent>
                   </Card>
                 </Grid>
-                
-                {/* Other cards can go here */}
               </Grid>
             </Container>
           )}
@@ -979,11 +947,69 @@ const LiveEventView: React.FC = () => {
         <DialogActions>
           <Button onClick={() => setRoundSettingsDialogOpen(false)}>Cancel</Button>
           <Button 
-            onClick={handleRegenerateSchedule} 
+            onClick={handleGenerateNewSchedule} 
             variant="contained" 
             color="primary"
           >
             Regenerate Schedule
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Matches Dialog */}
+      <Dialog
+        open={showMatchesDialog}
+        onClose={() => setShowMatchesDialog(false)}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>Event Matches</DialogTitle>
+        <DialogContent>
+          {matchesLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : matches.length === 0 ? (
+            <Typography color="text.secondary">
+              No matches have been generated yet. Click "Run Matching" to create matches.
+            </Typography>
+          ) : (
+            <List>
+              {matches.map((match) => (
+                <ListItem key={match.id} divider>
+                  <ListItemText
+                    primary={
+                      <Typography>
+                        {getParticipantName(match.participant1Id)} + {getParticipantName(match.participant2Id)}
+                      </Typography>
+                    }
+                    secondary={
+                      <Typography variant="body2" color="text.secondary">
+                        Compatibility Score: {match.compatibilityScore}%
+                      </Typography>
+                    }
+                  />
+                  <Button
+                    startIcon={<PersonIcon />}
+                    onClick={() => navigate(`/events/${eventId}/participants`)}
+                    size="small"
+                  >
+                    Details
+                  </Button>
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowMatchesDialog(false)}>Close</Button>
+          <Button
+            onClick={handleRunMatching}
+            variant="contained"
+            color="primary"
+            disabled={matchesLoading}
+          >
+            Regenerate Matches
           </Button>
         </DialogActions>
       </Dialog>
