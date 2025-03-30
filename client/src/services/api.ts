@@ -1,69 +1,49 @@
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 import { mockAuthApi, mockEventsApi } from './mockApi';
 import { AuthResponse, TokenValidationResponse } from '../types/user';
 
-// Use relative URL with proxy in package.json
-const apiBaseUrl = '/api';
-const API_BASE_URL = apiBaseUrl;
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 const USE_MOCK_API = false; // Always use real API
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  withCredentials: true
+    baseURL: API_BASE_URL,
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    withCredentials: true // Important for CORS with credentials
 });
 
-// Add auth token to requests if available
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// Request interceptor for API calls
+api.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
 
-// Add response interceptor for error handling
+// Response interceptor for API calls
 api.interceptors.response.use(
-  (response) => response,
-  (error: AxiosError) => {
-    if (error.message === 'Network Error') {
-      console.error('Network Error - API server may not be running:', API_BASE_URL);
-      throw new Error(`Cannot connect to server at ${API_BASE_URL}. Please ensure the backend server is running.`);
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
+
+        if (error.response) {
+            if (error.response.status === 401 && !originalRequest._retry) {
+                originalRequest._retry = true;
+                // Handle token refresh or logout here
+                localStorage.removeItem('token');
+                window.location.href = '/login';
+                return Promise.reject(error);
+            }
+        }
+        return Promise.reject(error);
     }
-    
-    if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      const errorData = error.response.data as { message?: string, error?: string };
-      console.error('API Error Response:', errorData);
-      
-      // Use the backend's error message if available
-      const errorMessage = errorData.message || errorData.error;
-      
-      // For authentication errors, provide a friendly message
-      if (error.response.status === 401) {
-        throw new Error(errorMessage || 'Invalid email or password');
-      }
-      
-      // For bad requests, extract the validation error
-      if (error.response.status === 400) {
-        throw new Error(errorMessage || 'Please check your input and try again');
-      }
-      
-      // General error with message from backend if available
-      throw new Error(errorMessage || `Error ${error.response.status}: ${error.response.statusText}`);
-    } else if (error.request) {
-      // The request was made but no response was received
-      console.error('No response received:', error.request);
-      throw new Error('No response received from server');
-    } else {
-      // Something happened in setting up the request that triggered an Error
-      console.error('Error setting up request:', error.message);
-      throw error;
-    }
-  }
 );
 
 // Real Auth API implementation to connect with Flask backend

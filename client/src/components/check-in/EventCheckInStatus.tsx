@@ -78,10 +78,17 @@ const formatDate = (date: string) => {
   return new Date(date).toLocaleString();
 };
 
+// Role constants
+const ROLES = {
+  ADMIN: { id: 1, name: 'admin', permission_level: 100 },
+  ORGANIZER: { id: 2, name: 'organizer', permission_level: 50 },
+  ATTENDEE: { id: 3, name: 'attendee', permission_level: 10 },
+};
+
 const EventCheckInStatus: React.FC<Props> = ({ eventId: propEventId, embedded = false }) => {
   const { eventId: routeEventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
-  const { isAdmin, isOrganizer } = useAuth();
+  const { isAdmin, isOrganizer, user, mockAttendeeMode } = useAuth();
   const [event, setEvent] = useState<Event | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,6 +104,21 @@ const EventCheckInStatus: React.FC<Props> = ({ eventId: propEventId, embedded = 
   const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [startEventLoading, setStartEventLoading] = useState(false);
+
+  // Redirect if not admin or organizer
+  useEffect(() => {
+    if (!isAdmin() && !isOrganizer()) {
+      navigate('/');
+    }
+  }, [isAdmin, isOrganizer, navigate]);
+
+  // Redirect attendees away from this page
+  useEffect(() => {
+    // Check if user is an attendee or in mock attendee mode
+    if (user?.role_id === ROLES.ATTENDEE.id || mockAttendeeMode) {
+      navigate('/events');
+    }
+  }, [user, mockAttendeeMode, navigate]);
 
   useEffect(() => {
     const fetchEventData = async () => {

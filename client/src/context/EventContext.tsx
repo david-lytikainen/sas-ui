@@ -69,7 +69,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       if (!user) throw new Error('You must be logged in to create an event');
       if (!isAdmin() && !isOrganizer()) {
-        throw new Error('Only organizers can create events');
+        throw new Error('Only administrators and organizers can create events');
       }
 
       const newEvent = await eventsApi.create(eventData);

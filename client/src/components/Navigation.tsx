@@ -146,7 +146,7 @@ const Navigation = () => {
         label: 'Dashboard',
         icon: <DashboardIcon />,
         to: '/',
-        show: user.role_id !== ROLES.ATTENDEE.id,
+        show: true,
       },
       {
         label: 'Events',
@@ -158,13 +158,13 @@ const Navigation = () => {
         label: 'Schedule',
         icon: <CalendarTodayIcon />,
         to: '/schedule',
-        show: user.role_id !== ROLES.ATTENDEE.id,
+        show: true,
       },
       {
         label: 'Notes',
         icon: <NotesIcon />,
         to: '/notes',
-        show: user.role_id !== ROLES.ATTENDEE.id,
+        show: true,
       },
       {
         label: 'Matches',
@@ -176,7 +176,7 @@ const Navigation = () => {
         label: 'Check-in',
         icon: <HowToRegIcon />,
         to: '/check-in',
-        show: user.role_id !== ROLES.ATTENDEE.id,
+        show: !mockAttendeeMode && (user.role_id === ROLES.ADMIN.id || user.role_id === ROLES.ORGANIZER.id),
       },
       {
         label: 'Account',
@@ -251,7 +251,7 @@ const Navigation = () => {
               </Typography>
             </AnimatedBox>
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
               {trail.map(({ y, opacity }, index) => (
                 <animated.div 
                   key={navItems[index].to} 
@@ -270,7 +270,7 @@ const Navigation = () => {
                       color: isActive(navItems[index].to) 
                         ? theme.palette.primary.main 
                         : theme.palette.mode === 'light' 
-                          ? theme.palette.primary.dark
+                          ? theme.palette.text.primary
                           : 'inherit',
                       '&:hover': {
                         backgroundColor: theme.palette.mode === 'dark' 
@@ -278,9 +278,24 @@ const Navigation = () => {
                           : 'rgba(0, 0, 0, 0.04)',
                         color: theme.palette.primary.main,
                       },
+                      display: 'flex',
+                      alignItems: 'center',
+                      height: '100%',
+                      padding: '8px 16px',
                     }}
                   >
-                    {!isMobile && navItems[index].label}
+                    {!isMobile && (
+                      <Typography
+                        component="span"
+                        sx={{
+                          color: 'inherit',
+                          fontSize: '0.875rem',
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {navItems[index].label}
+                      </Typography>
+                    )}
                   </Button>
                 </animated.div>
               ))}
@@ -290,9 +305,13 @@ const Navigation = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <AnimatedIconButton 
               onClick={colorMode.toggleColorMode} 
-              color="inherit"
+              sx={{ 
+                ml: 1,
+                color: theme.palette.mode === 'light' 
+                  ? theme.palette.primary.dark
+                  : 'inherit'
+              }}
               style={toggleButtonProps}
-              sx={{ ml: 1 }}
             >
               {theme.palette.mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
             </AnimatedIconButton>
@@ -319,7 +338,14 @@ const Navigation = () => {
                 )}
                 
                 <Button
-                  color="inherit"
+                  sx={{
+                    color: theme.palette.mode === 'light' 
+                      ? theme.palette.primary.dark
+                      : 'inherit',
+                    '&:hover': {
+                      color: theme.palette.primary.main,
+                    }
+                  }}
                   onClick={logout}
                   startIcon={<ExitIcon />}
                 >

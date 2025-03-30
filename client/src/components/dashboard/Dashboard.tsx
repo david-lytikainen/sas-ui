@@ -21,6 +21,7 @@ import {
   Favorite as MatchesIcon,
   People as PeopleIcon,
   Settings as SettingsIcon,
+  AddCircle as AddCircleIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import { useEvents } from '../../context/EventContext';
@@ -98,9 +99,9 @@ const Dashboard = () => {
   const { events } = useEvents();
   const theme = useTheme();
 
-  const isAdmin = user?.role_id === 10;
-  const isOrganizer = user?.role_id === 20;
-  const isAttendee = user?.role_id === 30;
+  const isAdmin = user?.role_id === 1;
+  const isOrganizer = user?.role_id === 2;
+  const isAttendee = user?.role_id === 3;
 
   // Filter events based on user role
   const userEvents = (events as unknown as Event[]).filter(event => {
@@ -153,58 +154,70 @@ const Dashboard = () => {
         </Typography>
       </Box>
 
-      {/* Management Section */}
-      <Typography variant="h5" gutterBottom color="primary">
-        Management Tools
-      </Typography>
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {/* Events Management - Admin & Organizer Only */}
-        {(isAdmin || isOrganizer) && (
-          <Grid item xs={12} md={6} lg={4}>
-            <DashboardCard
-              title="Events"
-              description={isAdmin 
-                ? "Manage all speed dating events, view registrations, and monitor event status."
-                : "Manage your speed dating events and monitor their status."}
-              icon={<EventIcon color="primary" />}
-              buttonText="View Events"
-              onClick={() => navigate('/events')}
-              secondaryButton={{
-                text: "Create Event",
-                onClick: () => navigate('/events/new')
-              }}
-            />
-          </Grid>
-        )}
+      {/* Management Section - Only shown to Admin and Organizer */}
+      {(isAdmin || isOrganizer) && (
+        <>
+          <Typography variant="h5" gutterBottom color="primary">
+            Management Tools
+          </Typography>
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            {/* Event Creation - Admin & Organizer Only */}
+            <Grid item xs={12} md={6} lg={4}>
+              <DashboardCard
+                title="Create Event"
+                description="Create and manage new speed dating events. Set details, location, and participant limits."
+                icon={<AddCircleIcon color="primary" />}
+                buttonText="Create Event"
+                onClick={() => navigate('/events/new')}
+              />
+            </Grid>
 
-        {/* Event Registration - Attendee Only */}
-        {isAttendee && (
-          <Grid item xs={12} md={6} lg={4}>
-            <DashboardCard
-              title="Event Registration"
-              description="Browse and register for upcoming speed dating events in your area."
-              icon={<EventIcon color="primary" />}
-              buttonText="Browse Events"
-              onClick={() => navigate('/events')}
-            />
-          </Grid>
-        )}
+            {/* Event Management - Admin & Organizer Only */}
+            <Grid item xs={12} md={6} lg={4}>
+              <DashboardCard
+                title="Manage Events"
+                description="View and manage your existing events. Edit details, track registrations, and analyze results."
+                icon={<EventIcon color="primary" />}
+                buttonText="Manage Events"
+                onClick={() => navigate('/events')}
+              />
+            </Grid>
 
-        {/* Check-in Management - Admin & Organizer Only */}
-        {(isAdmin || isOrganizer) && (
-          <Grid item xs={12} md={6} lg={4}>
-            <DashboardCard
-              title="Check-in"
-              description="Manage participant check-ins for your events. Track attendance and verify participants."
-              icon={<CheckInIcon color="primary" />}
-              buttonText="Manage Check-ins"
-              onClick={() => navigate('/check-in')}
-            />
+            {/* Check-in Management - Admin & Organizer Only */}
+            <Grid item xs={12} md={6} lg={4}>
+              <DashboardCard
+                title="Check-in"
+                description="Manage participant check-ins for your events. Track attendance and verify participants."
+                icon={<CheckInIcon color="primary" />}
+                buttonText="Manage Check-ins"
+                onClick={() => navigate('/check-in')}
+              />
+            </Grid>
           </Grid>
-        )}
-      </Grid>
+          <Divider sx={{ my: 4 }} />
+        </>
+      )}
 
-      <Divider sx={{ my: 4 }} />
+      {/* Attendee Section - Only shown to Attendees */}
+      {isAttendee && (
+        <>
+          <Typography variant="h5" gutterBottom color="primary">
+            Event Registration
+          </Typography>
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid item xs={12} md={6} lg={4}>
+              <DashboardCard
+                title="Browse Events"
+                description="Browse and register for upcoming speed dating events in your area."
+                icon={<EventIcon color="primary" />}
+                buttonText="Find Events"
+                onClick={() => navigate('/events')}
+              />
+            </Grid>
+          </Grid>
+          <Divider sx={{ my: 4 }} />
+        </>
+      )}
 
       {/* Event Activities Section */}
       <Typography variant="h5" gutterBottom color="primary">
@@ -251,43 +264,65 @@ const Dashboard = () => {
         </Grid>
       </Grid>
 
-      <Divider sx={{ my: 4 }} />
+      {/* System Settings Section - Only displayed for Admin and Organizer */}
+      {(isAdmin || isOrganizer) && (
+        <>
+          <Divider sx={{ my: 4 }} />
+          <Typography variant="h5" gutterBottom color="primary">
+            System Settings
+          </Typography>
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            {/* User Management - Admin Only */}
+            {isAdmin && (
+              <Grid item xs={12} md={6} lg={4}>
+                <DashboardCard
+                  title="Users"
+                  description="Manage user accounts, roles, and permissions."
+                  icon={<PeopleIcon color="primary" />}
+                  buttonText="Manage Users"
+                  onClick={() => navigate('/users')}
+                  secondaryButton={{
+                    text: "Add User",
+                    onClick: () => navigate('/users/new')
+                  }}
+                />
+              </Grid>
+            )}
 
-      {/* System Settings Section */}
-      <Typography variant="h5" gutterBottom color="primary">
-        System Settings
-      </Typography>
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {/* User Management - Admin Only */}
-        {isAdmin && (
-          <Grid item xs={12} md={6} lg={4}>
-            <DashboardCard
-              title="Users"
-              description="Manage user accounts, roles, and permissions."
-              icon={<PeopleIcon color="primary" />}
-              buttonText="Manage Users"
-              onClick={() => navigate('/users')}
-              secondaryButton={{
-                text: "Add User",
-                onClick: () => navigate('/users/new')
-              }}
-            />
+            {/* Settings - All Users */}
+            <Grid item xs={12} md={6} lg={4}>
+              <DashboardCard
+                title="Settings"
+                description="Configure event settings, notifications, and system preferences."
+                icon={<SettingsIcon color="primary" />}
+                buttonText="Open Settings"
+                onClick={() => navigate('/settings')}
+              />
+            </Grid>
           </Grid>
-        )}
-
-        {/* Settings - All Users */}
-        <Grid item xs={12} md={6} lg={4}>
-          <DashboardCard
-            title="Settings"
-            description={isAttendee
-              ? "Manage your profile, preferences, and notification settings."
-              : "Configure event settings, notifications, and system preferences."}
-            icon={<SettingsIcon color="primary" />}
-            buttonText="Open Settings"
-            onClick={() => navigate('/settings')}
-          />
-        </Grid>
-      </Grid>
+        </>
+      )}
+      
+      {/* Settings section for Attendees - simplified */}
+      {isAttendee && (
+        <>
+          <Divider sx={{ my: 4 }} />
+          <Typography variant="h5" gutterBottom color="primary">
+            Your Settings
+          </Typography>
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid item xs={12} md={6} lg={4}>
+              <DashboardCard
+                title="Account Settings"
+                description="Manage your profile, preferences, and notification settings."
+                icon={<SettingsIcon color="primary" />}
+                buttonText="Open Settings"
+                onClick={() => navigate('/settings')}
+              />
+            </Grid>
+          </Grid>
+        </>
+      )}
 
       <Divider sx={{ my: 4 }} />
 

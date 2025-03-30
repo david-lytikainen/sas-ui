@@ -32,6 +32,8 @@ interface AuthContextType {
   mockAttendeeMode: boolean;
   enableMockAttendeeMode: () => void;
   disableMockAttendeeMode: () => void;
+  persistLogin: boolean;
+  togglePersistLogin: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -49,6 +51,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mockAttendeeMode, setMockAttendeeMode] = useState(false);
+  const [persistLogin, setPersistLogin] = useState<boolean>(() => {
+    // Default to true unless explicitly set to false
+    return localStorage.getItem('persistLogin') !== 'false';
+  });
 
   const isAdmin = () => !mockAttendeeMode && user?.role_id === ROLES.ADMIN.id;
   const isOrganizer = () => !mockAttendeeMode && user?.role_id === ROLES.ORGANIZER.id;
@@ -64,9 +70,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('mockAttendeeMode');
   };
 
+  const togglePersistLogin = () => {
+    const newValue = !persistLogin;
+    setPersistLogin(newValue);
+    localStorage.setItem('persistLogin', newValue.toString());
+    
+    // If turning off persistence, clear token immediately
+    if (!newValue) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('mockAttendeeMode');
+      setUser(null);
+    }
+  };
+
   // Check for existing session using token
   useEffect(() => {
     const checkAuth = async () => {
+      // Check if we should persist login
+      if (!persistLogin) {
+        // If not persisting login, clear any existing tokens
+        localStorage.removeItem('token');
+        localStorage.removeItem('mockAttendeeMode');
+        setLoading(false);
+        return;
+      }
+      
       const token = localStorage.getItem('token');
       if (token) {
         try {
@@ -94,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     checkAuth();
-  }, []);
+  }, [persistLogin]);
 
   const login = async (email: string, password: string) => {
     setLoading(true);
@@ -168,6 +196,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         mockAttendeeMode,
         enableMockAttendeeMode,
         disableMockAttendeeMode,
+        persistLogin,
+        togglePersistLogin,
       }}
     >
       {!loading && children}

@@ -34,13 +34,14 @@ interface EventFormData {
 const ROLES = {
   ADMIN: { id: 1, name: 'admin', permission_level: 100 },
   ORGANIZER: { id: 2, name: 'organizer', permission_level: 50 },
+  ATTENDEE: { id: 3, name: 'attendee', permission_level: 10 },
 } as const;
 
 const EventForm: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { createEvent, updateEvent, getEventById } = useEvents();
-  const { user } = useAuth();
+  const { user, isAdmin, isOrganizer, mockAttendeeMode } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
@@ -76,6 +77,21 @@ const EventForm: React.FC = () => {
       }
     }
   }, [id, getEventById]);
+
+  // Redirect if user doesn't have permission
+  useEffect(() => {
+    if (user && !isAdmin() && !isOrganizer()) {
+      navigate('/events');
+    }
+  }, [user, isAdmin, isOrganizer, navigate]);
+
+  // Redirect attendees away from this page
+  useEffect(() => {
+    // Check if user is an attendee or in mock attendee mode
+    if (user?.role_id === ROLES.ATTENDEE.id || mockAttendeeMode) {
+      navigate('/events');
+    }
+  }, [user, mockAttendeeMode, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent) => {
     const { name, value } = e.target;

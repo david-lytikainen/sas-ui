@@ -138,11 +138,11 @@ For testing, you can use these accounts:
 
 - **Admin**:
   - Email: admin@example.com
-  - Password: admin123
+  - Password: password
 
 - **Attendee**:
   - Email: attendee@example.com
-  - Password: password123
+  - Password: password
 
 ## Troubleshooting
 
