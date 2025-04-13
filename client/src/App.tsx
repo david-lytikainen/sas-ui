@@ -31,6 +31,8 @@ import UserManagement from './components/admin/UserManagement';
 import { initializeMockData } from './services/mockApi';
 import EventSchedule from './components/events/EventSchedule';
 import TestModeNotification from './components/common/TestModeNotification';
+import AccountSettings from './components/settings/AccountSettings';
+import Notes from './components/notes/Notes';
 
 // Add global styles for animations
 const GlobalStyles = {
@@ -156,7 +158,7 @@ const ProtectedRoutes = () => {
         element={
           <PrivateRoute>
             <AnimatedWrapper>
-              <SystemSettings />
+              <AccountSettings />
             </AnimatedWrapper>
           </PrivateRoute>
         }
@@ -211,7 +213,7 @@ const ProtectedRoutes = () => {
       />
 
       {/* Admin and Organizer specific routes */}
-      {isAdmin && (
+      {(isAdmin || user?.role_id === ROLES.ORGANIZER.id) && (
         <>
           <Route
             path="/events/new"
@@ -253,32 +255,47 @@ const ProtectedRoutes = () => {
               </PrivateRoute>
             }
           />
-          <Route
-            path="/matches"
-            element={
-              <PrivateRoute>
-                <AnimatedWrapper>
-                  {user?.role_id === ROLES.ATTENDEE.id ? (
-                    <AttendeeMatches />
-                  ) : (
-                    <Matches />
-                  )}
-                </AnimatedWrapper>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/notes"
-            element={
-              <PrivateRoute>
-                <AnimatedWrapper>
-                  <DateNotes />
-                </AnimatedWrapper>
-              </PrivateRoute>
-            }
-          />
         </>
       )}
+      
+      {/* Routes available to all user roles */}
+      <Route
+        path="/matches"
+        element={
+          <PrivateRoute>
+            <AnimatedWrapper>
+              {user?.role_id === ROLES.ATTENDEE.id ? (
+                <AttendeeMatches />
+              ) : (
+                <Matches />
+              )}
+            </AnimatedWrapper>
+          </PrivateRoute>
+        }
+      />
+      
+      {/* Notes Route */}
+      <Route
+        path="/notes"
+        element={
+          <PrivateRoute>
+            <AnimatedWrapper>
+              <Notes />
+            </AnimatedWrapper>
+          </PrivateRoute>
+        }
+      />
+      
+      <Route
+        path="/schedule"
+        element={
+          <PrivateRoute>
+            <AnimatedWrapper>
+              <EventSchedule />
+            </AnimatedWrapper>
+          </PrivateRoute>
+        }
+      />
 
       <Route
         path="/"

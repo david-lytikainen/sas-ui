@@ -1,17 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { authApi } from '../services/api';
-
-interface User {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role_id: number;
-  phone: string | null;
-  age: number;
-  church: string;
-  denomination: string | null;
-}
+import { User, AuthResponse, TokenValidationResponse } from '../types/user';
 
 // Role constants to match the mockApi
 const ROLES = {
@@ -43,6 +32,8 @@ interface AuthContextType {
   mockAttendeeMode: boolean;
   enableMockAttendeeMode: () => void;
   disableMockAttendeeMode: () => void;
+  persistLogin: boolean;
+  togglePersistLogin: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -60,6 +51,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mockAttendeeMode, setMockAttendeeMode] = useState(false);
+  const [persistLogin, setPersistLogin] = useState<boolean>(() => {
+    // Default to true unless explicitly set to false
+    return localStorage.getItem('persistLogin') !== 'false';
+  });
 
   const isAdmin = () => !mockAttendeeMode && user?.role_id === ROLES.ADMIN.id;
   const isOrganizer = () => !mockAttendeeMode && user?.role_id === ROLES.ORGANIZER.id;
@@ -75,14 +70,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('mockAttendeeMode');
   };
 
+  const togglePersistLogin = () => {
+    const newValue = !persistLogin;
+    setPersistLogin(newValue);
+    localStorage.setItem('persistLogin', newValue.toString());
+    
+    // If turning off persistence, clear token immediately
+    if (!newValue) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('mockAttendeeMode');
+      setUser(null);
+    }
+  };
+
   // Check for existing session using token
   useEffect(() => {
     const checkAuth = async () => {
+      // Check if we should persist login
+      if (!persistLogin) {
+        // If not persisting login, clear any existing tokens
+        localStorage.removeItem('token');
+        localStorage.removeItem('mockAttendeeMode');
+        setLoading(false);
+        return;
+      }
+      
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          const { user } = await authApi.validateToken(token);
-          setUser(user);
+          const response: TokenValidationResponse | null = await authApi.validateToken(token);
+          // Check if response exists and has user data
+          if (response && response.user) {
+            setUser(response.user);
+          } else {
+            // No valid response or user data, clear token
+            localStorage.removeItem('token');
+          }
           
           // Check if mock attendee mode was previously enabled
           const mockMode = localStorage.getItem('mockAttendeeMode');
@@ -99,15 +122,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     checkAuth();
-  }, []);
+  }, [persistLogin]);
 
   const login = async (email: string, password: string) => {
     setLoading(true);
     setError(null);
     try {
-      const { user, token } = await authApi.login(email, password);
-      setUser(user);
-      localStorage.setItem('token', token);
+      const response = await authApi.login(email, password);
+      
+      // We've updated the API service to ensure it returns a complete user object
+      if (response.user) {
+        setUser(response.user);
+      }
+      
+      localStorage.setItem('token', response.token);
     } catch (err: any) {
       setError(err.message || 'Failed to login');
       throw err;
@@ -130,9 +158,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     setError(null);
     try {
-      const { user, token } = await authApi.register(userData);
-      setUser(user);
-      localStorage.setItem('token', token);
+      const response = await authApi.register(userData);
+      
+      // We've updated the API service to ensure it returns a complete user object
+      if (response.user) {
+        setUser(response.user);
+      }
+      
+      localStorage.setItem('token', response.token);
     } catch (err: any) {
       setError(err.message || 'Failed to register');
       throw err;
@@ -163,6 +196,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         mockAttendeeMode,
         enableMockAttendeeMode,
         disableMockAttendeeMode,
+        persistLogin,
+        togglePersistLogin,
       }}
     >
       {!loading && children}

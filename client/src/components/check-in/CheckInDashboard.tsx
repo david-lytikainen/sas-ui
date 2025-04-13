@@ -20,11 +20,33 @@ import { HowToReg as CheckInIcon } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import { useEvents } from '../../context/EventContext';
 
+// Role constants
+const ROLES = {
+  ADMIN: { id: 1, name: 'admin', permission_level: 100 },
+  ORGANIZER: { id: 2, name: 'organizer', permission_level: 50 },
+  ATTENDEE: { id: 3, name: 'attendee', permission_level: 10 },
+};
+
 const CheckInDashboard = () => {
   const navigate = useNavigate();
-  const { isAdmin, isOrganizer } = useAuth();
+  const { isAdmin, isOrganizer, user, mockAttendeeMode } = useAuth();
   const { events, loading, error } = useEvents();
   const [activeEvents, setActiveEvents] = useState<any[]>([]);
+
+  // Redirect if not admin or organizer
+  useEffect(() => {
+    if (!isAdmin() && !isOrganizer()) {
+      navigate('/'); // Redirect to home page
+    }
+  }, [isAdmin, isOrganizer, navigate]);
+
+  // Redirect attendees away from this page
+  useEffect(() => {
+    // Check if user is an attendee or in mock attendee mode
+    if (user?.role_id === ROLES.ATTENDEE.id || mockAttendeeMode) {
+      navigate('/events');
+    }
+  }, [user, mockAttendeeMode, navigate]);
 
   useEffect(() => {
     // Filter for active events (not cancelled or completed)

@@ -41,26 +41,6 @@ const DateNotes: React.FC = () => {
     try {
       // Mock data - replace with actual API call
       const mockNotes: DateNote[] = [
-        {
-          id: '1',
-          eventId: 'event1',
-          eventName: 'Speed Dating at First Presbyterian',
-          participantId: 'participant1',
-          participantName: 'Laura Josuweit',
-          notes: 'Great conversation about travel and shared interests in hiking. Would like to meet again.',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          id: '2',
-          eventId: 'event2',
-          eventName: 'Speed Dating at Grace Community',
-          participantId: 'participant2',
-          participantName: 'Jessica Henry',
-          notes: 'Very kind and shares similar values. Enjoyed discussing our favorite books.',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
       ];
       setNotes(mockNotes);
     } catch (error) {
