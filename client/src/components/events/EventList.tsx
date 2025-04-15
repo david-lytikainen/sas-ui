@@ -14,10 +14,10 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Tab,
-  Tabs,
   CircularProgress,
   Alert,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -34,27 +34,6 @@ import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import { eventsApi } from '../../services/api';
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-const TabPanel = (props: TabPanelProps) => {
-  const { children, value, index, ...other } = props;
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`event-tabpanel-${index}`}
-      aria-labelledby={`event-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  );
-};
-
 const ROLES = {
   ADMIN: { id: 1, name: 'admin', permission_level: 100 },
   ORGANIZER: { id: 2, name: 'organizer', permission_level: 50 },
@@ -64,8 +43,9 @@ const ROLES = {
 const EventList = () => {
   const navigate = useNavigate();
   const { events, deleteEvent, refreshEvents } = useEvents();
-  const { user, enableMockAttendeeMode } = useAuth();
-  const [tabValue, setTabValue] = useState(0);
+  const { user } = useAuth();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [signUpDialogOpen, setSignUpDialogOpen] = useState(false);
@@ -76,12 +56,8 @@ const EventList = () => {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelEventId, setCancelEventId] = useState<string | null>(null);
   const [startEventLoading, setStartEventLoading] = useState<string | null>(null);
-  const [mockAttendDialogOpen, setMockAttendDialogOpen] = useState(false);
-  const [mockAttendEventId, setMockAttendEventId] = useState<string | null>(null);
-
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-  };
+  const [testResponse, setTestResponse] = useState<any>(null);
+  const [testError, setTestError] = useState<string | null>(null);
 
   const handleDeleteClick = (eventId: string) => {
     setSelectedEventId(eventId);
@@ -126,16 +102,6 @@ const EventList = () => {
     loadRegistrationStatus();
   }, [loadRegistrationStatus]);
 
-  // Check for tab selection in sessionStorage
-  useEffect(() => {
-    const tabValue = sessionStorage.getItem('openEventsTab');
-    if (tabValue) {
-      setTabValue(parseInt(tabValue));
-      // Clear the value so it doesn't persist on refresh
-      sessionStorage.removeItem('openEventsTab');
-    }
-  }, []);
-
   const handleSignUpConfirm = async () => {
     if (signUpEventId) {
       try {
@@ -143,7 +109,6 @@ const EventList = () => {
         setSuccessMessage('Successfully signed up for the event!');
         setSignUpDialogOpen(false);
         setSignUpEventId(null);
-        // Update registration status immediately
         setRegisteredEvents(prev => new Set(Array.from(prev).concat([signUpEventId])));
         setTimeout(() => setSuccessMessage(null), 10000);
       } catch (error: any) {
@@ -164,7 +129,6 @@ const EventList = () => {
         setSuccessMessage('Successfully cancelled registration');
         setCancelDialogOpen(false);
         setCancelEventId(null);
-        // Update registration status immediately
         setRegisteredEvents(prev => {
           const newSet = new Set(Array.from(prev));
           newSet.delete(cancelEventId);
@@ -184,11 +148,7 @@ const EventList = () => {
     try {
       await eventsApi.startEvent(eventId);
       setSuccessMessage('Event started successfully! Schedule and matches have been generated.');
-      
-      // Refresh events to get updated status
       await refreshEvents();
-      
-      // Navigate to the live event view after a short delay
       setTimeout(() => {
         navigate(`/events/${eventId}/live`);
       }, 1000);
@@ -196,40 +156,6 @@ const EventList = () => {
       setErrorMessage(error.message || 'Failed to start event');
     } finally {
       setStartEventLoading(null);
-    }
-  };
-
-  const handleMockAttendClick = (eventId: string) => {
-    setMockAttendEventId(eventId);
-    setMockAttendDialogOpen(true);
-  };
-
-  const handleMockAttendConfirm = async () => {
-    if (!mockAttendEventId) return;
-    
-    try {
-      // Register for the event if not already registered
-      if (!registeredEvents.has(mockAttendEventId)) {
-        await eventsApi.registerForEvent(mockAttendEventId);
-        
-        // Update registration status immediately
-        setRegisteredEvents(prev => new Set(Array.from(prev).concat([mockAttendEventId])));
-      }
-      
-      // Enable mock attendee mode in AuthContext
-      user?.role_id && enableMockAttendeeMode();
-      
-      // Close dialog
-      setMockAttendDialogOpen(false);
-      setMockAttendEventId(null);
-      
-      // Set success message
-      setSuccessMessage('You are now testing the attendee experience for this event. To exit this mode, click "Exit Test Mode" in the navbar.');
-      
-      // Navigate to event detail page
-      navigate(`/events/${mockAttendEventId}`);
-    } catch (error: any) {
-      setErrorMessage(error.message || 'Failed to mock attend the event');
     }
   };
 
@@ -278,43 +204,84 @@ const EventList = () => {
     });
   };
 
-  // Filter events by status
-  const activeEvents = events.filter(event => event.status === 'in_progress');
-  const archivedEvents = events.filter(event => event.status === 'completed');
-  const publishedEvents = events.filter(event => event.status === 'published');
-  
-  // For My Events tab - include both events created by the user and published events
-  const myEvents = [
-    ...events.filter(event => event.creator_id === user?.id), // Events created by user
-    ...publishedEvents.filter(event => event.creator_id !== user?.id) // Published events not created by user
-  ];
-  
-  // Show ALL in-progress events in the Active Events tab, regardless of creator
-  // This ensures users can see all live events, including their own
-  const liveEvents = activeEvents;
-
-  // Add a new handler for check-in navigation
   const handleCheckInNavigation = (eventId: string) => {
     navigate(`/events/${eventId}/check-in`);
   };
 
+  // Sort events by status priority and date
+  const sortedEvents = [...events].sort((a, b) => {
+    const statusPriority = {
+      'in_progress': 0,
+      'published': 1,
+      'completed': 2,
+      'cancelled': 3,
+      'draft': 4
+    };
+    
+    const priorityA = statusPriority[a.status] || 5;
+    const priorityB = statusPriority[b.status] || 5;
+    
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+    
+    return new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime();
+  });
+
+  const handleTestGetEvents = async () => {
+    try {
+      setTestError(null);
+      const response = await eventsApi.testGetEvents();
+      setTestResponse(response);
+      console.log('Test response:', response);
+    } catch (error: any) {
+      setTestError(error.message || 'Failed to test get_events endpoint');
+      console.error('Test error:', error);
+    }
+  };
+
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ mt: 4, mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 4 }}>
-          <Typography variant="h4" component="h1">
+    <Container maxWidth="lg" sx={{ px: isMobile ? 2 : 3 }}>
+      <Box sx={{ mt: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5" component="h1" sx={{ fontWeight: 600 }}>
             Speed Dating Events
           </Typography>
-          {(user?.role_id === ROLES.ORGANIZER.id || user?.role_id === ROLES.ADMIN.id) && (
+          <Box sx={{ display: 'flex', gap: 2 }}>
             <Button
-              variant="contained"
-              startIcon={<EventIcon />}
-              onClick={() => navigate('/events/new')}
+              variant="outlined"
+              color="secondary"
+              onClick={handleTestGetEvents}
+              size={isMobile ? 'small' : 'medium'}
             >
-              Create Event
+              Test Get Events
             </Button>
-          )}
+            {(user?.role_id === ROLES.ORGANIZER.id || user?.role_id === ROLES.ADMIN.id) && (
+              <Button
+                variant="contained"
+                startIcon={<EventIcon />}
+                onClick={() => navigate('/events/new')}
+                size={isMobile ? 'small' : 'medium'}
+              >
+                Create Event
+              </Button>
+            )}
+          </Box>
         </Box>
+
+        {testError && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setTestError(null)}>
+            {testError}
+          </Alert>
+        )}
+
+        {testResponse && (
+          <Alert severity="info" sx={{ mb: 2 }} onClose={() => setTestResponse(null)}>
+            <Typography variant="body2" component="pre" sx={{ whiteSpace: 'pre-wrap' }}>
+              {JSON.stringify(testResponse, null, 2)}
+            </Typography>
+          </Alert>
+        )}
 
         {successMessage && (
           <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage(null)}>
@@ -328,353 +295,168 @@ const EventList = () => {
           </Alert>
         )}
 
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-          <Tabs value={tabValue} onChange={handleTabChange}>
-            <Tab label="Active Events" />
-            {(user?.role_id === ROLES.ORGANIZER.id || user?.role_id === ROLES.ADMIN.id) && (
-              <Tab label="My Events" />
-            )}
-            <Tab label="Archive" />
-          </Tabs>
-        </Box>
-
-        <TabPanel value={tabValue} index={0}>
-          <Grid container spacing={3}>
-            {liveEvents.map(event => (
-              <Grid item xs={12} md={6} key={event.id}>
-                <Card>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                      <Typography variant="h6" component="h2">
-                        {event.name}
-                      </Typography>
-                      <Chip
-                        label={getStatusLabel(event.status)}
-                        color={getStatusColor(event.status) as any}
-                        size="small"
-                      />
-                    </Box>
-                    <Typography color="text.secondary" gutterBottom>
-                      {formatDate(event.starts_at)}
+        <Grid container spacing={2}>
+          {sortedEvents.map(event => (
+            <Grid item xs={12} key={event.id}>
+              <Card sx={{ 
+                borderRadius: 2,
+                boxShadow: theme.shadows[2],
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: theme.shadows[4],
+                }
+              }}>
+                <CardContent sx={{ p: 2 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                    <Typography variant="h6" component="h2" sx={{ 
+                      fontWeight: 600,
+                      fontSize: isMobile ? '1rem' : '1.25rem',
+                      lineHeight: 1.2
+                    }}>
+                      {event.name}
                     </Typography>
-                    <Typography variant="body1" sx={{ mb: 1 }}>
-                      {event.description}
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                      <Chip
-                        label={getStatusLabel(event.status)}
-                        color={getStatusColor(event.status)}
-                        size="small"
-                      />
-                      <Chip
-                        label={formatDate(event.starts_at)}
-                        size="small"
-                        icon={<EventIcon />}
-                      />
-                    </Box>
-                  </CardContent>
-                  <CardActions sx={{ flexWrap: 'wrap', p: 2, gap: 1 }}>
-                    {user?.role_id === ROLES.ATTENDEE.id ? (
-                      registeredEvents.has(event.id) ? (
+                    <Chip
+                      label={getStatusLabel(event.status)}
+                      color={getStatusColor(event.status) as any}
+                      size="small"
+                      sx={{ 
+                        ml: 1,
+                        fontWeight: 600,
+                        fontSize: '0.75rem'
+                      }}
+                    />
+                  </Box>
+                  <Typography color="text.secondary" sx={{ 
+                    fontSize: isMobile ? '0.875rem' : '1rem',
+                    mb: 1
+                  }}>
+                    {formatDate(event.starts_at)}
+                  </Typography>
+                  <Typography variant="body2" sx={{ 
+                    mb: 1,
+                    fontSize: isMobile ? '0.875rem' : '1rem',
+                    color: 'text.secondary'
+                  }}>
+                    {event.description}
+                  </Typography>
+                </CardContent>
+                <CardActions sx={{ 
+                  p: 2,
+                  pt: 1,
+                  display: 'flex',
+                  flexDirection: isMobile ? 'column' : 'row',
+                  gap: 1
+                }}>
+                  {user?.role_id === ROLES.ATTENDEE.id ? (
+                    registeredEvents.has(event.id) ? (
+                      <Button
+                        fullWidth={isMobile}
+                        variant="outlined"
+                        color="error"
+                        startIcon={<CancelIcon />}
+                        onClick={() => handleCancelClick(event.id)}
+                        size={isMobile ? 'small' : 'medium'}
+                      >
+                        Cancel Registration
+                      </Button>
+                    ) : (
+                      <Button
+                        fullWidth={isMobile}
+                        variant="contained"
+                        color="primary"
+                        startIcon={<SignUpIcon />}
+                        onClick={() => handleSignUpClick(event.id)}
+                        disabled={event.status !== 'published'}
+                        size={isMobile ? 'small' : 'medium'}
+                      >
+                        Sign Up
+                      </Button>
+                    )
+                  ) : (
+                    <Box sx={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(150px, 1fr))',
+                      gap: 1,
+                      width: '100%'
+                    }}>
+                      {event.status === 'published' && (
                         <Button
-                          fullWidth
-                          variant="outlined"
-                          color="error"
-                          startIcon={<CancelIcon />}
-                          onClick={() => handleCancelClick(event.id)}
-                        >
-                          Cancel Registration
-                        </Button>
-                      ) : (
-                        <Button
-                          fullWidth
                           variant="contained"
                           color="primary"
-                          startIcon={<SignUpIcon />}
-                          onClick={() => handleSignUpClick(event.id)}
-                          disabled={event.status !== 'published'}
+                          onClick={() => handleStartEvent(event.id)}
+                          startIcon={startEventLoading === event.id ? <CircularProgress size={20} color="inherit" /> : <StartIcon />}
+                          disabled={!!startEventLoading}
+                          size={isMobile ? 'small' : 'medium'}
                         >
-                          Sign Up
+                          {startEventLoading === event.id ? 'Starting...' : 'Start Event'}
                         </Button>
-                      )
-                    ) : (
-                      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1, width: '100%' }}>
-                        {event.status === 'published' && (
-                          <>
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleStartEvent(event.id)}
-                              startIcon={startEventLoading === event.id ? <CircularProgress size={20} color="inherit" /> : <StartIcon />}
-                              disabled={!!startEventLoading}
-                              sx={{ height: 40 }}
-                            >
-                              {startEventLoading === event.id ? 'Starting...' : 'Start Event'}
-                            </Button>
-                          </>
-                        )}
-                        {(event.status === 'published' || event.status === 'in_progress') && (
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleCheckInNavigation(event.id)}
-                            startIcon={<HowToReg />}
-                            sx={{ height: 40 }}
-                          >
-                            Manage Check-in
-                          </Button>
-                        )}
-                        {event.status === 'published' && (
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => navigate(`/events/${event.id}/schedule`)}
-                            startIcon={<EventIcon />}
-                            sx={{ height: 40 }}
-                          >
-                            View Schedule
-                          </Button>
-                        )}
-                        {event.status === 'in_progress' && (
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => navigate(`/events/${event.id}/live`)}
-                            startIcon={<PlayIcon />}
-                            sx={{ height: 40 }}
-                          >
-                            View Live Event
-                          </Button>
-                        )}
+                      )}
+                      {(event.status === 'published' || event.status === 'in_progress') && (
                         <Button
-                          variant="outlined"
+                          variant="contained"
                           color="primary"
-                          onClick={() => navigate(`/events/edit/${event.id}`)}
-                          startIcon={<EditIcon />}
-                          sx={{ height: 40 }}
+                          onClick={() => handleCheckInNavigation(event.id)}
+                          startIcon={<HowToReg />}
+                          size={isMobile ? 'small' : 'medium'}
                         >
-                          Edit
+                          Manage Check-in
                         </Button>
+                      )}
+                      {event.status === 'published' && (
                         <Button
-                          variant="outlined"
-                          color="error" 
-                          onClick={() => handleDeleteClick(event.id)}
-                          startIcon={<DeleteIcon />}
-                          sx={{ height: 40 }}
-                        >
-                          Delete
-                        </Button>
-                        {user?.role_id === ROLES.ORGANIZER.id && event.status === 'published' && (
-                          <Button
-                            variant="outlined"
-                            color="secondary"
-                            onClick={() => handleMockAttendClick(event.id)}
-                            startIcon={<PersonIcon />}
-                            sx={{ height: 40 }}
-                          >
-                            Test View
-                          </Button>
-                        )}
-                      </Box>
-                    )}
-                  </CardActions>
-                </Card>
-              </Grid>
-            ))}
-            {liveEvents.length === 0 && (
-              <Grid item xs={12}>
-                <Alert severity="info">
-                  No active events available at this time.
-                </Alert>
-              </Grid>
-            )}
-          </Grid>
-        </TabPanel>
-
-        <TabPanel value={tabValue} index={1}>
-          <Grid container spacing={3}>
-            {myEvents.map(event => (
-              <Grid item xs={12} md={6} key={event.id}>
-                <Card>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                      <Typography variant="h6" component="h2">
-                        {event.name}
-                      </Typography>
-                      <Chip
-                        label={getStatusLabel(event.status)}
-                        color={getStatusColor(event.status) as any}
-                        size="small"
-                      />
-                    </Box>
-                    <Typography color="text.secondary" gutterBottom>
-                      {formatDate(event.starts_at)}
-                    </Typography>
-                    <Typography variant="body1" sx={{ mb: 1 }}>
-                      {event.description}
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                      <Chip
-                        label={getStatusLabel(event.status)}
-                        color={getStatusColor(event.status)}
-                        size="small"
-                      />
-                      <Chip
-                        label={formatDate(event.starts_at)}
-                        size="small"
-                        icon={<EventIcon />}
-                      />
-                    </Box>
-                  </CardContent>
-                  <CardActions sx={{ flexWrap: 'wrap', p: 2, gap: 1 }}>
-                    <Button size="small" onClick={() => navigate(`/events/${event.id}`)}>
-                      View Details
-                    </Button>
-                    {(user?.role_id === ROLES.ORGANIZER.id && event.creator_id === user.id) || user?.role_id === ROLES.ADMIN.id ? (
-                      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1, width: '100%' }}>
-                        {event.status === 'published' && (
-                          <>
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleStartEvent(event.id)}
-                              startIcon={startEventLoading === event.id ? <CircularProgress size={20} color="inherit" /> : <StartIcon />}
-                              disabled={!!startEventLoading}
-                              sx={{ height: 40 }}
-                            >
-                              {startEventLoading === event.id ? 'Starting...' : 'Start Event'}
-                            </Button>
-                          </>
-                        )}
-                        {(event.status === 'published' || event.status === 'in_progress') && (
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleCheckInNavigation(event.id)}
-                            startIcon={<HowToReg />}
-                            sx={{ height: 40 }}
-                          >
-                            Manage Check-in
-                          </Button>
-                        )}
-                        {event.status === 'published' && (
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => navigate(`/events/${event.id}/schedule`)}
-                            startIcon={<EventIcon />}
-                            sx={{ height: 40 }}
-                          >
-                            View Schedule
-                          </Button>
-                        )}
-                        {event.status === 'in_progress' && (
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => navigate(`/events/${event.id}/live`)}
-                            startIcon={<PlayIcon />}
-                            sx={{ height: 40 }}
-                          >
-                            View Live Event
-                          </Button>
-                        )}
-                        <Button
-                          variant="outlined"
+                          variant="contained"
                           color="primary"
-                          onClick={() => navigate(`/events/edit/${event.id}`)}
-                          startIcon={<EditIcon />}
-                          sx={{ height: 40 }}
+                          onClick={() => navigate(`/events/${event.id}/schedule`)}
+                          startIcon={<EventIcon />}
+                          size={isMobile ? 'small' : 'medium'}
                         >
-                          Edit
+                          View Schedule
                         </Button>
+                      )}
+                      {event.status === 'in_progress' && (
                         <Button
-                          variant="outlined"
-                          color="error" 
-                          onClick={() => handleDeleteClick(event.id)}
-                          startIcon={<DeleteIcon />}
-                          sx={{ height: 40 }}
+                          variant="contained"
+                          color="primary"
+                          onClick={() => navigate(`/events/${event.id}/live`)}
+                          startIcon={<PlayIcon />}
+                          size={isMobile ? 'small' : 'medium'}
                         >
-                          Delete
+                          View Live Event
                         </Button>
-                        {user?.role_id === ROLES.ORGANIZER.id && event.status === 'published' && (
-                          <Button
-                            variant="outlined"
-                            color="secondary"
-                            onClick={() => handleMockAttendClick(event.id)}
-                            startIcon={<PersonIcon />}
-                            sx={{ height: 40 }}
-                          >
-                            Test View
-                          </Button>
-                        )}
-                      </Box>
-                    ) : null}
-                  </CardActions>
-                </Card>
-              </Grid>
-            ))}
-            {myEvents.length === 0 && (
-              <Grid item xs={12}>
-                <Alert severity="info">
-                  You haven't created any events yet.
-                </Alert>
-              </Grid>
-            )}
-          </Grid>
-        </TabPanel>
-
-        <TabPanel value={tabValue} index={2}>
-          <Grid container spacing={3}>
-            {archivedEvents.map(event => (
-              <Grid item xs={12} md={6} key={event.id}>
-                <Card sx={{ opacity: 0.8 }}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                      <Typography variant="h6" component="h2">
-                        {event.name}
-                      </Typography>
-                      <Chip
-                        label={getStatusLabel(event.status)}
-                        color={getStatusColor(event.status) as any}
-                        size="small"
-                      />
+                      )}
+                      <Button
+                        variant="outlined"
+                        color="primary"
+                        onClick={() => navigate(`/events/edit/${event.id}`)}
+                        startIcon={<EditIcon />}
+                        size={isMobile ? 'small' : 'medium'}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="error" 
+                        onClick={() => handleDeleteClick(event.id)}
+                        startIcon={<DeleteIcon />}
+                        size={isMobile ? 'small' : 'medium'}
+                      >
+                        Delete
+                      </Button>
                     </Box>
-                    <Typography color="text.secondary" gutterBottom>
-                      {formatDate(event.starts_at)}
-                    </Typography>
-                    <Typography variant="body1" sx={{ mb: 1 }}>
-                      {event.description}
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                      <Chip
-                        label={`Ended: ${formatDate(event.ends_at)}`}
-                        size="small"
-                        icon={<EventIcon />}
-                      />
-                    </Box>
-                  </CardContent>
-                  <CardActions>
-                    <Button
-                      size="small"
-                      onClick={() => navigate(`/events/${event.id}`)}
-                      startIcon={<EventIcon />}
-                    >
-                      View Details
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
-            ))}
-            {archivedEvents.length === 0 && (
-              <Grid item xs={12}>
-                <Alert severity="info">
-                  No completed events in the archive.
-                </Alert>
-              </Grid>
-            )}
-          </Grid>
-        </TabPanel>
+                  )}
+                </CardActions>
+              </Card>
+            </Grid>
+          ))}
+          {sortedEvents.length === 0 && (
+            <Grid item xs={12}>
+              <Alert severity="info">
+                No events available at this time.
+              </Alert>
+            </Grid>
+          )}
+        </Grid>
 
         <Dialog
           open={deleteDialogOpen}
@@ -720,27 +502,6 @@ const EventList = () => {
             <Button onClick={() => setCancelDialogOpen(false)}>Keep Registration</Button>
             <Button onClick={handleCancelConfirm} color="error" variant="contained">
               Cancel Registration
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        <Dialog
-          open={mockAttendDialogOpen}
-          onClose={() => setMockAttendDialogOpen(false)}
-        >
-          <DialogTitle>Test Attendee Experience</DialogTitle>
-          <DialogContent>
-            <Typography variant="body1" paragraph>
-              This will let you experience the event as an attendee would see it. You'll be registered for the event if you aren't already.
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Note: This is for testing purposes only.
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setMockAttendDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleMockAttendConfirm} color="primary" variant="contained">
-              Test Attendee View
             </Button>
           </DialogActions>
         </Dialog>

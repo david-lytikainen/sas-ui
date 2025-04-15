@@ -10,52 +10,42 @@ import {
   Link,
   Alert,
   Paper,
-  Grid,
-  Divider,
-  Chip,
+  Fade,
 } from '@mui/material';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, error } = useAuth();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
+    // Clear error when user starts typing
+    if (error) {
+      setError(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     try {
       await login(formData.email, formData.password);
       navigate('/');
-    } catch (err) {
-      // Error is handled by the AuthContext
+    } catch (err: any) {
+      setError(err.message || 'Invalid email or password');
     } finally {
       setLoading(false);
     }
-  };
-  
-  const loginAsAdmin = () => {
-    setFormData({
-      email: 'admin@example.com',
-      password: 'password'
-    });
-  };
-  
-  const loginAsAttendee = () => {
-    setFormData({
-      email: 'attendee@example.com',
-      password: 'password'
-    });
   };
 
   return (
@@ -73,66 +63,23 @@ const Login = () => {
         </Typography>
         
         <Paper elevation={3} sx={{ p: 4, width: '100%', mt: 2 }}>
-          {error && (
-            <Alert severity="error" sx={{ width: '100%', mb: 3 }}>
+          <Fade in={!!error}>
+            <Alert 
+              severity="error" 
+              sx={{ 
+                width: '100%', 
+                mb: 3,
+                animation: 'shake 0.5s',
+                '@keyframes shake': {
+                  '0%, 100%': { transform: 'translateX(0)' },
+                  '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-5px)' },
+                  '20%, 40%, 60%, 80%': { transform: 'translateX(5px)' },
+                }
+              }}
+            >
               {error}
             </Alert>
-          )}
-          
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" gutterBottom>
-              Demo Accounts
-            </Typography>
-            <Typography variant="body2" color="text.secondary" paragraph>
-              You can use these accounts to test different user roles:
-            </Typography>
-            
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12} sm={6}>
-                <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="subtitle1" fontWeight="bold">Admin</Typography>
-                    <Chip label="Admin" color="primary" size="small" />
-                  </Box>
-                  <Typography variant="body2">Email: admin@example.com</Typography>
-                  <Typography variant="body2">Password: password</Typography>
-                  <Button 
-                    variant="outlined" 
-                    fullWidth 
-                    size="small" 
-                    sx={{ mt: 2 }}
-                    onClick={loginAsAdmin}
-                  >
-                    Use Admin Account
-                  </Button>
-                </Paper>
-              </Grid>
-              
-              <Grid item xs={12} sm={6}>
-                <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="subtitle1" fontWeight="bold">Attendee</Typography>
-                    <Chip label="Attendee" color="secondary" size="small" />
-                  </Box>
-                  <Typography variant="body2">Email: attendee@example.com</Typography>
-                  <Typography variant="body2">Password: password</Typography>
-                  <Button 
-                    variant="outlined" 
-                    fullWidth 
-                    size="small" 
-                    sx={{ mt: 2 }}
-                    onClick={loginAsAttendee}
-                  >
-                    Use Attendee Account
-                  </Button>
-                </Paper>
-              </Grid>
-            </Grid>
-          </Box>
-          
-          <Divider sx={{ my: 3 }}>
-            <Chip label="OR" />
-          </Divider>
+          </Fade>
           
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
@@ -146,6 +93,7 @@ const Login = () => {
               autoFocus
               value={formData.email}
               onChange={handleChange}
+              error={!!error}
             />
             <TextField
               margin="normal"
@@ -158,6 +106,7 @@ const Login = () => {
               autoComplete="current-password"
               value={formData.password}
               onChange={handleChange}
+              error={!!error}
             />
             <Button
               type="submit"

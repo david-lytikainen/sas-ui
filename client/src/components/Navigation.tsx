@@ -12,6 +12,12 @@ import {
   useMediaQuery,
   List,
   Chip,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Drawer,
+  Avatar,
+  Divider,
 } from '@mui/material';
 import { animated, useSpring, useTrail, config } from '@react-spring/web';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
@@ -21,7 +27,6 @@ import { ColorModeContext } from '../context/ColorModeContext';
 import useHoverAnimation from '../hooks/useHoverAnimation';
 import {
   Event as EventIcon,
-  Dashboard as DashboardIcon,
   CalendarMonth as CalendarMonthIcon,
   Favorite as FavoriteIcon,
   Notes as NotesIcon,
@@ -30,6 +35,9 @@ import {
   HowToReg as HowToRegIcon,
   Person as PersonIcon,
   ExitToApp as ExitIcon,
+  People as PeopleIcon,
+  Note as NoteIcon,
+  Menu as MenuIcon,
 } from '@mui/icons-material';
 
 const AnimatedButton = animated(Button);
@@ -143,33 +151,9 @@ const Navigation = () => {
 
     const items = [
       {
-        label: 'Dashboard',
-        icon: <DashboardIcon />,
-        to: '/',
-        show: true,
-      },
-      {
         label: 'Events',
         icon: <EventIcon />,
         to: '/events',
-        show: true,
-      },
-      {
-        label: 'Schedule',
-        icon: <CalendarTodayIcon />,
-        to: '/schedule',
-        show: true,
-      },
-      {
-        label: 'Notes',
-        icon: <NotesIcon />,
-        to: '/notes',
-        show: true,
-      },
-      {
-        label: 'Matches',
-        icon: <FavoriteIcon />,
-        to: '/matches',
         show: true,
       },
       {
@@ -177,12 +161,6 @@ const Navigation = () => {
         icon: <HowToRegIcon />,
         to: '/check-in',
         show: !mockAttendeeMode && (user.role_id === ROLES.ADMIN.id || user.role_id === ROLES.ORGANIZER.id),
-      },
-      {
-        label: 'Account',
-        icon: <PersonIcon />,
-        to: '/account',
-        show: true,
       },
     ];
 

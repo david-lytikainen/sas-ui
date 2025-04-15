@@ -399,27 +399,6 @@ const EventDetail: React.FC = () => {
                 }}
               />
               <Tab 
-                label="Matches" 
-                value="matches"
-                component={RouterLink}
-                to={`/events/${eventId}/matches`}
-                sx={{
-                  fontWeight: activeTab === 'matches' ? 'bold' : 'normal',
-                  ...(isEventInProgress && activeTab !== 'matches' && {
-                    '&::after': {
-                      content: '""',
-                      position: 'absolute',
-                      top: 0,
-                      right: 0,
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      backgroundColor: 'primary.main',
-                    }
-                  })
-                }}
-              />
-              <Tab 
                 label="Notes" 
                 value="notes"
                 component={RouterLink}

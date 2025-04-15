@@ -1,9 +1,7 @@
 import axios from 'axios';
-import { mockAuthApi, mockEventsApi } from './mockApi';
 import { AuthResponse, TokenValidationResponse } from '../types/user';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
-const USE_MOCK_API = false; // Always use real API
 
 const api = axios.create({
     baseURL: API_BASE_URL,
@@ -33,15 +31,28 @@ api.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
-        if (error.response) {
-            if (error.response.status === 401 && !originalRequest._retry) {
-                originalRequest._retry = true;
-                // Handle token refresh or logout here
-                localStorage.removeItem('token');
-                window.location.href = '/login';
+        // If the error is 401 and we haven't tried to refresh the token yet
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    throw new Error('No token found');
+                }
+
+                // Try to validate the token
+                const response = await api.get('/user/validate-token');
+                if (response.data && response.data.user) {
+                    // Token is valid, retry the original request
+                    return api(originalRequest);
+                }
+            } catch (refreshError) {
+                // If token refresh fails, just reject the error
                 return Promise.reject(error);
             }
         }
+
         return Promise.reject(error);
     }
 );
@@ -50,8 +61,13 @@ api.interceptors.response.use(
 const realAuthApi = {
   login: async (email: string, password: string): Promise<AuthResponse> => {
     try {
-      const response = await api.post('/user/signin', { email, password });
+      const response = await api.post('/user/signin', { email, password }, { withCredentials: true });
       const { token, user } = response.data;
+      
+      // Ensure token is properly formatted
+      if (!token || typeof token !== 'string') {
+        throw new Error('Invalid token received from server');
+      }
       
       // Store token
       localStorage.setItem('token', token);
@@ -67,8 +83,11 @@ const realAuthApi = {
         const errorMessage = error.response.data?.message || error.response.data?.error || 'Invalid email or password';
         throw new Error(errorMessage);
       }
-      // For other errors, rethrow
-      throw error;
+      // For other errors, rethrow with a more specific message
+      if (error.response && error.response.data) {
+        throw new Error(error.response.data.message || error.response.data.error || 'Login failed');
+      }
+      throw new Error('Login failed. Please try again.');
     }
   },
 
@@ -78,22 +97,21 @@ const realAuthApi = {
     first_name: string;
     last_name: string;
     phone?: string;
-    age: number;
-    church: string;
-    denomination?: string;
+    birthday: string;
+    gender: string;
     role: 'attendee' | 'organizer' | 'admin';
   }): Promise<AuthResponse> => {
     // Map role name to role ID
     let role_id: number;
     switch (userData.role) {
       case 'admin':
-        role_id = 1; // Admin role ID
+        role_id = 3; // Admin role ID
         break;
       case 'organizer':
         role_id = 2; // Organizer role ID
         break;
       case 'attendee':
-        role_id = 3; // Attendee role ID
+        role_id = 1; // Attendee role ID
         break;
       default:
         throw new Error('Invalid role');
@@ -107,8 +125,8 @@ const realAuthApi = {
       first_name: userData.first_name,
       last_name: userData.last_name,
       phone: userData.phone || "",
-      gender: "NOT_SPECIFIED", // Must match the enum value exactly (uppercase)
-      age: userData.age,
+      gender: userData.gender, 
+      birthday: userData.birthday,
       church_id: null, // This would need to be populated if you have church IDs
       denomination_id: null // This would need to be populated if you have denomination IDs
     };
@@ -129,19 +147,40 @@ const realAuthApi = {
 
   validateToken: async (token: string): Promise<TokenValidationResponse | null> => {
     try {
-      // Since there's no /user/validate-token endpoint yet, we'll use a simple check
-      // Just verify we can access a protected endpoint
-      const response = await api.get('/health');
-      
-      // If we get a successful response, the token is valid
-      // For a proper implementation, we should have a dedicated endpoint 
-      // that returns the current user's data
-      return null; // Return null so the user has to log in explicitly
-    } catch (error) {
-      // If the request fails, the token is invalid
-      console.error('Token validation failed:', error);
+      if (!token) {
+        console.error('No token provided for validation');
+        return null;
+      }
+
+      // Remove any existing Bearer prefix if present
+      token = token.replace('Bearer ', '');
+
+      // Check if token is properly formatted
+      if (!token || token.split('.').length !== 3) {
+        console.error('Invalid token format');
+        return null;
+      }
+
+      console.log('Validating token:', token);
+      const response = await api.get('/user/validate-token', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.data || !response.data.user) {
+        console.error('Invalid response format:', response.data);
+        return null;
+      }
+
+      console.log('Token validation response:', response.data);
+      return {
+        user: response.data.user
+      };
+    } catch (error: any) {
+      console.error('Token validation failed:', error.response?.data || error.message);
       localStorage.removeItem('token');
-      throw new Error('Invalid or expired token');
+      return null;
     }
   },
 
@@ -180,12 +219,6 @@ const realAuthApi = {
     return { success: true };
   }
 };
-
-// Export the appropriate API implementation
-// For development, you can switch between mock and real APIs
-// export const authApi = USE_MOCK_API ? mockAuthApi : realAuthApi;
-// For production, always use the real API
-export const authApi = realAuthApi;
 
 interface Event {
   id: string;
@@ -271,6 +304,7 @@ interface EventsApi {
   registerForEvent: (eventId: string) => Promise<EventParticipant>;
   cancelRegistration: (eventId: string) => Promise<{ message: string }>;
   isRegisteredForEvent: (eventId: string) => Promise<boolean>;
+  testGetEvents: () => Promise<Event[]>;
 }
 
 const realEventsApi: EventsApi = {
@@ -391,16 +425,31 @@ const realEventsApi: EventsApi = {
   isRegisteredForEvent: async (eventId: string) => {
     const response = await api.get(`/events/${eventId}/is-registered`);
     return response.data;
+  },
+
+  testGetEvents: async () => {
+    try {
+      const token = localStorage.getItem('token'); // Get token from localStorage
+  
+      const response = await api.get('/events', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        withCredentials: true
+      });
+  
+      console.log('Test get_events response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error testing get_events:', error);
+      throw error;
+    }
   }
+  
 };
 
-export const eventsApi: EventsApi = USE_MOCK_API 
-  ? {
-    ...mockEventsApi,
-    runMatching: mockEventsApi.runMatching || (async () => ({})),
-    getEventMatches: mockEventsApi.getEventMatches || (async () => []),
-    getEventParticipants: mockEventsApi.getEventParticipants || (async () => [])
-  }
-  : realEventsApi;
+// Export the real API implementation
+export const authApi = realAuthApi;
+export const eventsApi = realEventsApi;
 
 export default api; 

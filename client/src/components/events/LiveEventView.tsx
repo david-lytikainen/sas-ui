@@ -136,8 +136,6 @@ const LiveEventView: React.FC = () => {
   };
   
   const checkIsOrganizer = () => {
-    // In test attendee mode, always return false
-    if (mockAttendeeMode) return false;
     // Return false if no event exists
     if (!event) return false;
     // Check if user is the creator of the event
@@ -146,8 +144,6 @@ const LiveEventView: React.FC = () => {
   
   // Check if the user can manage this event
   const canManageEvent = () => {
-    // In test attendee mode, always return false
-    if (mockAttendeeMode) return false;
     return checkIsAdmin() || checkIsOrganizer();
   };
 
