@@ -22,7 +22,6 @@ import CheckInDashboard from './components/check-in/CheckInDashboard';
 import SystemSettings from './components/profile/SystemSettings';
 import AnimatedWrapper from './components/common/AnimatedWrapper';
 import PageTransition from './components/common/PageTransition';
-import LiveEventView from './components/events/LiveEventView';
 import UserManagement from './components/admin/UserManagement';
 import TestModeNotification from './components/common/TestModeNotification';
 
@@ -150,18 +149,6 @@ const ProtectedRoutes = () => {
           <PrivateRoute>
             <AnimatedWrapper>
               <SystemSettings />
-            </AnimatedWrapper>
-          </PrivateRoute>
-        }
-      />
-
-      {/* Live Event View */}
-      <Route
-        path="/events/:eventId/live"
-        element={
-          <PrivateRoute>
-            <AnimatedWrapper>
-              <LiveEventView />
             </AnimatedWrapper>
           </PrivateRoute>
         }
@@ -497,7 +484,6 @@ function App() {
                       <Route path="/events/create" element={<PrivateRoute><EventForm /></PrivateRoute>} />
                       <Route path="/events/:eventId" element={<PrivateRoute><EventManagement /></PrivateRoute>} />
                       <Route path="/events/:eventId/check-in" element={<PrivateRoute><CheckInDashboard /></PrivateRoute>} />
-                      <Route path="/events/:eventId/live" element={<PrivateRoute><LiveEventView /></PrivateRoute>} />
                       <Route path="/settings" element={<PrivateRoute><SystemSettings /></PrivateRoute>} />
                       <Route path="/admin/users" element={<PrivateRoute><UserManagement /></PrivateRoute>} />
                       <Route path="*" element={<Navigate to="/" replace />} />

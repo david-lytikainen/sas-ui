@@ -55,18 +55,15 @@ interface Participant {
 
 interface Event {
   id: string;
-  creator_id: string;
+  name: string;
+  description: string;
   starts_at: string;
   ends_at: string;
+  status: 'open' | 'in_progress' | 'completed' | 'cancelled';
+  is_registered?: boolean;
   address: string;
-  name: string;
-  max_capacity: number;
-  status: 'draft' | 'published' | 'cancelled' | 'completed' | 'in_progress';
   price_per_person: number;
-  registration_deadline: string;
-  description: string;
-  updated_at: string;
-  created_at: string;
+  max_capacity: number;
 }
 
 interface Props {
@@ -354,14 +351,13 @@ const EventCheckInStatus: React.FC<Props> = ({ eventId: propEventId, embedded = 
             </Typography>
           </Box>
           
-          {/* Show for both published and in_progress events for admin/organizers */}
-          {(event?.status === 'published' || event?.status === 'in_progress') && (isAdmin() || isOrganizer()) && (
+          {event && (event.status === 'open' || event.status === 'in_progress') && (isAdmin() || isOrganizer()) && (
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="body2" color="text.secondary" gutterBottom>
                 Check-in Progress: {participants.filter(p => p.status === 'checked_in').length} / {participants.length}
               </Typography>
               
-              {event?.status === 'published' && (
+              {event.status === 'open' && (
                 <Button
                   variant="contained"
                   color="primary"
@@ -375,7 +371,7 @@ const EventCheckInStatus: React.FC<Props> = ({ eventId: propEventId, embedded = 
                 </Button>
               )}
               
-              {event?.status === 'published' && participants.filter(p => p.status === 'checked_in').length < MIN_CHECKED_IN_USERS && (
+              {event.status === 'open' && participants.filter(p => p.status === 'checked_in').length < MIN_CHECKED_IN_USERS && (
                 <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
                   At least {MIN_CHECKED_IN_USERS} participants must be checked in
                 </Typography>

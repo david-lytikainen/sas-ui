@@ -29,10 +29,21 @@ import {
   Person as PersonIcon,
   HowToReg,
   PlayArrow as PlayIcon,
+  LocationOn as LocationOnIcon,
 } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import { eventsApi } from '../../services/api';
+
+interface Event {
+  id: string;
+  name: string;
+  description: string;
+  starts_at: string;
+  ends_at: string;
+  status: 'open' | 'in_progress' | 'completed' | 'cancelled';
+  is_registered?: boolean;
+}
 
 const ROLES = {
   ADMIN: { id: 1, name: 'admin', permission_level: 100 },
@@ -83,7 +94,7 @@ const EventList = () => {
 
     try {
       const registeredSet = new Set<string>();
-      const promises = events.filter(event => event.status === 'published').map(event => 
+      const promises = events.filter(event => event.status === 'open').map(event => 
         eventsApi.isRegisteredForEvent(event.id)
           .then(isRegistered => {
             if (isRegistered) registeredSet.add(event.id);
@@ -210,16 +221,15 @@ const EventList = () => {
 
   // Sort events by status priority and date
   const sortedEvents = [...events].sort((a, b) => {
-    const statusPriority = {
+    const statusPriority: Record<Event['status'], number> = {
       'in_progress': 0,
-      'published': 1,
+      'open': 1,
       'completed': 2,
-      'cancelled': 3,
-      'draft': 4
+      'cancelled': 3
     };
     
-    const priorityA = statusPriority[a.status] || 5;
-    const priorityB = statusPriority[b.status] || 5;
+    const priorityA = statusPriority[a.status];
+    const priorityB = statusPriority[b.status];
     
     if (priorityA !== priorityB) {
       return priorityA - priorityB;
@@ -238,6 +248,10 @@ const EventList = () => {
       setTestError(error.message || 'Failed to test get_events endpoint');
       console.error('Test error:', error);
     }
+  };
+
+  const isEventActive = (event: Event) => {
+    return event.status === 'open' || event.status === 'in_progress';
   };
 
   return (
@@ -327,18 +341,33 @@ const EventList = () => {
                       }}
                     />
                   </Box>
-                  <Typography color="text.secondary" sx={{ 
-                    fontSize: isMobile ? '0.875rem' : '1rem',
-                    mb: 1
-                  }}>
-                    {formatDate(event.starts_at)}
-                  </Typography>
                   <Typography variant="body2" sx={{ 
                     mb: 1,
                     fontSize: isMobile ? '0.875rem' : '1rem',
                     color: 'text.secondary'
                   }}>
                     {event.description}
+                  </Typography>
+                  <Typography color="text.secondary" sx={{ 
+                    fontSize: isMobile ? '0.875rem' : '1rem',
+                    mb: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.5
+                  }}>
+                    <EventIcon fontSize="small" />
+                    {formatDate(event.starts_at)}
+                  </Typography>
+                  <Typography variant="body2" sx={{ 
+                    mb: 1,
+                    fontSize: isMobile ? '0.875rem' : '1rem',
+                    color: 'text.secondary',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.5
+                  }}>
+                    <LocationOnIcon fontSize="small" />
+                    {event.address}
                   </Typography>
                 </CardContent>
                 <CardActions sx={{ 
@@ -367,10 +396,10 @@ const EventList = () => {
                         color="primary"
                         startIcon={<SignUpIcon />}
                         onClick={() => handleSignUpClick(event.id)}
-                        disabled={event.status !== 'published'}
+                        disabled={event.status !== 'open'}
                         size={isMobile ? 'small' : 'medium'}
                       >
-                        Sign Up
+                        Register
                       </Button>
                     )
                   ) : (
@@ -380,7 +409,7 @@ const EventList = () => {
                       gap: 1,
                       width: '100%'
                     }}>
-                      {event.status === 'published' && (
+                      {event.status === 'open' && (
                         <Button
                           variant="contained"
                           color="primary"
@@ -392,7 +421,7 @@ const EventList = () => {
                           {startEventLoading === event.id ? 'Starting...' : 'Start Event'}
                         </Button>
                       )}
-                      {(event.status === 'published' || event.status === 'in_progress') && (
+                      {(event.status === 'open' || event.status === 'in_progress') && (
                         <Button
                           variant="contained"
                           color="primary"
@@ -403,7 +432,7 @@ const EventList = () => {
                           Manage Check-in
                         </Button>
                       )}
-                      {event.status === 'published' && (
+                      {event.status === 'open' && (
                         <Button
                           variant="contained"
                           color="primary"

@@ -102,9 +102,9 @@ const DateSchedule = () => {
       </Typography>
 
       <EventSelector
-        selectedEventId={selectedEventId}
-        onEventSelect={setSelectedEventId}
-        filterStatus={['published', 'in_progress']}
+        value={selectedEventId || ''}
+        onChange={setSelectedEventId}
+        filterStatus={['open', 'in_progress']}
         events={filteredEvents} // Pass filtered events
       />
 

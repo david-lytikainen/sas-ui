@@ -18,6 +18,7 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import { SelectChangeEvent } from '@mui/material';
+import { Event } from '../../context/EventContext';
 
 interface EventFormData {
   name: string;
@@ -28,7 +29,7 @@ interface EventFormData {
   max_capacity: number;
   price_per_person: number;
   registration_deadline: string;
-  status: 'draft' | 'published' | 'cancelled' | 'completed' | 'in_progress';
+  status: Event['status'];
 }
 
 const ROLES = {
@@ -56,7 +57,7 @@ const EventForm: React.FC = () => {
     max_capacity: 20,
     price_per_person: 0,
     registration_deadline: new Date().toISOString(),
-    status: 'draft'
+    status: 'open'
   });
 
   useEffect(() => {
@@ -258,14 +259,13 @@ const EventForm: React.FC = () => {
                   <Select
                     name="status"
                     value={formData.status}
+                    label="Status"
                     onChange={handleChange}
-                    required
                   >
-                    <MenuItem value="draft">Draft</MenuItem>
-                    <MenuItem value="published">Published</MenuItem>
-                    <MenuItem value="cancelled">Cancelled</MenuItem>
-                    <MenuItem value="completed">Completed</MenuItem>
+                    <MenuItem value="open">Open</MenuItem>
                     <MenuItem value="in_progress">In Progress</MenuItem>
+                    <MenuItem value="completed">Completed</MenuItem>
+                    <MenuItem value="cancelled">Cancelled</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
