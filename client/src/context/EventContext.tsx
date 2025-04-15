@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { eventsApi } from '../services/api';
 
-interface Event {
+export interface Event {
   id: string;
   creator_id: string;
   starts_at: string;
@@ -10,7 +10,7 @@ interface Event {
   address: string;
   name: string;
   max_capacity: number;
-  status: 'draft' | 'published' | 'cancelled' | 'completed' | 'in_progress';
+  status: 'open' | 'in_progress' | 'completed' | 'cancelled';
   price_per_person: number;
   registration_deadline: string;
   description: string;

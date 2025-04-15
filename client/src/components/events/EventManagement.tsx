@@ -41,6 +41,7 @@ import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import { eventsApi } from '../../services/api';
 import EventCheckInStatus from '../check-in/EventCheckInStatus';
+import { Event as EventType } from '../../context/EventContext';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -70,20 +71,8 @@ interface Match {
   createdAt: string;
 }
 
-interface Event {
-  id: string;
-  name: string;
-  description: string;
-  status: string;
-  starts_at: string;
-  ends_at: string;
-  address: string;
-  price_per_person: number;
-  max_capacity: number;
-  registration_deadline: string;
-  creator_id: string;
-  created_at: string;
-  updated_at: string;
+interface Event extends Omit<EventType, 'status'> {
+  status: EventType['status'];
 }
 
 interface EventFormData {
@@ -95,7 +84,7 @@ interface EventFormData {
   max_capacity: number;
   price_per_person: number;
   registration_deadline: string;
-  status: 'draft' | 'published' | 'cancelled' | 'completed' | 'in_progress';
+  status: EventType['status'];
 }
 
 const TabPanel = (props: TabPanelProps) => {
@@ -134,7 +123,7 @@ export const EventManagement = () => {
     max_capacity: event?.max_capacity || 20,
     price_per_person: event?.price_per_person || 0,
     registration_deadline: event?.registration_deadline || new Date().toISOString(),
-    status: event?.status as any || 'draft',
+    status: event?.status as EventType['status'] || 'open',
   });
   const [startDialogOpen, setStartDialogOpen] = useState(false);
 
@@ -319,9 +308,10 @@ export const EventManagement = () => {
     );
   }
 
-  const isEventPublished = formData.status === 'published';
+  // Check if the event can be started based on its current status
+  const isEventOpen = formData.status === 'open';
   const isEventInProgress = formData.status === 'in_progress';
-  const canStartEvent = isEventPublished && !isEventInProgress;
+  const canStartEvent = isEventOpen && !isEventInProgress;
 
   return (
     <Container maxWidth="lg">
@@ -335,7 +325,7 @@ export const EventManagement = () => {
             <Chip 
               label={formData.status.toUpperCase().replace('_', ' ')}
               color={
-                formData.status === 'published' 
+                formData.status === 'open' 
                   ? 'success' 
                   : formData.status === 'in_progress' 
                     ? 'primary' 
@@ -496,15 +486,13 @@ export const EventManagement = () => {
                   <Select
                     name="status"
                     value={formData.status}
+                    label="Status"
                     onChange={handleChange}
-                    required
-                    disabled={isEventInProgress}
                   >
-                    <MenuItem value="draft">Draft</MenuItem>
-                    <MenuItem value="published">Published</MenuItem>
-                    <MenuItem value="cancelled">Cancelled</MenuItem>
+                    <MenuItem value="open">Open</MenuItem>
+                    <MenuItem value="in_progress">In Progress</MenuItem>
                     <MenuItem value="completed">Completed</MenuItem>
-                    {isEventInProgress && <MenuItem value="in_progress">In Progress</MenuItem>}
+                    <MenuItem value="cancelled">Cancelled</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>

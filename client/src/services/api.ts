@@ -228,7 +228,7 @@ interface Event {
   address: string;
   name: string;
   max_capacity: number;
-  status: 'draft' | 'published' | 'cancelled' | 'completed' | 'in_progress';
+  status: 'open' | 'in_progress' | 'completed' | 'cancelled';
   price_per_person: number;
   registration_deadline: string;
   description: string;

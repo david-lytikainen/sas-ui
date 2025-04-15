@@ -32,8 +32,10 @@ interface Event {
   id: string;
   name: string;
   description: string;
-  status: string;
   starts_at: string;
+  ends_at: string;
+  status: 'open' | 'in_progress' | 'completed' | 'cancelled';
+  is_registered?: boolean;
   address: string;
   price_per_person: number;
   max_capacity: number;
@@ -193,29 +195,27 @@ const EventDetail: React.FC = () => {
     });
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case 'published':
-        return 'UPCOMING';
+      case 'open':
+        return 'success';
       case 'in_progress':
-        return 'IN PROGRESS';
+        return 'info';
       case 'completed':
-        return 'COMPLETED';
+        return 'default';
       case 'cancelled':
-        return 'CANCELLED';
-      case 'draft':
-        return 'DRAFT';
+        return 'error';
       default:
-        return status.toUpperCase();
+        return 'default';
     }
   };
 
   const isEventInProgress = event.status === 'in_progress';
   const canStartEvent = (user?.role_id === ROLES.ADMIN.id || user?.role_id === ROLES.ORGANIZER.id) && 
-                        event.status === 'published';
+                        event.status === 'open';
   const isAttendee = user?.role_id === ROLES.ATTENDEE.id;
-  const canRegister = isAttendee && !isRegistered && event.status === 'published';
-  const canCancelRegistration = isAttendee && isRegistered && event.status === 'published';
+  const canRegister = isAttendee && !isRegistered && event.status === 'open';
+  const canCancelRegistration = isAttendee && isRegistered && event.status === 'open';
   const isAdmin = user?.role_id === ROLES.ADMIN.id;
 
   return (
@@ -273,14 +273,10 @@ const EventDetail: React.FC = () => {
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: '200px' }}>
               <Chip
-                label={getStatusLabel(event.status)}
-                color={
-                  event.status === 'published' 
-                    ? 'success' 
-                    : event.status === 'in_progress' 
-                      ? 'primary' 
-                      : 'default'
-                }
+                label={event.status === 'open' ? 'Open' :
+                       event.status === 'in_progress' ? 'In Progress' :
+                       event.status === 'completed' ? 'Completed' : 'Cancelled'}
+                color={getStatusColor(event.status)}
                 sx={{ alignSelf: 'flex-end', mb: 1 }}
               />
               
