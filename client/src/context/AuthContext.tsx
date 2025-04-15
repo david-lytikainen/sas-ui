@@ -20,9 +20,8 @@ interface AuthContextType {
     first_name: string;
     last_name: string;
     phone?: string;
-    age: number;
-    church: string;
-    denomination?: string;
+    birthday: string;
+    gender: string;
     role: 'attendee' | 'organizer' | 'admin';
   }) => Promise<void>;
   logout: () => void;
@@ -86,43 +85,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Check for existing session using token
   useEffect(() => {
     const checkAuth = async () => {
-      // Check if we should persist login
       if (!persistLogin) {
-        // If not persisting login, clear any existing tokens
         localStorage.removeItem('token');
         localStorage.removeItem('mockAttendeeMode');
         setLoading(false);
         return;
       }
-      
+  
       const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const response: TokenValidationResponse | null = await authApi.validateToken(token);
-          // Check if response exists and has user data
-          if (response && response.user) {
-            setUser(response.user);
-          } else {
-            // No valid response or user data, clear token
-            localStorage.removeItem('token');
-          }
-          
-          // Check if mock attendee mode was previously enabled
-          const mockMode = localStorage.getItem('mockAttendeeMode');
-          if (mockMode === 'true') {
-            setMockAttendeeMode(true);
-          }
-        } catch (err) {
-          console.error('Token validation failed:', err);
-          localStorage.removeItem('token');
-          localStorage.removeItem('mockAttendeeMode');
-        }
+      console.log('here token ',token)
+      if (!token || token.split('.').length !== 3) {
+        localStorage.removeItem('token');
+        setUser(null);
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+  
+      try {
+        const response: TokenValidationResponse | null = await authApi.validateToken(token);
+  
+        if (response && response.user) {
+          setUser(response.user);
+        } else {
+          localStorage.removeItem('token');
+          setUser(null);
+        }
+  
+        const mockMode = localStorage.getItem('mockAttendeeMode');
+        if (mockMode === 'true') {
+          setMockAttendeeMode(true);
+        }
+      } catch (err) {
+        console.error('Token validation failed:', err);
+        localStorage.removeItem('token');
+        localStorage.removeItem('mockAttendeeMode');
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
     };
-
+  
     checkAuth();
-  }, [persistLogin]);
+  }, [persistLogin]); // Add `persistLogin` as a dependency if needed
+  
 
   const login = async (email: string, password: string) => {
     setLoading(true);
@@ -150,9 +155,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     first_name: string;
     last_name: string;
     phone?: string;
-    age: number;
-    church: string;
-    denomination?: string;
+    birthday: string;
+    gender: string;
     role: 'attendee' | 'organizer' | 'admin';
   }) => {
     setLoading(true);

@@ -49,6 +49,12 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Load events from API on mount
   useEffect(() => {
     const fetchEvents = async () => {
+      // Only fetch events if user is authenticated
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       try {
         const data = await eventsApi.getAll();
@@ -61,7 +67,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     fetchEvents();
-  }, []);
+  }, [user]); // Add user as a dependency
 
   const createEvent = async (eventData: Omit<Event, 'id' | 'creator_id' | 'updated_at' | 'created_at'>) => {
     setLoading(true);

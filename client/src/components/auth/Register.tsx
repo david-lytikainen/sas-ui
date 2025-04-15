@@ -28,14 +28,14 @@ const Register = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
   const [formData, setFormData] = useState({
-    name: '',
+    first_name: '',
+    last_name: '',
     email: '',
     password: '',
     confirmPassword: '',
-    church: '',
-    age: '',
+    birthday: '',
     gender: '',
-    matchingPreference: '',
+    phone: '',
     role: 'attendee' as 'attendee' | 'organizer' | 'admin',
   });
   const [error, setError] = useState<string | null>(null);
@@ -45,9 +45,9 @@ const Register = () => {
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     
-    if (name === 'age' && value !== '') {
-      const age = parseInt(value);
-      if (age < 18 || age > 99) {
+    if (name === 'birthday') {
+      const date = new Date(value);
+      if (date > new Date()) {
         return;
       }
     }
@@ -59,20 +59,10 @@ const Register = () => {
 
   const handleSelectChange = (e: SelectChangeEvent) => {
     const { name, value } = e.target;
-    
-    // Reset matching preference if gender changes
-    if (name === 'gender') {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-        matchingPreference: ''
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
-    }
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -80,14 +70,8 @@ const Register = () => {
     setError(null);
 
     // Validation
-    if (!formData.name || !formData.email || !formData.password || !formData.church || !formData.age || !formData.gender) {
+    if (!formData.first_name || !formData.last_name || !formData.email || !formData.password || !formData.birthday || !formData.gender || !formData.phone) {
       setError('All fields are required');
-      return;
-    }
-
-    // Validate matching preference for non-binary and other genders
-    if ((formData.gender === 'non-binary' || formData.gender === 'other') && !formData.matchingPreference) {
-      setError('Please select a matching preference');
       return;
     }
 
@@ -101,9 +85,23 @@ const Register = () => {
       return;
     }
 
-    const age = parseInt(formData.age);
-    if (isNaN(age) || age < 18 || age > 99) {
-      setError('Please enter a valid age between 18 and 99');
+    // Validate phone number is exactly 10 digits
+    if (!/^\d{10}$/.test(formData.phone)) {
+      setError('Phone number must be exactly 10 digits');
+      return;
+    }
+
+    // Calculate age from birthday
+    const birthday = new Date(formData.birthday);
+    const today = new Date();
+    let age = today.getFullYear() - birthday.getFullYear();
+    const monthDiff = today.getMonth() - birthday.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthday.getDate())) {
+      age--;
+    }
+
+    if (age < 18) {
+      setError('You must be at least 18 years old to register');
       return;
     }
 
@@ -118,13 +116,12 @@ const Register = () => {
       const registrationData = {
         email: formData.email,
         password: formData.password,
-        first_name: formData.name.split(' ')[0],
-        last_name: formData.name.split(' ').slice(1).join(' ') || '',
-        church: formData.church,
-        age: parseInt(formData.age),
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        birthday: new Date(formData.birthday).toISOString().split('T')[0],
+        gender: formData.gender,
+        phone: formData.phone,
         role: formData.role as 'attendee' | 'organizer' | 'admin',
-        // Store gender as part of denomination field
-        denomination: `gender:${formData.gender}|matchPref:${formData.matchingPreference || (formData.gender === 'male' ? 'female' : formData.gender === 'female' ? 'male' : '')}`
       };
       
       await register(registrationData);
@@ -135,9 +132,6 @@ const Register = () => {
       setLoading(false);
     }
   };
-
-  // Check if matching preference field should be shown
-  const showMatchingPreference = formData.gender === 'non-binary' || formData.gender === 'other';
 
   return (
     <Container maxWidth="sm">
@@ -156,9 +150,19 @@ const Register = () => {
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
               fullWidth
-              label="Full Name"
-              name="name"
-              value={formData.name}
+              label="First Name"
+              name="first_name"
+              value={formData.first_name}
+              onChange={handleTextChange}
+              margin="normal"
+              required
+            />
+            
+            <TextField
+              fullWidth
+              label="Last Name"
+              name="last_name"
+              value={formData.last_name}
               onChange={handleTextChange}
               margin="normal"
               required
@@ -177,25 +181,34 @@ const Register = () => {
 
             <TextField
               fullWidth
-              label="Church Name"
-              name="church"
-              value={formData.church}
+              label="Phone Number"
+              name="phone"
+              value={formData.phone}
               onChange={handleTextChange}
               margin="normal"
               required
-              helperText="Please enter your church's full name"
+              type="tel"
+              inputProps={{
+                pattern: "[0-9]{10}",
+                title: "Please enter a 10-digit phone number"
+              }}
             />
 
             <TextField
               fullWidth
-              label="Age"
-              name="age"
-              type="number"
-              value={formData.age}
+              label="Birthday"
+              name="birthday"
+              type="date"
+              value={formData.birthday}
               onChange={handleTextChange}
               margin="normal"
               required
-              inputProps={{ min: 18, max: 99 }}
+              InputLabelProps={{
+                shrink: true,
+              }}
+              inputProps={{
+                max: new Date().toISOString().split('T')[0],
+              }}
               helperText="Must be 18 or older"
             />
 
@@ -209,34 +222,10 @@ const Register = () => {
                 label="Gender"
                 onChange={handleSelectChange}
               >
-                <MenuItem value="male">Male</MenuItem>
-                <MenuItem value="female">Female</MenuItem>
+                <MenuItem value="MALE">Male</MenuItem>
+                <MenuItem value="FEMALE">Female</MenuItem>
               </Select>
-              <FormHelperText>
-                For matching purposes - males will be paired with females during events.
-              </FormHelperText>
             </FormControl>
-
-            {showMatchingPreference && (
-              <FormControl fullWidth margin="normal" required>
-                <InputLabel id="matching-preference-label">Matching Preference</InputLabel>
-                <Select
-                  labelId="matching-preference-label"
-                  id="matching-preference-select"
-                  name="matchingPreference"
-                  value={formData.matchingPreference}
-                  label="Matching Preference"
-                  onChange={handleSelectChange}
-                >
-                  <MenuItem value="male">Match with Males</MenuItem>
-                  <MenuItem value="female">Match with Females</MenuItem>
-                  <MenuItem value="all">Match with All Genders</MenuItem>
-                </Select>
-                <FormHelperText>
-                  Please select who you would prefer to be matched with during events
-                </FormHelperText>
-              </FormControl>
-            )}
 
             <FormControl component="fieldset" margin="normal" required>
               <FormLabel component="legend">I want to:</FormLabel>

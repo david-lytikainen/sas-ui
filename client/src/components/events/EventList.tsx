@@ -64,7 +64,7 @@ const ROLES = {
 const EventList = () => {
   const navigate = useNavigate();
   const { events, deleteEvent, refreshEvents } = useEvents();
-  const { user, enableMockAttendeeMode } = useAuth();
+  const { user } = useAuth();
   const [tabValue, setTabValue] = useState(0);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -76,8 +76,6 @@ const EventList = () => {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelEventId, setCancelEventId] = useState<string | null>(null);
   const [startEventLoading, setStartEventLoading] = useState<string | null>(null);
-  const [mockAttendDialogOpen, setMockAttendDialogOpen] = useState(false);
-  const [mockAttendEventId, setMockAttendEventId] = useState<string | null>(null);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -196,40 +194,6 @@ const EventList = () => {
       setErrorMessage(error.message || 'Failed to start event');
     } finally {
       setStartEventLoading(null);
-    }
-  };
-
-  const handleMockAttendClick = (eventId: string) => {
-    setMockAttendEventId(eventId);
-    setMockAttendDialogOpen(true);
-  };
-
-  const handleMockAttendConfirm = async () => {
-    if (!mockAttendEventId) return;
-    
-    try {
-      // Register for the event if not already registered
-      if (!registeredEvents.has(mockAttendEventId)) {
-        await eventsApi.registerForEvent(mockAttendEventId);
-        
-        // Update registration status immediately
-        setRegisteredEvents(prev => new Set(Array.from(prev).concat([mockAttendEventId])));
-      }
-      
-      // Enable mock attendee mode in AuthContext
-      user?.role_id && enableMockAttendeeMode();
-      
-      // Close dialog
-      setMockAttendDialogOpen(false);
-      setMockAttendEventId(null);
-      
-      // Set success message
-      setSuccessMessage('You are now testing the attendee experience for this event. To exit this mode, click "Exit Test Mode" in the navbar.');
-      
-      // Navigate to event detail page
-      navigate(`/events/${mockAttendEventId}`);
-    } catch (error: any) {
-      setErrorMessage(error.message || 'Failed to mock attend the event');
     }
   };
 
@@ -464,17 +428,6 @@ const EventList = () => {
                         >
                           Delete
                         </Button>
-                        {user?.role_id === ROLES.ORGANIZER.id && event.status === 'published' && (
-                          <Button
-                            variant="outlined"
-                            color="secondary"
-                            onClick={() => handleMockAttendClick(event.id)}
-                            startIcon={<PersonIcon />}
-                            sx={{ height: 40 }}
-                          >
-                            Test View
-                          </Button>
-                        )}
                       </Box>
                     )}
                   </CardActions>
@@ -597,17 +550,6 @@ const EventList = () => {
                         >
                           Delete
                         </Button>
-                        {user?.role_id === ROLES.ORGANIZER.id && event.status === 'published' && (
-                          <Button
-                            variant="outlined"
-                            color="secondary"
-                            onClick={() => handleMockAttendClick(event.id)}
-                            startIcon={<PersonIcon />}
-                            sx={{ height: 40 }}
-                          >
-                            Test View
-                          </Button>
-                        )}
                       </Box>
                     ) : null}
                   </CardActions>
@@ -720,27 +662,6 @@ const EventList = () => {
             <Button onClick={() => setCancelDialogOpen(false)}>Keep Registration</Button>
             <Button onClick={handleCancelConfirm} color="error" variant="contained">
               Cancel Registration
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        <Dialog
-          open={mockAttendDialogOpen}
-          onClose={() => setMockAttendDialogOpen(false)}
-        >
-          <DialogTitle>Test Attendee Experience</DialogTitle>
-          <DialogContent>
-            <Typography variant="body1" paragraph>
-              This will let you experience the event as an attendee would see it. You'll be registered for the event if you aren't already.
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Note: This is for testing purposes only.
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setMockAttendDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleMockAttendConfirm} color="primary" variant="contained">
-              Test Attendee View
             </Button>
           </DialogActions>
         </Dialog>

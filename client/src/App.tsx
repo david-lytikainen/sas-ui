@@ -28,7 +28,6 @@ import AnimatedWrapper from './components/common/AnimatedWrapper';
 import PageTransition from './components/common/PageTransition';
 import LiveEventView from './components/events/LiveEventView';
 import UserManagement from './components/admin/UserManagement';
-import { initializeMockData } from './services/mockApi';
 import EventSchedule from './components/events/EventSchedule';
 import TestModeNotification from './components/common/TestModeNotification';
 import AccountSettings from './components/settings/AccountSettings';
@@ -354,18 +353,6 @@ const ProtectedRoutes = () => {
 
 function App() {
   const [mode, setMode] = useState<'light' | 'dark'>('dark');
-
-  // Initialize mock data when app starts
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      try {
-        initializeMockData();
-        console.log('Mock data initialized successfully');
-      } catch (error) {
-        console.error('Failed to initialize mock data:', error);
-      }
-    }
-  }, []);
 
   const colorMode = useMemo(
     () => ({

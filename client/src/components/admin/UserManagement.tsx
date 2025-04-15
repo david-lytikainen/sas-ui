@@ -39,7 +39,6 @@ import {
   Store as OrganizerIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
-import { mockAuthApi } from '../../services/mockApi';
 
 interface User {
   id: string;
@@ -62,62 +61,44 @@ interface Role {
 
 const UserManagement: React.FC = () => {
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+  const { user } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [editOpen, setEditOpen] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [editForm, setEditForm] = useState({
-    email: '',
-    first_name: '',
-    last_name: '',
-    role_id: 0,
-    phone: '',
-    age: 0,
-    church: '',
-    denomination: '',
-  });
+  const [editFormData, setEditFormData] = useState<Partial<User>>({});
+  const [createFormData, setCreateFormData] = useState<Partial<User>>({});
 
-  // Load users and roles
   useEffect(() => {
     const fetchData = async () => {
-      if (!isAdmin()) {
-        navigate('/');
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-      
       try {
-        // In a real app, these would be separate API calls
-        const userData = await mockAuthApi.getUsers();
-        const roleData = await mockAuthApi.getRoles();
-        
-        setUsers(userData);
-        setRoles(roleData);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load users');
-        console.error('Error fetching user data:', err);
-      } finally {
+        setLoading(true);
+        // TODO: Replace with real API calls
+        // const response = await mockAuthApi.getUsers();
+        // setUsers(response.data);
+        // const rolesResponse = await mockAuthApi.getRoles();
+        // setRoles(rolesResponse.data);
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to fetch users');
         setLoading(false);
       }
     };
-    
+
     fetchData();
-  }, [isAdmin, navigate]);
+  }, []);
 
   // Handle edit user form changes for text inputs
   const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>) => {
     const { name, value } = e.target;
     if (name) {
-      setEditForm(prev => ({
+      setEditFormData(prev => ({
         ...prev,
         [name]: value
       }));
@@ -127,7 +108,7 @@ const UserManagement: React.FC = () => {
   // Handle select change specifically
   const handleSelectChange = (e: SelectChangeEvent<number>) => {
     const { name, value } = e.target;
-    setEditForm(prev => ({
+    setEditFormData(prev => ({
       ...prev,
       [name]: value
     }));
@@ -136,7 +117,7 @@ const UserManagement: React.FC = () => {
   // Open edit dialog
   const handleEditUser = (user: User) => {
     setSelectedUser(user);
-    setEditForm({
+    setEditFormData({
       email: user.email,
       first_name: user.first_name,
       last_name: user.last_name,
@@ -146,12 +127,12 @@ const UserManagement: React.FC = () => {
       church: user.church,
       denomination: user.denomination || '',
     });
-    setEditOpen(true);
+    setEditDialogOpen(true);
   };
 
   // Open create dialog
   const handleCreateUser = () => {
-    setEditForm({
+    setEditFormData({
       email: '',
       first_name: '',
       last_name: '',
@@ -161,13 +142,13 @@ const UserManagement: React.FC = () => {
       church: '',
       denomination: '',
     });
-    setCreateOpen(true);
+    setCreateDialogOpen(true);
   };
 
   // Open delete dialog
   const handleDeleteClick = (user: User) => {
     setSelectedUser(user);
-    setDeleteOpen(true);
+    setDeleteDialogOpen(true);
   };
 
   // Submit edited user data
@@ -176,17 +157,17 @@ const UserManagement: React.FC = () => {
     
     try {
       // In a real app, this would be an API call
-      await mockAuthApi.updateUser(selectedUser.id, editForm);
+      // const response = await mockAuthApi.updateUser(selectedUser.id, editFormData);
       
       // Update local state
       setUsers(users.map(u => 
         u.id === selectedUser.id 
-          ? { ...u, ...editForm, role_name: roles.find(r => r.id === editForm.role_id)?.name } 
+          ? { ...u, ...editFormData, role_name: roles.find(r => r.id === editFormData.role_id)?.name } 
           : u
       ));
       
-      setSuccess('User updated successfully');
-      setEditOpen(false);
+      setSuccessMessage('User updated successfully');
+      setEditDialogOpen(false);
     } catch (err: any) {
       setError(err.message || 'Failed to update user');
     }
@@ -196,13 +177,13 @@ const UserManagement: React.FC = () => {
   const handleCreateUserSubmit = async () => {
     try {
       // In a real app, this would be an API call
-      const newUser = await mockAuthApi.createUser(editForm);
+      // const response = await mockAuthApi.createUser(editFormData);
       
       // Update local state
-      setUsers([...users, newUser]);
+      setUsers([...users, editFormData as User]);
       
-      setSuccess('User created successfully');
-      setCreateOpen(false);
+      setSuccessMessage('User created successfully');
+      setCreateDialogOpen(false);
     } catch (err: any) {
       setError(err.message || 'Failed to create user');
     }
@@ -214,13 +195,13 @@ const UserManagement: React.FC = () => {
     
     try {
       // In a real app, this would be an API call
-      await mockAuthApi.deleteUser(selectedUser.id);
+      // const response = await mockAuthApi.deleteUser(selectedUser.id);
       
       // Update local state
       setUsers(users.filter(u => u.id !== selectedUser.id));
       
-      setSuccess('User deleted successfully');
-      setDeleteOpen(false);
+      setSuccessMessage('User deleted successfully');
+      setDeleteDialogOpen(false);
     } catch (err: any) {
       setError(err.message || 'Failed to delete user');
     }
@@ -258,7 +239,7 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  if (!isAdmin()) {
+  if (!user) {
     return null; // Will redirect in useEffect
   }
 
@@ -288,13 +269,13 @@ const UserManagement: React.FC = () => {
 
       {/* Success and Error alerts */}
       <Snackbar 
-        open={!!success} 
+        open={!!successMessage} 
         autoHideDuration={6000} 
-        onClose={() => setSuccess(null)}
+        onClose={() => setSuccessMessage(null)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert onClose={() => setSuccess(null)} severity="success" sx={{ width: '100%' }}>
-          {success}
+        <Alert onClose={() => setSuccessMessage(null)} severity="success" sx={{ width: '100%' }}>
+          {successMessage}
         </Alert>
       </Snackbar>
 
@@ -377,7 +358,7 @@ const UserManagement: React.FC = () => {
       </TableContainer>
 
       {/* Edit User Dialog */}
-      <Dialog open={editOpen} onClose={() => setEditOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Edit User</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
@@ -386,7 +367,7 @@ const UserManagement: React.FC = () => {
                 <TextField
                   name="first_name"
                   label="First Name"
-                  value={editForm.first_name}
+                  value={editFormData.first_name}
                   onChange={handleEditFormChange}
                   fullWidth
                   required
@@ -396,7 +377,7 @@ const UserManagement: React.FC = () => {
                 <TextField
                   name="last_name"
                   label="Last Name"
-                  value={editForm.last_name}
+                  value={editFormData.last_name}
                   onChange={handleEditFormChange}
                   fullWidth
                   required
@@ -407,7 +388,7 @@ const UserManagement: React.FC = () => {
                   name="email"
                   label="Email"
                   type="email"
-                  value={editForm.email}
+                  value={editFormData.email}
                   onChange={handleEditFormChange}
                   fullWidth
                   required
@@ -419,7 +400,7 @@ const UserManagement: React.FC = () => {
                   <Select
                     labelId="role-label"
                     name="role_id"
-                    value={editForm.role_id}
+                    value={editFormData.role_id}
                     label="Role"
                     onChange={handleSelectChange}
                   >
@@ -435,7 +416,7 @@ const UserManagement: React.FC = () => {
                 <TextField
                   name="phone"
                   label="Phone"
-                  value={editForm.phone}
+                  value={editFormData.phone}
                   onChange={handleEditFormChange}
                   fullWidth
                 />
@@ -445,7 +426,7 @@ const UserManagement: React.FC = () => {
                   name="age"
                   label="Age"
                   type="number"
-                  value={editForm.age}
+                  value={editFormData.age}
                   onChange={handleEditFormChange}
                   fullWidth
                   InputProps={{ inputProps: { min: 18, max: 100 } }}
@@ -455,7 +436,7 @@ const UserManagement: React.FC = () => {
                 <TextField
                   name="church"
                   label="Church"
-                  value={editForm.church}
+                  value={editFormData.church}
                   onChange={handleEditFormChange}
                   fullWidth
                 />
@@ -464,7 +445,7 @@ const UserManagement: React.FC = () => {
                 <TextField
                   name="denomination"
                   label="Denomination"
-                  value={editForm.denomination}
+                  value={editFormData.denomination}
                   onChange={handleEditFormChange}
                   fullWidth
                 />
@@ -473,7 +454,7 @@ const UserManagement: React.FC = () => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditOpen(false)}>Cancel</Button>
+          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
           <Button 
             onClick={handleSaveUser} 
             variant="contained" 
@@ -485,7 +466,7 @@ const UserManagement: React.FC = () => {
       </Dialog>
 
       {/* Create User Dialog */}
-      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Create New User</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
@@ -494,7 +475,7 @@ const UserManagement: React.FC = () => {
                 <TextField
                   name="first_name"
                   label="First Name"
-                  value={editForm.first_name}
+                  value={editFormData.first_name}
                   onChange={handleEditFormChange}
                   fullWidth
                   required
@@ -504,7 +485,7 @@ const UserManagement: React.FC = () => {
                 <TextField
                   name="last_name"
                   label="Last Name"
-                  value={editForm.last_name}
+                  value={editFormData.last_name}
                   onChange={handleEditFormChange}
                   fullWidth
                   required
@@ -515,7 +496,7 @@ const UserManagement: React.FC = () => {
                   name="email"
                   label="Email"
                   type="email"
-                  value={editForm.email}
+                  value={editFormData.email}
                   onChange={handleEditFormChange}
                   fullWidth
                   required
@@ -527,7 +508,7 @@ const UserManagement: React.FC = () => {
                   <Select
                     labelId="role-label-create"
                     name="role_id"
-                    value={editForm.role_id}
+                    value={editFormData.role_id}
                     label="Role"
                     onChange={handleSelectChange}
                   >
@@ -543,7 +524,7 @@ const UserManagement: React.FC = () => {
                 <TextField
                   name="phone"
                   label="Phone"
-                  value={editForm.phone}
+                  value={editFormData.phone}
                   onChange={handleEditFormChange}
                   fullWidth
                 />
@@ -553,7 +534,7 @@ const UserManagement: React.FC = () => {
                   name="age"
                   label="Age"
                   type="number"
-                  value={editForm.age}
+                  value={editFormData.age}
                   onChange={handleEditFormChange}
                   fullWidth
                   InputProps={{ inputProps: { min: 18, max: 100 } }}
@@ -563,7 +544,7 @@ const UserManagement: React.FC = () => {
                 <TextField
                   name="church"
                   label="Church"
-                  value={editForm.church}
+                  value={editFormData.church}
                   onChange={handleEditFormChange}
                   fullWidth
                 />
@@ -572,7 +553,7 @@ const UserManagement: React.FC = () => {
                 <TextField
                   name="denomination"
                   label="Denomination"
-                  value={editForm.denomination}
+                  value={editFormData.denomination}
                   onChange={handleEditFormChange}
                   fullWidth
                 />
@@ -581,12 +562,12 @@ const UserManagement: React.FC = () => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateOpen(false)}>Cancel</Button>
+          <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
           <Button 
             onClick={handleCreateUserSubmit} 
             variant="contained" 
             color="primary"
-            disabled={!editForm.email || !editForm.first_name || !editForm.last_name}
+            disabled={!editFormData.email || !editFormData.first_name || !editFormData.last_name}
           >
             Create User
           </Button>
@@ -594,7 +575,7 @@ const UserManagement: React.FC = () => {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)}>
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
           <Typography>
@@ -605,7 +586,7 @@ const UserManagement: React.FC = () => {
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteOpen(false)}>Cancel</Button>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
           <Button 
             onClick={handleDeleteConfirm} 
             variant="contained" 

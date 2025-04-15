@@ -10,9 +10,6 @@ import {
   Link,
   Alert,
   Paper,
-  Grid,
-  Divider,
-  Chip,
 } from '@mui/material';
 
 const Login = () => {
@@ -43,20 +40,6 @@ const Login = () => {
       setLoading(false);
     }
   };
-  
-  const loginAsAdmin = () => {
-    setFormData({
-      email: 'admin@example.com',
-      password: 'password'
-    });
-  };
-  
-  const loginAsAttendee = () => {
-    setFormData({
-      email: 'attendee@example.com',
-      password: 'password'
-    });
-  };
 
   return (
     <Container component="main" maxWidth="sm">
@@ -78,61 +61,6 @@ const Login = () => {
               {error}
             </Alert>
           )}
-          
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h6" gutterBottom>
-              Demo Accounts
-            </Typography>
-            <Typography variant="body2" color="text.secondary" paragraph>
-              You can use these accounts to test different user roles:
-            </Typography>
-            
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12} sm={6}>
-                <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="subtitle1" fontWeight="bold">Admin</Typography>
-                    <Chip label="Admin" color="primary" size="small" />
-                  </Box>
-                  <Typography variant="body2">Email: admin@example.com</Typography>
-                  <Typography variant="body2">Password: password</Typography>
-                  <Button 
-                    variant="outlined" 
-                    fullWidth 
-                    size="small" 
-                    sx={{ mt: 2 }}
-                    onClick={loginAsAdmin}
-                  >
-                    Use Admin Account
-                  </Button>
-                </Paper>
-              </Grid>
-              
-              <Grid item xs={12} sm={6}>
-                <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="subtitle1" fontWeight="bold">Attendee</Typography>
-                    <Chip label="Attendee" color="secondary" size="small" />
-                  </Box>
-                  <Typography variant="body2">Email: attendee@example.com</Typography>
-                  <Typography variant="body2">Password: password</Typography>
-                  <Button 
-                    variant="outlined" 
-                    fullWidth 
-                    size="small" 
-                    sx={{ mt: 2 }}
-                    onClick={loginAsAttendee}
-                  >
-                    Use Attendee Account
-                  </Button>
-                </Paper>
-              </Grid>
-            </Grid>
-          </Box>
-          
-          <Divider sx={{ my: 3 }}>
-            <Chip label="OR" />
-          </Divider>
           
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
