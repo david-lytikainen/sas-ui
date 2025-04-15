@@ -2,15 +2,13 @@ import { useState, useMemo, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import Box from '@mui/material/Box';
 import './styles/fonts.css'; // Import the fonts
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
-import Dashboard from './components/dashboard/Dashboard';
 import DateSchedule from './components/dates/DateSchedule';
-import Matches from './components/matches/Matches';
-import AttendeeMatches from './components/matches/AttendeeMatches';
 import EventList from './components/events/EventList';
 import EventForm from './components/events/EventForm';
 import PrivateRoute from './components/routing/PrivateRoute';
@@ -19,19 +17,14 @@ import { EventProvider } from './context/EventContext';
 import Navigation from './components/Navigation';
 import { ColorModeContext } from './context/ColorModeContext';
 import EventManagement from './components/events/EventManagement';
-import DateNotes from './components/notes/DateNotes';
 import EventCheckInStatus from './components/check-in/EventCheckInStatus';
 import CheckInDashboard from './components/check-in/CheckInDashboard';
-import AccountManagement from './components/profile/AccountManagement';
 import SystemSettings from './components/profile/SystemSettings';
 import AnimatedWrapper from './components/common/AnimatedWrapper';
 import PageTransition from './components/common/PageTransition';
 import LiveEventView from './components/events/LiveEventView';
 import UserManagement from './components/admin/UserManagement';
-import EventSchedule from './components/events/EventSchedule';
 import TestModeNotification from './components/common/TestModeNotification';
-import AccountSettings from './components/settings/AccountSettings';
-import Notes from './components/notes/Notes';
 
 // Add global styles for animations
 const GlobalStyles = {
@@ -120,9 +113,8 @@ const ROLES = {
 
 // Create a separate component for the protected routes
 const ProtectedRoutes = () => {
-  const { user } = useAuth();
-  const isAdmin = user?.role_id === ROLES.ADMIN.id;
-
+  const { user, isAdmin } = useAuth();
+  
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
@@ -157,7 +149,7 @@ const ProtectedRoutes = () => {
         element={
           <PrivateRoute>
             <AnimatedWrapper>
-              <AccountSettings />
+              <SystemSettings />
             </AnimatedWrapper>
           </PrivateRoute>
         }
@@ -170,18 +162,6 @@ const ProtectedRoutes = () => {
           <PrivateRoute>
             <AnimatedWrapper>
               <LiveEventView />
-            </AnimatedWrapper>
-          </PrivateRoute>
-        }
-      />
-
-      {/* Event Schedule View */}
-      <Route
-        path="/events/:eventId/schedule"
-        element={
-          <PrivateRoute>
-            <AnimatedWrapper>
-              <EventSchedule />
             </AnimatedWrapper>
           </PrivateRoute>
         }
@@ -200,19 +180,23 @@ const ProtectedRoutes = () => {
       />
 
       {/* Admin routes - only accessible to admins */}
-      <Route
-        path="/admin/users"
-        element={
-          <PrivateRoute>
-            <AnimatedWrapper>
-              <UserManagement />
-            </AnimatedWrapper>
-          </PrivateRoute>
-        }
-      />
+      {user?.role_id === ROLES.ADMIN.id && (
+        <>
+          <Route
+            path="/admin/users"
+            element={
+              <PrivateRoute>
+                <AnimatedWrapper>
+                  <UserManagement />
+                </AnimatedWrapper>
+              </PrivateRoute>
+            }
+          />
+        </>
+      )}
 
       {/* Admin and Organizer specific routes */}
-      {(isAdmin || user?.role_id === ROLES.ORGANIZER.id) && (
+      {(user?.role_id === ROLES.ADMIN.id || user?.role_id === ROLES.ORGANIZER.id) && (
         <>
           <Route
             path="/events/new"
@@ -244,68 +228,16 @@ const ProtectedRoutes = () => {
               </PrivateRoute>
             }
           />
-          <Route
-            path="/schedule"
-            element={
-              <PrivateRoute>
-                <AnimatedWrapper>
-                  <EventSchedule />
-                </AnimatedWrapper>
-              </PrivateRoute>
-            }
-          />
         </>
       )}
       
       {/* Routes available to all user roles */}
       <Route
-        path="/matches"
-        element={
-          <PrivateRoute>
-            <AnimatedWrapper>
-              {user?.role_id === ROLES.ATTENDEE.id ? (
-                <AttendeeMatches />
-              ) : (
-                <Matches />
-              )}
-            </AnimatedWrapper>
-          </PrivateRoute>
-        }
-      />
-      
-      {/* Notes Route */}
-      <Route
-        path="/notes"
-        element={
-          <PrivateRoute>
-            <AnimatedWrapper>
-              <Notes />
-            </AnimatedWrapper>
-          </PrivateRoute>
-        }
-      />
-      
-      <Route
-        path="/schedule"
-        element={
-          <PrivateRoute>
-            <AnimatedWrapper>
-              <EventSchedule />
-            </AnimatedWrapper>
-          </PrivateRoute>
-        }
-      />
-
-      <Route
         path="/"
         element={
           <PrivateRoute>
             <AnimatedWrapper>
-              {user?.role_id === ROLES.ATTENDEE.id ? (
-                <Navigate to="/events" replace />
-              ) : (
-                <Dashboard />
-              )}
+              <EventList />
             </AnimatedWrapper>
           </PrivateRoute>
         }
@@ -317,18 +249,6 @@ const ProtectedRoutes = () => {
           <PrivateRoute>
             <AnimatedWrapper>
               <EventList />
-            </AnimatedWrapper>
-          </PrivateRoute>
-        }
-      />
-
-      {/* Account Management Route */}
-      <Route
-        path="/account"
-        element={
-          <PrivateRoute>
-            <AnimatedWrapper>
-              <AccountManagement />
             </AnimatedWrapper>
           </PrivateRoute>
         }
@@ -352,7 +272,7 @@ const ProtectedRoutes = () => {
 };
 
 function App() {
-  const [mode, setMode] = useState<'light' | 'dark'>('dark');
+  const [mode, setMode] = useState<'light' | 'dark'>('light');
 
   const colorMode = useMemo(
     () => ({
@@ -562,25 +482,31 @@ function App() {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <Router>
-            <AuthProvider>
-              <EventProvider>
-                <div style={{ 
-                  minHeight: '100vh',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  position: 'relative',
-                  overflow: 'hidden'
-                }}>
+          <AuthProvider>
+            <EventProvider>
+              <Router>
+                <AnimatedWrapper>
                   <Navigation />
                   <TestModeNotification />
-                  <PageTransition>
-                    <ProtectedRoutes />
-                  </PageTransition>
-                </div>
-              </EventProvider>
-            </AuthProvider>
-          </Router>
+                  <Box sx={{ pt: 8 }}>
+                    <Routes>
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/register" element={<Register />} />
+                      <Route path="/" element={<PrivateRoute><EventList /></PrivateRoute>} />
+                      <Route path="/events" element={<PrivateRoute><EventList /></PrivateRoute>} />
+                      <Route path="/events/create" element={<PrivateRoute><EventForm /></PrivateRoute>} />
+                      <Route path="/events/:eventId" element={<PrivateRoute><EventManagement /></PrivateRoute>} />
+                      <Route path="/events/:eventId/check-in" element={<PrivateRoute><CheckInDashboard /></PrivateRoute>} />
+                      <Route path="/events/:eventId/live" element={<PrivateRoute><LiveEventView /></PrivateRoute>} />
+                      <Route path="/settings" element={<PrivateRoute><SystemSettings /></PrivateRoute>} />
+                      <Route path="/admin/users" element={<PrivateRoute><UserManagement /></PrivateRoute>} />
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </Box>
+                </AnimatedWrapper>
+              </Router>
+            </EventProvider>
+          </AuthProvider>
         </LocalizationProvider>
       </ThemeProvider>
     </ColorModeContext.Provider>

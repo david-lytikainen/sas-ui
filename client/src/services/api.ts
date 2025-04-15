@@ -48,9 +48,8 @@ api.interceptors.response.use(
                     return api(originalRequest);
                 }
             } catch (refreshError) {
-                // If token refresh fails, clear the token and redirect to login
-                localStorage.removeItem('token');
-                window.location.href = '/login';
+                // If token refresh fails, just reject the error
+                return Promise.reject(error);
             }
         }
 
@@ -84,8 +83,11 @@ const realAuthApi = {
         const errorMessage = error.response.data?.message || error.response.data?.error || 'Invalid email or password';
         throw new Error(errorMessage);
       }
-      // For other errors, rethrow
-      throw error;
+      // For other errors, rethrow with a more specific message
+      if (error.response && error.response.data) {
+        throw new Error(error.response.data.message || error.response.data.error || 'Login failed');
+      }
+      throw new Error('Login failed. Please try again.');
     }
   },
 
@@ -302,6 +304,7 @@ interface EventsApi {
   registerForEvent: (eventId: string) => Promise<EventParticipant>;
   cancelRegistration: (eventId: string) => Promise<{ message: string }>;
   isRegisteredForEvent: (eventId: string) => Promise<boolean>;
+  testGetEvents: () => Promise<Event[]>;
 }
 
 const realEventsApi: EventsApi = {
@@ -422,7 +425,27 @@ const realEventsApi: EventsApi = {
   isRegisteredForEvent: async (eventId: string) => {
     const response = await api.get(`/events/${eventId}/is-registered`);
     return response.data;
+  },
+
+  testGetEvents: async () => {
+    try {
+      const token = localStorage.getItem('token'); // Get token from localStorage
+  
+      const response = await api.get('/events', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        withCredentials: true
+      });
+  
+      console.log('Test get_events response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error testing get_events:', error);
+      throw error;
+    }
   }
+  
 };
 
 // Export the real API implementation
