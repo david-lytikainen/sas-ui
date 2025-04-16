@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -8,7 +8,6 @@ import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
-import DateSchedule from './components/dates/DateSchedule';
 import EventList from './components/events/EventList';
 import EventForm from './components/events/EventForm';
 import PrivateRoute from './components/routing/PrivateRoute';
@@ -16,14 +15,9 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { EventProvider } from './context/EventContext';
 import Navigation from './components/Navigation';
 import { ColorModeContext } from './context/ColorModeContext';
-import EventManagement from './components/events/EventManagement';
-import EventCheckInStatus from './components/check-in/EventCheckInStatus';
-import CheckInDashboard from './components/check-in/CheckInDashboard';
 import SystemSettings from './components/profile/SystemSettings';
 import AnimatedWrapper from './components/common/AnimatedWrapper';
-import PageTransition from './components/common/PageTransition';
 import UserManagement from './components/admin/UserManagement';
-import TestModeNotification from './components/common/TestModeNotification';
 
 // Add global styles for animations
 const GlobalStyles = {
@@ -118,29 +112,6 @@ const ProtectedRoutes = () => {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      
-      {/* Check-in routes - accessible to admins and organizers */}
-      <Route
-        path="/check-in"
-        element={
-          <PrivateRoute>
-            <AnimatedWrapper>
-              <CheckInDashboard />
-            </AnimatedWrapper>
-          </PrivateRoute>
-        }
-      />
-      
-      <Route
-        path="/events/:eventId/check-in"
-        element={
-          <PrivateRoute>
-            <AnimatedWrapper>
-              <EventCheckInStatus />
-            </AnimatedWrapper>
-          </PrivateRoute>
-        }
-      />
 
       {/* Settings Route */}
       <Route
@@ -149,18 +120,6 @@ const ProtectedRoutes = () => {
           <PrivateRoute>
             <AnimatedWrapper>
               <SystemSettings />
-            </AnimatedWrapper>
-          </PrivateRoute>
-        }
-      />
-
-      {/* Event Participants View */}
-      <Route
-        path="/events/:eventId/participants"
-        element={
-          <PrivateRoute>
-            <AnimatedWrapper>
-              <UserManagement />
             </AnimatedWrapper>
           </PrivateRoute>
         }
@@ -195,26 +154,6 @@ const ProtectedRoutes = () => {
               </PrivateRoute>
             }
           />
-          <Route
-            path="/events/edit/:id"
-            element={
-              <PrivateRoute>
-                <AnimatedWrapper>
-                  <EventForm />
-                </AnimatedWrapper>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/events/manage/:eventId"
-            element={
-              <PrivateRoute>
-                <AnimatedWrapper>
-                  <EventManagement />
-                </AnimatedWrapper>
-              </PrivateRoute>
-            }
-          />
         </>
       )}
       
@@ -241,18 +180,6 @@ const ProtectedRoutes = () => {
         }
       />
 
-      {/* Date Schedule Route */}
-      <Route
-        path="/dates/:dateId/schedule"
-        element={
-          <PrivateRoute>
-            <AnimatedWrapper>
-              <DateSchedule />
-            </AnimatedWrapper>
-          </PrivateRoute>
-        }
-      />
-
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -264,11 +191,11 @@ function App() {
   const colorMode = useMemo(
     () => ({
       toggleColorMode: () => {
-        setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'));
+        setMode((prevMode: 'light' | 'dark') => (prevMode === 'light' ? 'dark' : 'light'));
       },
       mode,
     }),
-    [mode]
+    []
   );
 
   const theme = useMemo(
@@ -276,95 +203,23 @@ function App() {
       createTheme({
         typography: {
           fontFamily: [
-            'SF Pro Text',
-            'SF Pro Display',
+            'Inter',
             '-apple-system',
             'BlinkMacSystemFont',
-            'system-ui',
-            'Segoe UI',
+            '"Segoe UI"',
             'Roboto',
-            'Helvetica Neue',
+            '"Helvetica Neue"',
             'Arial',
             'sans-serif',
           ].join(','),
-          h1: {
-            fontFamily: 'SF Pro Display, -apple-system, system-ui',
-            fontWeight: 700,
-            letterSpacing: '-0.025em',
-            lineHeight: 1.1,
-          },
-          h2: {
-            fontFamily: 'SF Pro Display, -apple-system, system-ui',
-            fontWeight: 700,
-            letterSpacing: '-0.025em',
-            lineHeight: 1.2,
-          },
-          h3: {
-            fontFamily: 'SF Pro Display, -apple-system, system-ui',
-            fontWeight: 600,
-            letterSpacing: '-0.025em',
-          },
-          h4: {
-            fontFamily: 'SF Pro Display, -apple-system, system-ui',
-            fontWeight: 600,
-            letterSpacing: '-0.015em',
-          },
-          h5: {
-            fontFamily: 'SF Pro Display, -apple-system, system-ui',
-            fontWeight: 600,
-            letterSpacing: '-0.015em',
-          },
-          h6: {
-            fontFamily: 'SF Pro Display, -apple-system, system-ui',
-            fontWeight: 600,
-            letterSpacing: '-0.015em',
-          },
-          subtitle1: {
-            fontFamily: 'SF Pro Text, -apple-system, system-ui',
-            fontWeight: 500,
-            letterSpacing: '-0.01em',
-          },
-          subtitle2: {
-            fontFamily: 'SF Pro Text, -apple-system, system-ui',
-            fontWeight: 500,
-            letterSpacing: '-0.01em',
-          },
-          body1: {
-            fontFamily: 'SF Pro Text, -apple-system, system-ui',
-            fontWeight: 400,
-            letterSpacing: 0,
-            lineHeight: 1.5,
-          },
-          body2: {
-            fontFamily: 'SF Pro Text, -apple-system, system-ui',
-            fontWeight: 400,
-            letterSpacing: 0,
-          },
-          button: {
-            fontFamily: 'SF Pro Text, -apple-system, system-ui',
-            fontWeight: 600,
-            letterSpacing: '-0.01em',
-          },
         },
         palette: {
           mode,
           primary: {
-            main: '#2196f3',
-            light: '#64b5f6',
-            dark: '#1976d2',
+            main: '#1976d2',
           },
           secondary: {
-            main: '#424242',
-            light: '#616161',
-            dark: '#212121',
-          },
-          background: {
-            default: mode === 'dark' ? '#141414' : '#ffffff',
-            paper: mode === 'dark' ? '#1e1e1e' : '#ffffff',
-          },
-          text: {
-            primary: mode === 'dark' ? '#ffffff' : '#1d1d1f',
-            secondary: mode === 'dark' ? '#a1a1a6' : '#6e6e73',
+            main: '#dc004e',
           },
         },
         components: {
@@ -419,46 +274,6 @@ function App() {
               },
             },
           },
-          MuiTableCell: {
-            styleOverrides: {
-              head: {
-                fontWeight: 600,
-                backgroundColor: mode === 'dark' ? '#1e1e1e' : '#f5f5f7',
-                borderBottom: `1px solid ${mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
-              },
-              root: {
-                borderBottom: `1px solid ${mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
-              },
-            },
-          },
-          MuiChip: {
-            styleOverrides: {
-              root: {
-                borderRadius: 8,
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                '&:hover': {
-                  transform: 'scale(1.05) translateY(-1px)',
-                },
-                '&:active': {
-                  transform: 'scale(0.98)',
-                },
-              },
-            },
-          },
-          MuiCard: {
-            styleOverrides: {
-              root: {
-                borderRadius: 16,
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: mode === 'dark' 
-                    ? '0 8px 24px rgba(0, 0, 0, 0.5)' 
-                    : '0 8px 24px rgba(0, 0, 0, 0.1)',
-                },
-              },
-            },
-          },
         },
       }),
     [mode]
@@ -474,20 +289,8 @@ function App() {
               <Router>
                 <AnimatedWrapper>
                   <Navigation />
-                  <TestModeNotification />
                   <Box sx={{ pt: 8 }}>
-                    <Routes>
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/register" element={<Register />} />
-                      <Route path="/" element={<PrivateRoute><EventList /></PrivateRoute>} />
-                      <Route path="/events" element={<PrivateRoute><EventList /></PrivateRoute>} />
-                      <Route path="/events/create" element={<PrivateRoute><EventForm /></PrivateRoute>} />
-                      <Route path="/events/:eventId" element={<PrivateRoute><EventManagement /></PrivateRoute>} />
-                      <Route path="/events/:eventId/check-in" element={<PrivateRoute><CheckInDashboard /></PrivateRoute>} />
-                      <Route path="/settings" element={<PrivateRoute><SystemSettings /></PrivateRoute>} />
-                      <Route path="/admin/users" element={<PrivateRoute><UserManagement /></PrivateRoute>} />
-                      <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
+                    <ProtectedRoutes />
                   </Box>
                 </AnimatedWrapper>
               </Router>

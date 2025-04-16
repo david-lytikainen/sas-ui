@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -18,7 +18,7 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import { SelectChangeEvent } from '@mui/material';
-import { Event } from '../../context/EventContext';
+import { Event, EventStatus } from '../../types/event';
 
 interface EventFormData {
   name: string;
@@ -27,9 +27,9 @@ interface EventFormData {
   ends_at: string;
   address: string;
   max_capacity: number;
-  price_per_person: number;
+  price_per_person: string;
   registration_deadline: string;
-  status: Event['status'];
+  status: EventStatus;
 }
 
 const ROLES = {
@@ -40,9 +40,8 @@ const ROLES = {
 
 const EventForm: React.FC = () => {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
-  const { createEvent, updateEvent, getEventById } = useEvents();
-  const { user, isAdmin, isOrganizer, mockAttendeeMode } = useAuth();
+  const { createEvent } = useEvents();
+  const { user, isAdmin, isOrganizer } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
@@ -55,29 +54,10 @@ const EventForm: React.FC = () => {
     ends_at: new Date(Date.now() + 3600000).toISOString(), // 1 hour from now
     address: '',
     max_capacity: 20,
-    price_per_person: 0,
+    price_per_person: '0',
     registration_deadline: new Date().toISOString(),
-    status: 'open'
+    status: 'Registration Open'
   });
-
-  useEffect(() => {
-    if (id) {
-      const event = getEventById(id);
-      if (event) {
-        setFormData({
-          name: event.name,
-          description: event.description,
-          starts_at: event.starts_at,
-          ends_at: event.ends_at,
-          address: event.address,
-          max_capacity: event.max_capacity,
-          price_per_person: event.price_per_person,
-          registration_deadline: event.registration_deadline,
-          status: event.status
-        });
-      }
-    }
-  }, [id, getEventById]);
 
   // Redirect if user doesn't have permission
   useEffect(() => {
@@ -88,11 +68,10 @@ const EventForm: React.FC = () => {
 
   // Redirect attendees away from this page
   useEffect(() => {
-    // Check if user is an attendee or in mock attendee mode
-    if (user?.role_id === ROLES.ATTENDEE.id || mockAttendeeMode) {
+    if (user?.role_id === ROLES.ATTENDEE.id) {
       navigate('/events');
     }
-  }, [user, mockAttendeeMode, navigate]);
+  }, [user, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent) => {
     const { name, value } = e.target;
@@ -124,13 +103,9 @@ const EventForm: React.FC = () => {
         throw new Error('Only organizers can manage events');
       }
 
-      if (id) {
-        await updateEvent(id, formData);
-        setSuccess('Event updated successfully!');
-      } else {
-        await createEvent(formData);
-        setSuccess('Event created successfully!');
-      }
+
+      await createEvent({ ...formData });
+      setSuccess('Event created successfully!');
 
       // Set a flag that save was completed
       setSaveCompleted(true);
@@ -151,7 +126,7 @@ const EventForm: React.FC = () => {
       <Box sx={{ mt: 4, mb: 4 }}>
         <Paper sx={{ p: 4 }}>
           <Typography variant="h4" component="h1" gutterBottom>
-            {id ? 'Edit Event' : 'Create New Event'}
+            Create New Event
           </Typography>
 
           {error && (
@@ -262,10 +237,10 @@ const EventForm: React.FC = () => {
                     label="Status"
                     onChange={handleChange}
                   >
-                    <MenuItem value="open">Open</MenuItem>
-                    <MenuItem value="in_progress">In Progress</MenuItem>
-                    <MenuItem value="completed">Completed</MenuItem>
-                    <MenuItem value="cancelled">Cancelled</MenuItem>
+                    <MenuItem value="Registration Open">Registration Open</MenuItem>
+                    <MenuItem value="In Progress">In Progress</MenuItem>
+                    <MenuItem value="Completed">Completed</MenuItem>
+                    <MenuItem value="Cancelled">Cancelled</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
@@ -279,7 +254,7 @@ const EventForm: React.FC = () => {
                     fullWidth
                     disabled={loading || saveCompleted}
                   >
-                    {loading ? 'Saving...' : id ? 'Update Event' : 'Create Event'}
+                    {loading ? 'Creating...' : 'Create Event'}
                   </Button>
                   
                   <Button

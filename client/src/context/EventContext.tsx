@@ -1,32 +1,13 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { eventsApi } from '../services/api';
-
-export interface Event {
-  id: string;
-  creator_id: string;
-  starts_at: string;
-  ends_at: string;
-  address: string;
-  name: string;
-  max_capacity: number;
-  status: 'open' | 'in_progress' | 'completed' | 'cancelled';
-  price_per_person: number;
-  registration_deadline: string;
-  description: string;
-  updated_at: string;
-  created_at: string;
-}
+import { Event } from '../types/event';
 
 interface EventContextType {
   events: Event[];
   loading: boolean;
   error: string | null;
   createEvent: (eventData: Omit<Event, 'id' | 'creator_id' | 'updated_at' | 'created_at'>) => Promise<void>;
-  updateEvent: (eventId: string, eventData: Partial<Event>) => Promise<void>;
-  deleteEvent: (eventId: string) => Promise<void>;
-  getEventById: (eventId: string) => Event | undefined;
-  getMyEvents: () => Promise<Event[]>;
   refreshEvents: () => Promise<void>;
 }
 
@@ -88,65 +69,6 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const updateEvent = async (eventId: string, eventData: Partial<Event>) => {
-    setLoading(true);
-    setError(null);
-    try {
-      if (!user) throw new Error('You must be logged in to update an event');
-      
-      const event = events.find(e => e.id === eventId);
-      if (!event) throw new Error('Event not found');
-
-      if (event.creator_id !== user.id && !isAdmin()) {
-        throw new Error('You can only edit your own events');
-      }
-
-      const updatedEvent = await eventsApi.update(eventId, eventData);
-      setEvents(prev => prev.map(e => e.id === eventId ? updatedEvent : e));
-    } catch (err: any) {
-      setError(err.message || 'Failed to update event');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const deleteEvent = async (eventId: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      if (!user) throw new Error('You must be logged in to delete an event');
-      
-      const event = events.find(e => e.id === eventId);
-      if (!event) throw new Error('Event not found');
-
-      if (event.creator_id !== user.id && !isAdmin()) {
-        throw new Error('You can only delete your own events');
-      }
-
-      await eventsApi.delete(eventId);
-      setEvents(prev => prev.filter(e => e.id !== eventId));
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete event');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getEventById = (eventId: string) => {
-    return events.find(e => e.id === eventId);
-  };
-
-  const getMyEvents = async () => {
-    try {
-      return await eventsApi.getMyEvents();
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch your events');
-      return [];
-    }
-  };
-
   const refreshEvents = async () => {
     setLoading(true);
     try {
@@ -166,10 +88,6 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         loading,
         error,
         createEvent,
-        updateEvent,
-        deleteEvent,
-        getEventById,
-        getMyEvents,
         refreshEvents,
       }}
     >
