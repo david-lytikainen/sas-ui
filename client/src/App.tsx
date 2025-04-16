@@ -8,7 +8,6 @@ import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
-import DateSchedule from './components/dates/DateSchedule';
 import EventList from './components/events/EventList';
 import EventForm from './components/events/EventForm';
 import PrivateRoute from './components/routing/PrivateRoute';
@@ -16,12 +15,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { EventProvider } from './context/EventContext';
 import Navigation from './components/Navigation';
 import { ColorModeContext } from './context/ColorModeContext';
-import EventManagement from './components/events/EventManagement';
-import EventCheckInStatus from './components/check-in/EventCheckInStatus';
-import CheckInDashboard from './components/check-in/CheckInDashboard';
 import SystemSettings from './components/profile/SystemSettings';
 import AnimatedWrapper from './components/common/AnimatedWrapper';
-import PageTransition from './components/common/PageTransition';
 import UserManagement from './components/admin/UserManagement';
 
 // Add global styles for animations
@@ -117,29 +112,6 @@ const ProtectedRoutes = () => {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      
-      {/* Check-in routes - accessible to admins and organizers */}
-      <Route
-        path="/check-in"
-        element={
-          <PrivateRoute>
-            <AnimatedWrapper>
-              <CheckInDashboard />
-            </AnimatedWrapper>
-          </PrivateRoute>
-        }
-      />
-      
-      <Route
-        path="/events/:eventId/check-in"
-        element={
-          <PrivateRoute>
-            <AnimatedWrapper>
-              <EventCheckInStatus />
-            </AnimatedWrapper>
-          </PrivateRoute>
-        }
-      />
 
       {/* Settings Route */}
       <Route
@@ -148,18 +120,6 @@ const ProtectedRoutes = () => {
           <PrivateRoute>
             <AnimatedWrapper>
               <SystemSettings />
-            </AnimatedWrapper>
-          </PrivateRoute>
-        }
-      />
-
-      {/* Event Participants View */}
-      <Route
-        path="/events/:eventId/participants"
-        element={
-          <PrivateRoute>
-            <AnimatedWrapper>
-              <UserManagement />
             </AnimatedWrapper>
           </PrivateRoute>
         }
@@ -194,26 +154,6 @@ const ProtectedRoutes = () => {
               </PrivateRoute>
             }
           />
-          <Route
-            path="/events/edit/:id"
-            element={
-              <PrivateRoute>
-                <AnimatedWrapper>
-                  <EventForm />
-                </AnimatedWrapper>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/events/manage/:eventId"
-            element={
-              <PrivateRoute>
-                <AnimatedWrapper>
-                  <EventManagement />
-                </AnimatedWrapper>
-              </PrivateRoute>
-            }
-          />
         </>
       )}
       
@@ -235,18 +175,6 @@ const ProtectedRoutes = () => {
           <PrivateRoute>
             <AnimatedWrapper>
               <EventList />
-            </AnimatedWrapper>
-          </PrivateRoute>
-        }
-      />
-
-      {/* Date Schedule Route */}
-      <Route
-        path="/dates/:dateId/schedule"
-        element={
-          <PrivateRoute>
-            <AnimatedWrapper>
-              <DateSchedule />
             </AnimatedWrapper>
           </PrivateRoute>
         }

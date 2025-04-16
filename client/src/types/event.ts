@@ -12,6 +12,4 @@ export interface Event {
   status: EventStatus;
   price_per_person: string;
   registration_deadline: string;
-  created_at: string;
-  updated_at: string;
 }

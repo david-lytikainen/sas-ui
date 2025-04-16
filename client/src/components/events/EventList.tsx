@@ -35,16 +35,7 @@ import {
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import { eventsApi } from '../../services/api';
-
-interface Event {
-  id: string;
-  name: string;
-  description: string;
-  starts_at: string;
-  ends_at: string;
-  status: 'open' | 'in_progress' | 'completed' | 'cancelled';
-  is_registered?: boolean;
-}
+import { Event, EventStatus } from '../../types/event';
 
 const ROLES = {
   ADMIN: { id: 1, name: 'admin', permission_level: 100 },
@@ -55,13 +46,13 @@ const ROLES = {
 // Helper functions for status chip styling
 function getStatusChipColor(status: string, theme: Theme) {
   switch (status) {
-    case 'open':
+    case 'Registration Open':
       return theme.palette.success.light;
-    case 'in_progress':
+    case 'In Progress':
       return theme.palette.info.light;
-    case 'completed':
+    case 'Completed':
       return theme.palette.grey[300];
-    case 'cancelled':
+    case 'Cancelled':
       return theme.palette.error.light;
     default:
       return theme.palette.grey[200];
@@ -70,13 +61,13 @@ function getStatusChipColor(status: string, theme: Theme) {
 
 function getStatusChipTextColor(status: string, theme: Theme) {
   switch (status) {
-    case 'open':
+    case 'Registration Open':
       return theme.palette.success.contrastText || '#fff';
-    case 'in_progress':
+    case 'In Progress':
       return theme.palette.info.contrastText || '#fff';
-    case 'completed':
+    case 'Completed':
       return theme.palette.text.primary;
-    case 'cancelled':
+    case 'Cancelled':
       return theme.palette.error.contrastText || '#fff';
     default:
       return theme.palette.text.primary;
@@ -85,7 +76,7 @@ function getStatusChipTextColor(status: string, theme: Theme) {
 
 const EventList = () => {
   const navigate = useNavigate();
-  const { events, deleteEvent, refreshEvents } = useEvents();
+  const { events: contextEvents, refreshEvents } = useEvents();
   const { user, isAdmin, isOrganizer } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -95,7 +86,6 @@ const EventList = () => {
   const [signUpEventId, setSignUpEventId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [registeredEvents, setRegisteredEvents] = useState<Set<string>>(new Set());
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelEventId, setCancelEventId] = useState<string | null>(null);
   const [startEventLoading, setStartEventLoading] = useState<string | null>(null);
@@ -111,55 +101,37 @@ const EventList = () => {
     max_capacity: '',
     price_per_person: '',
     registration_deadline: '',
-    status: 'open',
+    status: 'Registration Open' as EventStatus,
+  });
+
+  // Convert context events to our Event interface
+  const events: Event[] = contextEvents.map((contextEvent: any) => {
+    return {
+      id: Number(contextEvent.id),
+      name: contextEvent.name,
+      description: contextEvent.description || '',
+      creator_id: typeof contextEvent.creator_id === 'string' ? parseInt(contextEvent.creator_id) : contextEvent.creator_id || 0,
+      starts_at: contextEvent.starts_at,
+      ends_at: contextEvent.ends_at,
+      address: contextEvent.address,
+      max_capacity: contextEvent.max_capacity,
+      status: contextEvent.status,
+      price_per_person: typeof contextEvent.price_per_person === 'number' 
+        ? contextEvent.price_per_person.toString() 
+        : contextEvent.price_per_person || '0',
+      registration_deadline: contextEvent.registration_deadline,
+    } as Event;
   });
 
   console.log(user)
   console.log('isAdmin():', isAdmin());
   console.log('isOrganizer():', isOrganizer());
 
-  const handleDeleteClick = (eventId: string) => {
-    setSelectedEventId(eventId);
-    setDeleteDialogOpen(true);
-  };
 
-  const handleDeleteConfirm = async () => {
-    if (selectedEventId) {
-      await deleteEvent(selectedEventId);
-      setDeleteDialogOpen(false);
-      setSelectedEventId(null);
-    }
-  };
-
-  const handleSignUpClick = (eventId: string) => {
-    setSignUpEventId(eventId);
+  const handleSignUpClick = (eventId: number) => {
+    setSignUpEventId(eventId.toString());
     setSignUpDialogOpen(true);
   };
-
-  // Optimize registration status loading
-  const loadRegistrationStatus = useCallback(async () => {
-    if (!user?.role_id || user.role_id !== ROLES.ATTENDEE.id) return;
-
-    try {
-      const registeredSet = new Set<string>();
-      const promises = events.filter(event => event.status === 'open').map(event => 
-        eventsApi.isRegisteredForEvent(event.id)
-          .then(isRegistered => {
-            if (isRegistered) registeredSet.add(event.id);
-          })
-          .catch(error => console.error(`Error checking registration for event ${event.id}:`, error))
-      );
-      
-      await Promise.all(promises);
-      setRegisteredEvents(registeredSet);
-    } catch (error) {
-      console.error('Error loading registration status:', error);
-    }
-  }, [events, user?.role_id]);
-
-  useEffect(() => {
-    loadRegistrationStatus();
-  }, [loadRegistrationStatus]);
 
   const handleSignUpConfirm = async () => {
     if (signUpEventId) {
@@ -168,7 +140,6 @@ const EventList = () => {
         setSuccessMessage('Successfully signed up for the event!');
         setSignUpDialogOpen(false);
         setSignUpEventId(null);
-        setRegisteredEvents(prev => new Set(Array.from(prev).concat([signUpEventId])));
         setTimeout(() => setSuccessMessage(null), 10000);
       } catch (error: any) {
         setErrorMessage(error.message || 'Failed to sign up for the event');
@@ -176,79 +147,40 @@ const EventList = () => {
     }
   };
 
-  const handleCancelClick = (eventId: string) => {
-    setCancelEventId(eventId);
+  const handleCancelClick = (eventId: number) => {
+    setCancelEventId(eventId.toString());
     setCancelDialogOpen(true);
   };
 
-  const handleCancelConfirm = async () => {
-    if (cancelEventId) {
-      try {
-        await eventsApi.cancelRegistration(cancelEventId);
-        setSuccessMessage('Successfully cancelled registration');
-        setCancelDialogOpen(false);
-        setCancelEventId(null);
-        setRegisteredEvents(prev => {
-          const newSet = new Set(Array.from(prev));
-          newSet.delete(cancelEventId);
-          return newSet;
-        });
-        setTimeout(() => setSuccessMessage(null), 10000);
-      } catch (error: any) {
-        setErrorMessage(error.message || 'Failed to cancel registration');
-      }
-    }
-  };
-
-  const handleStartEvent = async (eventId: string) => {
-    setStartEventLoading(eventId);
-    setErrorMessage(null);
-    
-    try {
-      await eventsApi.startEvent(eventId);
-      setSuccessMessage('Event started successfully! Schedule and matches have been generated.');
-      await refreshEvents();
-      setTimeout(() => {
-        navigate(`/events/${eventId}/live`);
-      }, 1000);
-    } catch (error: any) {
-      setErrorMessage(error.message || 'Failed to start event');
-    } finally {
-      setStartEventLoading(null);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: EventStatus) => {
     switch (status) {
-      case 'published':
+      case 'Registration Open':
         return 'success';
-      case 'draft':
-        return 'default';
-      case 'cancelled':
-        return 'error';
-      case 'completed':
-        return 'info';
-      case 'in_progress':
+      case 'In Progress':
         return 'primary';
+      case 'Completed':
+        return 'info';
+      case 'Cancelled':
+        return 'error';
       default:
         return 'default';
     }
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status: EventStatus): string => {
     switch (status) {
-      case 'published':
-        return 'UPCOMING';
-      case 'in_progress':
+      case 'Registration Open':
+        return 'REGISTRATION OPEN';
+      case 'In Progress':
         return 'LIVE NOW';
-      case 'completed':
+      case 'Completed':
         return 'COMPLETED';
-      case 'cancelled':
+      case 'Cancelled':
         return 'CANCELLED';
-      case 'draft':
-        return 'DRAFT';
       default:
-        return status.toUpperCase();
+        // This fallback should not execute with our defined EventStatus type
+        // but TypeScript needs it
+        return 'UNKNOWN STATUS';
     }
   };
 
@@ -263,17 +195,13 @@ const EventList = () => {
     });
   };
 
-  const handleCheckInNavigation = (eventId: string) => {
-    navigate(`/events/${eventId}/check-in`);
-  };
-
   // Sort events by status priority and date
   const sortedEvents = [...events].sort((a, b) => {
-    const statusPriority: Record<Event['status'], number> = {
-      'in_progress': 0,
-      'open': 1,
-      'completed': 2,
-      'cancelled': 3
+    const statusPriority: Record<EventStatus, number> = {
+      'In Progress': 0,
+      'Registration Open': 1,
+      'Completed': 2,
+      'Cancelled': 3
     };
     
     const priorityA = statusPriority[a.status];
@@ -299,7 +227,7 @@ const EventList = () => {
   };
 
   const isEventActive = (event: Event) => {
-    return event.status === 'open' || event.status === 'in_progress';
+    return event.status === 'Registration Open' || event.status === 'In Progress';
   };
 
   return (
@@ -370,7 +298,7 @@ const EventList = () => {
                     </Typography>
                     <select
                       value={createForm.status}
-                      onChange={e => setCreateForm(f => ({ ...f, status: e.target.value }))}
+                      onChange={e => setCreateForm(f => ({ ...f, status: e.target.value as EventStatus }))}
                       style={{
                         border: 'none',
                         outline: 'none',
@@ -391,10 +319,10 @@ const EventList = () => {
                         transition: 'background 0.2s',
                       }}
                     >
-                      <option value="open">Open</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
+                      <option value="Registration Open">Registration Open</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Completed">Completed</option>
+                      <option value="Cancelled">Cancelled</option>
                     </select>
                   </Box>
                   <input
@@ -561,7 +489,18 @@ const EventList = () => {
                   gap: 1
                 }}>
                   {user?.role_id === ROLES.ATTENDEE.id ? (
-                    registeredEvents.has(event.id) ? (
+                    event.status === 'Registration Open' ? (
+                      <Button
+                        fullWidth={isMobile}
+                        variant="contained"
+                        color="primary"
+                        startIcon={<SignUpIcon />}
+                        onClick={() => handleSignUpClick(event.id)}
+                        size={isMobile ? 'small' : 'medium'}
+                      >
+                        Register
+                      </Button>
+                    ) : (
                       <Button
                         fullWidth={isMobile}
                         variant="outlined"
@@ -572,18 +511,6 @@ const EventList = () => {
                       >
                         Cancel Registration
                       </Button>
-                    ) : (
-                      <Button
-                        fullWidth={isMobile}
-                        variant="contained"
-                        color="primary"
-                        startIcon={<SignUpIcon />}
-                        onClick={() => handleSignUpClick(event.id)}
-                        disabled={event.status !== 'open'}
-                        size={isMobile ? 'small' : 'medium'}
-                      >
-                        Register
-                      </Button>
                     )
                   ) : (
                     <Box sx={{ 
@@ -592,69 +519,6 @@ const EventList = () => {
                       gap: 1,
                       width: '100%'
                     }}>
-                      {event.status === 'open' && (
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          onClick={() => handleStartEvent(event.id)}
-                          startIcon={startEventLoading === event.id ? <CircularProgress size={20} color="inherit" /> : <StartIcon />}
-                          disabled={!!startEventLoading}
-                          size={isMobile ? 'small' : 'medium'}
-                        >
-                          {startEventLoading === event.id ? 'Starting...' : 'Start Event'}
-                        </Button>
-                      )}
-                      {(event.status === 'open' || event.status === 'in_progress') && (
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          onClick={() => handleCheckInNavigation(event.id)}
-                          startIcon={<HowToReg />}
-                          size={isMobile ? 'small' : 'medium'}
-                        >
-                          Manage Check-in
-                        </Button>
-                      )}
-                      {event.status === 'open' && (
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          onClick={() => navigate(`/events/${event.id}/schedule`)}
-                          startIcon={<EventIcon />}
-                          size={isMobile ? 'small' : 'medium'}
-                        >
-                          View Schedule
-                        </Button>
-                      )}
-                      {event.status === 'in_progress' && (
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          onClick={() => navigate(`/events/${event.id}/live`)}
-                          startIcon={<PlayIcon />}
-                          size={isMobile ? 'small' : 'medium'}
-                        >
-                          View Live Event
-                        </Button>
-                      )}
-                      <Button
-                        variant="outlined"
-                        color="primary"
-                        onClick={() => navigate(`/events/edit/${event.id}`)}
-                        startIcon={<EditIcon />}
-                        size={isMobile ? 'small' : 'medium'}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        color="error" 
-                        onClick={() => handleDeleteClick(event.id)}
-                        startIcon={<DeleteIcon />}
-                        size={isMobile ? 'small' : 'medium'}
-                      >
-                        Delete
-                      </Button>
                     </Box>
                   )}
                 </CardActions>
@@ -671,22 +535,6 @@ const EventList = () => {
         </Grid>
 
         <Dialog
-          open={deleteDialogOpen}
-          onClose={() => setDeleteDialogOpen(false)}
-        >
-          <DialogTitle>Delete Event</DialogTitle>
-          <DialogContent>
-            Are you sure you want to delete this event? This action cannot be undone.
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleDeleteConfirm} color="error">
-              Delete
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        <Dialog
           open={signUpDialogOpen}
           onClose={() => setSignUpDialogOpen(false)}
         >
@@ -698,22 +546,6 @@ const EventList = () => {
             <Button onClick={() => setSignUpDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSignUpConfirm} color="primary" variant="contained">
               Sign Up
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        <Dialog
-          open={cancelDialogOpen}
-          onClose={() => setCancelDialogOpen(false)}
-        >
-          <DialogTitle>Cancel Registration</DialogTitle>
-          <DialogContent>
-            Are you sure you want to cancel your registration for this event?
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setCancelDialogOpen(false)}>Keep Registration</Button>
-            <Button onClick={handleCancelConfirm} color="error" variant="contained">
-              Cancel Registration
             </Button>
           </DialogActions>
         </Dialog>
