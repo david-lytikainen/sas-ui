@@ -85,7 +85,7 @@ const ROLES = {
 const EventCheckInStatus: React.FC<Props> = ({ eventId: propEventId, embedded = false }) => {
   const { eventId: routeEventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
-  const { isAdmin, isOrganizer, user, mockAttendeeMode } = useAuth();
+  const { isAdmin, isOrganizer, user } = useAuth();
   const [event, setEvent] = useState<Event | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,14 +108,6 @@ const EventCheckInStatus: React.FC<Props> = ({ eventId: propEventId, embedded = 
       navigate('/');
     }
   }, [isAdmin, isOrganizer, navigate]);
-
-  // Redirect attendees away from this page
-  useEffect(() => {
-    // Check if user is an attendee or in mock attendee mode
-    if (user?.role_id === ROLES.ATTENDEE.id || mockAttendeeMode) {
-      navigate('/events');
-    }
-  }, [user, mockAttendeeMode, navigate]);
 
   useEffect(() => {
     const fetchEventData = async () => {

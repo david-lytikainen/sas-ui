@@ -310,6 +310,7 @@ interface EventsApi {
 const realEventsApi: EventsApi = {
   getAll: async () => {
     const response = await api.get('/events');
+    console.log('getting events please...',response)
     return response.data;
   },
 

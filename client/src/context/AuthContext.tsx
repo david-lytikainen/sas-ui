@@ -1,12 +1,12 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { authApi } from '../services/api';
-import { User, AuthResponse, TokenValidationResponse } from '../types/user';
+import { User, TokenValidationResponse } from '../types/user';
 
 // Role constants to match the mockApi
-const ROLES = {
-  ADMIN: { id: 1, name: 'admin', permission_level: 100 },
-  ORGANIZER: { id: 2, name: 'organizer', permission_level: 50 },
-  ATTENDEE: { id: 3, name: 'attendee', permission_level: 10 },
+export const ROLES = {
+  ADMIN: { id: 3, name: 'admin' },
+  ORGANIZER: { id: 2, name: 'organizer' },
+  ATTENDEE: { id: 1, name: 'attendee' },
 } as const;
 
 interface AuthContextType {
@@ -29,9 +29,6 @@ interface AuthContextType {
   isAdmin: () => boolean;
   isOrganizer: () => boolean;
   hasRole: (roleId: number) => boolean;
-  mockAttendeeMode: boolean;
-  enableMockAttendeeMode: () => void;
-  disableMockAttendeeMode: () => void;
   persistLogin: boolean;
   togglePersistLogin: () => void;
 }
@@ -50,25 +47,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mockAttendeeMode, setMockAttendeeMode] = useState(false);
   const [persistLogin, setPersistLogin] = useState<boolean>(() => {
     // Default to true unless explicitly set to false
     return localStorage.getItem('persistLogin') !== 'false';
   });
 
-  const isAdmin = () => !mockAttendeeMode && user?.role_id === ROLES.ADMIN.id;
-  const isOrganizer = () => !mockAttendeeMode && user?.role_id === ROLES.ORGANIZER.id;
-  const hasRole = (roleId: number) => !mockAttendeeMode && user?.role_id === roleId;
-  
-  const enableMockAttendeeMode = () => {
-    setMockAttendeeMode(true);
-    localStorage.setItem('mockAttendeeMode', 'true');
-  };
-  
-  const disableMockAttendeeMode = () => {
-    setMockAttendeeMode(false);
-    localStorage.removeItem('mockAttendeeMode');
-  };
+  const isAdmin = () => user?.role_id === ROLES.ADMIN.id;
+  const isOrganizer = () => user?.role_id === ROLES.ORGANIZER.id;
+  const hasRole = (roleId: number) => user?.role_id === roleId;
 
   const togglePersistLogin = () => {
     const newValue = !persistLogin;
@@ -78,7 +64,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // If turning off persistence, clear token immediately
     if (!newValue) {
       localStorage.removeItem('token');
-      localStorage.removeItem('mockAttendeeMode');
       setUser(null);
     }
   };
@@ -88,13 +73,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const checkAuth = async () => {
       if (!persistLogin) {
         localStorage.removeItem('token');
-        localStorage.removeItem('mockAttendeeMode');
         setLoading(false);
         return;
       }
   
       const token = localStorage.getItem('token');
-      console.log('here token ',token)
       if (!token || token.split('.').length !== 3) {
         localStorage.removeItem('token');
         setUser(null);
@@ -111,15 +94,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.removeItem('token');
           setUser(null);
         }
-  
-        const mockMode = localStorage.getItem('mockAttendeeMode');
-        if (mockMode === 'true') {
-          setMockAttendeeMode(true);
-        }
       } catch (err) {
         console.error('Token validation failed:', err);
         localStorage.removeItem('token');
-        localStorage.removeItem('mockAttendeeMode');
         setUser(null);
       } finally {
         setLoading(false);
@@ -127,8 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   
     checkAuth();
-  }, [persistLogin]); // Add `persistLogin` as a dependency if needed
-  
+  }, [persistLogin]);
 
   const login = async (email: string, password: string) => {
     setLoading(true);
@@ -136,7 +112,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await authApi.login(email, password);
       
-      // We've updated the API service to ensure it returns a complete user object
       if (response.user) {
         setUser(response.user);
       }
@@ -165,7 +140,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await authApi.register(userData);
       
-      // We've updated the API service to ensure it returns a complete user object
       if (response.user) {
         setUser(response.user);
       }
@@ -181,9 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     setUser(null);
-    setMockAttendeeMode(false);
     localStorage.removeItem('token');
-    localStorage.removeItem('mockAttendeeMode');
   };
 
   return (
@@ -199,9 +171,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAdmin,
         isOrganizer,
         hasRole,
-        mockAttendeeMode,
-        enableMockAttendeeMode,
-        disableMockAttendeeMode,
         persistLogin,
         togglePersistLogin,
       }}

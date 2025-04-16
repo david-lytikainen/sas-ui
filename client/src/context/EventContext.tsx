@@ -4,18 +4,16 @@ import { eventsApi } from '../services/api';
 
 export interface Event {
   id: string;
+  name: string;
+  description: string;
   creator_id: string;
   starts_at: string;
   ends_at: string;
   address: string;
-  name: string;
   max_capacity: number;
   status: 'open' | 'in_progress' | 'completed' | 'cancelled';
   price_per_person: number;
   registration_deadline: string;
-  description: string;
-  updated_at: string;
-  created_at: string;
 }
 
 interface EventContextType {

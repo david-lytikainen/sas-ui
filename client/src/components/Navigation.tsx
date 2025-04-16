@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import {
   AppBar,
@@ -10,14 +10,6 @@ import {
   IconButton,
   useTheme,
   useMediaQuery,
-  List,
-  Chip,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Drawer,
-  Avatar,
-  Divider,
 } from '@mui/material';
 import { animated, useSpring, useTrail, config } from '@react-spring/web';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
@@ -39,6 +31,10 @@ import {
   Note as NoteIcon,
   Menu as MenuIcon,
 } from '@mui/icons-material';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import TodayIcon from '@mui/icons-material/Today';
+import CelebrationIcon from '@mui/icons-material/Celebration';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 
 const AnimatedButton = animated(Button);
 const AnimatedIconButton = animated(IconButton);
@@ -52,7 +48,7 @@ const ROLES = {
 } as const;
 
 const Navigation = () => {
-  const { user, logout, isAdmin, isOrganizer, mockAttendeeMode, disableMockAttendeeMode } = useAuth();
+  const { user, logout, isAdmin, isOrganizer } = useAuth();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -152,7 +148,7 @@ const Navigation = () => {
     const items = [
       {
         label: 'Events',
-        icon: <EventIcon />,
+        icon: <EventAvailableIcon />,
         to: '/events',
         show: true,
       },
@@ -160,7 +156,7 @@ const Navigation = () => {
         label: 'Check-in',
         icon: <HowToRegIcon />,
         to: '/check-in',
-        show: !mockAttendeeMode && (user.role_id === ROLES.ADMIN.id || user.role_id === ROLES.ORGANIZER.id),
+        show: user.role_id === ROLES.ADMIN.id || user.role_id === ROLES.ORGANIZER.id,
       },
     ];
 
@@ -175,12 +171,6 @@ const Navigation = () => {
     config: { tension: 280, friction: 20 },
   });
 
-  // Function to handle exiting test attendee mode
-  const handleExitTestMode = () => {
-    disableMockAttendeeMode();
-    // Refresh the page to ensure UI updates properly
-    window.location.reload();
-  };
 
   // Dark mode toggle button spring animation
   const toggleButtonProps = useSpring({
@@ -295,26 +285,6 @@ const Navigation = () => {
             </AnimatedIconButton>
             {user && (
               <Box sx={{ display: 'flex', gap: 2, ml: 'auto' }}>
-                {/* Test mode indicator and exit button */}
-                {mockAttendeeMode && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-                    <Chip
-                      label="Test Attendee Mode"
-                      color="warning"
-                      sx={{ mr: 1 }}
-                    />
-                    <Button
-                      variant="outlined"
-                      color="warning"
-                      size="small"
-                      startIcon={<ExitIcon />}
-                      onClick={handleExitTestMode}
-                    >
-                      Exit Test
-                    </Button>
-                  </Box>
-                )}
-                
                 <Button
                   sx={{
                     color: theme.palette.mode === 'light' 

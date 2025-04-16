@@ -29,7 +29,7 @@ const ROLES = {
 
 const CheckInDashboard = () => {
   const navigate = useNavigate();
-  const { isAdmin, isOrganizer, user, mockAttendeeMode } = useAuth();
+  const { isAdmin, isOrganizer, user } = useAuth();
   const { events, loading, error } = useEvents();
   const [activeEvents, setActiveEvents] = useState<any[]>([]);
 
@@ -43,10 +43,10 @@ const CheckInDashboard = () => {
   // Redirect attendees away from this page
   useEffect(() => {
     // Check if user is an attendee or in mock attendee mode
-    if (user?.role_id === ROLES.ATTENDEE.id || mockAttendeeMode) {
+    if (user?.role_id === ROLES.ATTENDEE.id) {
       navigate('/events');
     }
-  }, [user, mockAttendeeMode, navigate]);
+  }, [user, navigate]);
 
   useEffect(() => {
     // Filter for active events (not cancelled or completed)

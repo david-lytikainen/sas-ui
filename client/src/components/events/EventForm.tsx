@@ -42,7 +42,7 @@ const EventForm: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { createEvent, updateEvent, getEventById } = useEvents();
-  const { user, isAdmin, isOrganizer, mockAttendeeMode } = useAuth();
+  const { user, isAdmin, isOrganizer } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
@@ -88,11 +88,10 @@ const EventForm: React.FC = () => {
 
   // Redirect attendees away from this page
   useEffect(() => {
-    // Check if user is an attendee or in mock attendee mode
-    if (user?.role_id === ROLES.ATTENDEE.id || mockAttendeeMode) {
+    if (user?.role_id === ROLES.ATTENDEE.id) {
       navigate('/events');
     }
-  }, [user, mockAttendeeMode, navigate]);
+  }, [user, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent) => {
     const { name, value } = e.target;

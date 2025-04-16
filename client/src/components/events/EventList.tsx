@@ -19,6 +19,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
+import { Theme } from '@mui/material/styles';
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
@@ -51,10 +52,41 @@ const ROLES = {
   ATTENDEE: { id: 3, name: 'attendee', permission_level: 10 },
 } as const;
 
+// Helper functions for status chip styling
+function getStatusChipColor(status: string, theme: Theme) {
+  switch (status) {
+    case 'open':
+      return theme.palette.success.light;
+    case 'in_progress':
+      return theme.palette.info.light;
+    case 'completed':
+      return theme.palette.grey[300];
+    case 'cancelled':
+      return theme.palette.error.light;
+    default:
+      return theme.palette.grey[200];
+  }
+}
+
+function getStatusChipTextColor(status: string, theme: Theme) {
+  switch (status) {
+    case 'open':
+      return theme.palette.success.contrastText || '#fff';
+    case 'in_progress':
+      return theme.palette.info.contrastText || '#fff';
+    case 'completed':
+      return theme.palette.text.primary;
+    case 'cancelled':
+      return theme.palette.error.contrastText || '#fff';
+    default:
+      return theme.palette.text.primary;
+  }
+}
+
 const EventList = () => {
   const navigate = useNavigate();
   const { events, deleteEvent, refreshEvents } = useEvents();
-  const { user } = useAuth();
+  const { user, isAdmin, isOrganizer } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -69,6 +101,22 @@ const EventList = () => {
   const [startEventLoading, setStartEventLoading] = useState<string | null>(null);
   const [testResponse, setTestResponse] = useState<any>(null);
   const [testError, setTestError] = useState<string | null>(null);
+  const [showCreateCard, setShowCreateCard] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    description: '',
+    starts_at: '',
+    ends_at: '',
+    address: '',
+    max_capacity: '',
+    price_per_person: '',
+    registration_deadline: '',
+    status: 'open',
+  });
+
+  console.log(user)
+  console.log('isAdmin():', isAdmin());
+  console.log('isOrganizer():', isOrganizer());
 
   const handleDeleteClick = (eventId: string) => {
     setSelectedEventId(eventId);
@@ -270,11 +318,11 @@ const EventList = () => {
             >
               Test Get Events
             </Button>
-            {(user?.role_id === ROLES.ORGANIZER.id || user?.role_id === ROLES.ADMIN.id) && (
+            {(isAdmin() || isOrganizer()) && (
               <Button
                 variant="contained"
                 startIcon={<EventIcon />}
-                onClick={() => navigate('/events/new')}
+                onClick={() => setShowCreateCard((prev) => !prev)}
                 size={isMobile ? 'small' : 'medium'}
               >
                 Create Event
@@ -282,6 +330,141 @@ const EventList = () => {
             )}
           </Box>
         </Box>
+
+        {/* Create Event Card */}
+        {showCreateCard && (
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid item xs={12}>
+              <Card sx={{
+                borderRadius: 2,
+                boxShadow: theme.shadows[2],
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                mb: 2,
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: theme.shadows[4],
+                }
+              }}>
+                <CardContent sx={{ p: 2 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                    <Typography variant="h6" component="h2" sx={{
+                      fontWeight: 600,
+                      fontSize: isMobile ? '1rem' : '1.25rem',
+                      lineHeight: 1.2,
+                      flex: 1
+                    }}>
+                      <input
+                        type="text"
+                        placeholder="Event Name"
+                        value={createForm.name}
+                        onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))}
+                        style={{
+                          fontWeight: 600,
+                          fontSize: isMobile ? '1rem' : '1.25rem',
+                          border: 'none',
+                          outline: 'none',
+                          background: 'transparent',
+                          width: '100%'
+                        }}
+                      />
+                    </Typography>
+                    <select
+                      value={createForm.status}
+                      onChange={e => setCreateForm(f => ({ ...f, status: e.target.value }))}
+                      style={{
+                        border: 'none',
+                        outline: 'none',
+                        borderRadius: 16,
+                        padding: '2px 12px',
+                        fontWeight: 600,
+                        fontSize: '0.75rem',
+                        background: getStatusChipColor(createForm.status, theme),
+                        color: getStatusChipTextColor(createForm.status, theme),
+                        marginLeft: 8,
+                        minWidth: 100,
+                        textAlign: 'center',
+                        boxShadow: theme.shadows[1],
+                        appearance: 'none',
+                        WebkitAppearance: 'none',
+                        MozAppearance: 'none',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s',
+                      }}
+                    >
+                      <option value="open">Open</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </Box>
+                  <input
+                    type="text"
+                    placeholder="Description"
+                    value={createForm.description}
+                    onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))}
+                    style={{
+                      marginBottom: 8,
+                      fontSize: isMobile ? '0.875rem' : '1rem',
+                      color: theme.palette.text.secondary,
+                      border: 'none',
+                      outline: 'none',
+                      background: 'transparent',
+                      width: '100%'
+                    }}
+                  />
+                  <Box sx={{ display: 'flex', gap: 2, mb: 1, flexWrap: 'wrap' }}>
+                    <input
+                      type="datetime-local"
+                      value={createForm.starts_at}
+                      onChange={e => setCreateForm(f => ({ ...f, starts_at: e.target.value }))}
+                      style={{ flex: 1, minWidth: 180 }}
+                      placeholder="Start Time"
+                    />
+                    <input
+                      type="datetime-local"
+                      value={createForm.ends_at}
+                      onChange={e => setCreateForm(f => ({ ...f, ends_at: e.target.value }))}
+                      style={{ flex: 1, minWidth: 180 }}
+                      placeholder="End Time"
+                    />
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 2, mb: 1, flexWrap: 'wrap' }}>
+                    <input
+                      type="text"
+                      placeholder="Address"
+                      value={createForm.address}
+                      onChange={e => setCreateForm(f => ({ ...f, address: e.target.value }))}
+                      style={{ flex: 2, minWidth: 180 }}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Max Capacity"
+                      value={createForm.max_capacity}
+                      onChange={e => setCreateForm(f => ({ ...f, max_capacity: e.target.value }))}
+                      style={{ flex: 1, minWidth: 120 }}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Price Per Person"
+                      value={createForm.price_per_person}
+                      onChange={e => setCreateForm(f => ({ ...f, price_per_person: e.target.value }))}
+                      style={{ flex: 1, minWidth: 120 }}
+                    />
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 2, mb: 1, flexWrap: 'wrap' }}>
+                    <input
+                      type="datetime-local"
+                      value={createForm.registration_deadline}
+                      onChange={e => setCreateForm(f => ({ ...f, registration_deadline: e.target.value }))}
+                      style={{ flex: 1, minWidth: 180 }}
+                      placeholder="Registration Deadline"
+                    />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        )}
 
         {testError && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setTestError(null)}>
