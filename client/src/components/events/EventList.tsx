@@ -18,6 +18,9 @@ import {
   Alert,
   useMediaQuery,
   useTheme,
+  FormControl,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import { Theme } from '@mui/material/styles';
 import {
@@ -38,9 +41,9 @@ import { eventsApi } from '../../services/api';
 import { Event, EventStatus } from '../../types/event';
 
 const ROLES = {
-  ADMIN: { id: 1, name: 'admin', permission_level: 100 },
+  ADMIN: { id: 3, name: 'admin', permission_level: 100 },
   ORGANIZER: { id: 2, name: 'organizer', permission_level: 50 },
-  ATTENDEE: { id: 3, name: 'attendee', permission_level: 10 },
+  ATTENDEE: { id: 1, name: 'attendee', permission_level: 10 },
 } as const;
 
 // Helper functions for status chip styling
@@ -76,7 +79,7 @@ function getStatusChipTextColor(status: string, theme: Theme) {
 
 const EventList = () => {
   const navigate = useNavigate();
-  const { events: contextEvents, refreshEvents } = useEvents();
+  const { events: contextEvents, refreshEvents, createEvent } = useEvents();
   const { user, isAdmin, isOrganizer } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -89,9 +92,8 @@ const EventList = () => {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelEventId, setCancelEventId] = useState<string | null>(null);
   const [startEventLoading, setStartEventLoading] = useState<string | null>(null);
-  const [testResponse, setTestResponse] = useState<any>(null);
-  const [testError, setTestError] = useState<string | null>(null);
   const [showCreateCard, setShowCreateCard] = useState(false);
+  const [animatingOut, setAnimatingOut] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: '',
     description: '',
@@ -167,23 +169,6 @@ const EventList = () => {
     }
   };
 
-  const getStatusLabel = (status: EventStatus): string => {
-    switch (status) {
-      case 'Registration Open':
-        return 'REGISTRATION OPEN';
-      case 'In Progress':
-        return 'LIVE NOW';
-      case 'Completed':
-        return 'COMPLETED';
-      case 'Cancelled':
-        return 'CANCELLED';
-      default:
-        // This fallback should not execute with our defined EventStatus type
-        // but TypeScript needs it
-        return 'UNKNOWN STATUS';
-    }
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       weekday: 'long',
@@ -214,20 +199,56 @@ const EventList = () => {
     return new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime();
   });
 
-  const handleTestGetEvents = async () => {
+  const isEventActive = (event: Event) => {
+    return event.status === 'Registration Open' || event.status === 'In Progress';
+  };
+
+  const handleCreateEvent = async () => {
     try {
-      setTestError(null);
-      const response = await eventsApi.testGetEvents();
-      setTestResponse(response);
-      console.log('Test response:', response);
+      // Basic validation
+      if (!createForm.name || !createForm.description || !createForm.starts_at || 
+          !createForm.ends_at || !createForm.address || !createForm.max_capacity) {
+        setErrorMessage('Please fill in all required fields');
+        return;
+      }
+      
+      // Convert string values to appropriate types
+      const eventData = {
+        ...createForm,
+        max_capacity: Number(createForm.max_capacity),
+        price_per_person: createForm.price_per_person || '0'
+      };
+      
+      await createEvent(eventData);
+      setSuccessMessage('Event created successfully!');
+      setShowCreateCard(false);
+      setCreateForm({
+        name: '',
+        description: '',
+        starts_at: '',
+        ends_at: '',
+        address: '',
+        max_capacity: '',
+        price_per_person: '',
+        registration_deadline: '',
+        status: 'Registration Open' as EventStatus,
+      });
     } catch (error: any) {
-      setTestError(error.message || 'Failed to test get_events endpoint');
-      console.error('Test error:', error);
+      setErrorMessage(error.message || 'Failed to create event');
     }
   };
 
-  const isEventActive = (event: Event) => {
-    return event.status === 'Registration Open' || event.status === 'In Progress';
+  // Handle show/hide card with animation
+  const handleToggleCreateCard = () => {
+    if (showCreateCard) {
+      setAnimatingOut(true);
+      setTimeout(() => {
+        setShowCreateCard(false);
+        setAnimatingOut(false);
+      }, 600); // Match this with the transition duration
+    } else {
+      setShowCreateCard(true);
+    }
   };
 
   return (
@@ -238,36 +259,37 @@ const EventList = () => {
             Speed Dating Events
           </Typography>
           <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button
-              variant="outlined"
-              color="secondary"
-              onClick={handleTestGetEvents}
-              size={isMobile ? 'small' : 'medium'}
-            >
-              Test Get Events
-            </Button>
             {(isAdmin() || isOrganizer()) && (
               <Button
                 variant="contained"
-                startIcon={<EventIcon />}
-                onClick={() => setShowCreateCard((prev) => !prev)}
+                startIcon={showCreateCard || animatingOut ? <CancelIcon /> : <EventIcon />}
+                onClick={handleToggleCreateCard}
                 size={isMobile ? 'small' : 'medium'}
               >
-                Create Event
+                {showCreateCard || animatingOut ? 'Cancel' : 'Create Event'}
               </Button>
             )}
           </Box>
         </Box>
 
         {/* Create Event Card */}
-        {showCreateCard && (
-          <Grid container spacing={2} sx={{ mb: 2 }}>
+        <Box sx={{
+          overflow: 'hidden',
+          maxHeight: (showCreateCard || animatingOut) ? '1000px' : '0px',
+          transition: `max-height 0.6s cubic-bezier(${animatingOut ? '1, 0, 0.825, 0.115' : '0.175, 0.885, 0.32, 1.275'}), 
+                       opacity 0.4s ease-in-out, 
+                       transform 0.6s cubic-bezier(${animatingOut ? '1, 0, 0.825, 0.115' : '0.175, 0.885, 0.32, 1.275'})`,
+          opacity: animatingOut ? 0 : showCreateCard ? 1 : 0,
+          transform: animatingOut ? 'scale(0.95)' : showCreateCard ? 'scale(1)' : 'scale(0.95)',
+          transformOrigin: 'top center',
+          mb: showCreateCard ? 2 : 0
+        }}>
+          <Grid container spacing={2}>
             <Grid item xs={12}>
               <Card sx={{
                 borderRadius: 2,
                 boxShadow: theme.shadows[2],
                 transition: 'transform 0.2s, box-shadow 0.2s',
-                mb: 2,
                 '&:hover': {
                   transform: 'translateY(-2px)',
                   boxShadow: theme.shadows[4],
@@ -296,34 +318,12 @@ const EventList = () => {
                         }}
                       />
                     </Typography>
-                    <select
-                      value={createForm.status}
-                      onChange={e => setCreateForm(f => ({ ...f, status: e.target.value as EventStatus }))}
-                      style={{
-                        border: 'none',
-                        outline: 'none',
-                        borderRadius: 16,
-                        padding: '2px 12px',
-                        fontWeight: 600,
-                        fontSize: '0.75rem',
-                        background: getStatusChipColor(createForm.status, theme),
-                        color: getStatusChipTextColor(createForm.status, theme),
-                        marginLeft: 8,
-                        minWidth: 100,
-                        textAlign: 'center',
-                        boxShadow: theme.shadows[1],
-                        appearance: 'none',
-                        WebkitAppearance: 'none',
-                        MozAppearance: 'none',
-                        cursor: 'pointer',
-                        transition: 'background 0.2s',
-                      }}
-                    >
-                      <option value="Registration Open">Registration Open</option>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Completed">Completed</option>
-                      <option value="Cancelled">Cancelled</option>
-                    </select>
+                    <Chip
+                      label="Registration Open"
+                      color="success"
+                      size="small"
+                      sx={{ fontWeight: 600, fontSize: '0.75rem' }}
+                    />
                   </Box>
                   <input
                     type="text"
@@ -389,24 +389,20 @@ const EventList = () => {
                     />
                   </Box>
                 </CardContent>
+                <CardActions>
+                  <Button 
+                    variant="contained" 
+                    color="primary" 
+                    fullWidth
+                    onClick={handleCreateEvent}
+                  >
+                    Create Event
+                  </Button>
+                </CardActions>
               </Card>
             </Grid>
           </Grid>
-        )}
-
-        {testError && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setTestError(null)}>
-            {testError}
-          </Alert>
-        )}
-
-        {testResponse && (
-          <Alert severity="info" sx={{ mb: 2 }} onClose={() => setTestResponse(null)}>
-            <Typography variant="body2" component="pre" sx={{ whiteSpace: 'pre-wrap' }}>
-              {JSON.stringify(testResponse, null, 2)}
-            </Typography>
-          </Alert>
-        )}
+        </Box>
 
         {successMessage && (
           <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage(null)}>
@@ -442,7 +438,7 @@ const EventList = () => {
                       {event.name}
                     </Typography>
                     <Chip
-                      label={getStatusLabel(event.status)}
+                      label={event.status}
                       color={getStatusColor(event.status) as any}
                       size="small"
                       sx={{ 
@@ -488,8 +484,7 @@ const EventList = () => {
                   flexDirection: isMobile ? 'column' : 'row',
                   gap: 1
                 }}>
-                  {user?.role_id === ROLES.ATTENDEE.id ? (
-                    event.status === 'Registration Open' ? (
+                  {event.status === 'Registration Open' ? (
                       <Button
                         fullWidth={isMobile}
                         variant="contained"
@@ -512,15 +507,7 @@ const EventList = () => {
                         Cancel Registration
                       </Button>
                     )
-                  ) : (
-                    <Box sx={{ 
-                      display: 'grid', 
-                      gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(150px, 1fr))',
-                      gap: 1,
-                      width: '100%'
-                    }}>
-                    </Box>
-                  )}
+                  }
                 </CardActions>
               </Card>
             </Grid>

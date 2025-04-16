@@ -9,7 +9,6 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import EventList from './components/events/EventList';
-import EventForm from './components/events/EventForm';
 import PrivateRoute from './components/routing/PrivateRoute';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { EventProvider } from './context/EventContext';
@@ -134,22 +133,6 @@ const ProtectedRoutes = () => {
               <PrivateRoute>
                 <AnimatedWrapper>
                   <UserManagement />
-                </AnimatedWrapper>
-              </PrivateRoute>
-            }
-          />
-        </>
-      )}
-
-      {/* Admin and Organizer specific routes */}
-      {(user?.role_id === ROLES.ADMIN.id || user?.role_id === ROLES.ORGANIZER.id) && (
-        <>
-          <Route
-            path="/events/new"
-            element={
-              <PrivateRoute>
-                <AnimatedWrapper>
-                  <EventForm />
                 </AnimatedWrapper>
               </PrivateRoute>
             }
