@@ -7,7 +7,7 @@ interface EventContextType {
   events: Event[];
   loading: boolean;
   error: string | null;
-  createEvent: (eventData: Omit<Event, 'id' | 'creator_id' | 'updated_at' | 'created_at'>) => Promise<void>;
+  createEvent: (eventData: Omit<Event, 'id' | 'creator_id' | 'updated_at' | 'created_at' | 'registration_deadline'>) => Promise<void>;
   refreshEvents: () => Promise<void>;
 }
 
@@ -50,7 +50,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     fetchEvents();
   }, [user]); // Add user as a dependency
 
-  const createEvent = async (eventData: Omit<Event, 'id' | 'creator_id' | 'updated_at' | 'created_at'>) => {
+  const createEvent = async (eventData: Omit<Event, 'id' | 'creator_id' | 'updated_at' | 'created_at' | 'registration_deadline'>) => {
     setLoading(true);
     setError(null);
     try {

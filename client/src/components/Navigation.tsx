@@ -30,6 +30,7 @@ import {
   People as PeopleIcon,
   Note as NoteIcon,
   Menu as MenuIcon,
+  Home as HomeIcon,
 } from '@mui/icons-material';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import TodayIcon from '@mui/icons-material/Today';
@@ -147,8 +148,8 @@ const Navigation = () => {
 
     const items = [
       {
-        label: 'Events',
-        icon: <EventAvailableIcon />,
+        label: 'Home',
+        icon: <HomeIcon />,
         to: '/events',
         show: true,
       },
