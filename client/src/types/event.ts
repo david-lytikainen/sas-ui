@@ -3,12 +3,11 @@ export type EventStatus = 'Registration Open' | 'In Progress' | 'Completed' | 'C
 export interface Event {
   id: number;
   name: string;
-  description: string | null;
+  description?: string;
   creator_id: number;
   starts_at: string;
-  ends_at: string;
   address: string;
-  max_capacity: number;
+  max_capacity: string;
   status: EventStatus;
   price_per_person: string;
   registration_deadline: string;

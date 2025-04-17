@@ -223,7 +223,7 @@ const realAuthApi = {
 
 interface EventsApi {
   getAll: () => Promise<Event[]>;
-  create: (eventData: Omit<Event, 'id' | 'creator_id' | 'created_at' | 'updated_at'>) => Promise<Event>;
+  create: (eventData: Omit<Event, 'id' | 'creator_id' | 'created_at' | 'updated_at' | 'registration_deadline'>) => Promise<Event>;
   registerForEvent: (eventId: string) => Promise<User>;
   cancelRegistration: (eventId: string) => Promise<{ message: string }>;
   testGetEvents: () => Promise<Event[]>;
@@ -237,7 +237,7 @@ const realEventsApi: EventsApi = {
   },
 
   create: async (eventData) => {
-    const response = await api.post('/events', eventData);
+    const response = await api.post('/events/create', eventData);
     return response.data;
   },
 
