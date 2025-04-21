@@ -29,13 +29,12 @@ import { eventsApi } from '../../services/api';
 import { Event, EventStatus } from '../../types/event';
 
 const EventList = () => {
-  const { events: contextEvents, createEvent } = useEvents();
+  const { events: contextEvents, createEvent, refreshEvents, isRegisteredForEvent } = useEvents();
   const { isAdmin, isOrganizer } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [signUpDialogOpen, setSignUpDialogOpen] = useState(false);
   const [signUpEventId, setSignUpEventId] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelEventId, setCancelEventId] = useState<string | null>(null);
@@ -77,10 +76,10 @@ const EventList = () => {
     if (signUpEventId) {
       try {
         await eventsApi.registerForEvent(signUpEventId);
-        setSuccessMessage('Successfully signed up for the event!');
         setSignUpDialogOpen(false);
         setSignUpEventId(null);
-        setTimeout(() => setSuccessMessage(null), 10000);
+        // Refresh events to update registration status
+        await refreshEvents();
       } catch (error: any) {
         setErrorMessage(error.message || 'Failed to sign up for the event');
       }
@@ -90,6 +89,20 @@ const EventList = () => {
   const handleCancelClick = (eventId: number) => {
     setCancelEventId(eventId.toString());
     setCancelDialogOpen(true);
+  };
+
+  const handleCancelConfirm = async () => {
+    if (cancelEventId) {
+      try {
+        await eventsApi.cancelRegistration(cancelEventId);
+        setCancelDialogOpen(false);
+        setCancelEventId(null);
+        // Refresh events to update registration status
+        await refreshEvents();
+      } catch (error: any) {
+        setErrorMessage(error.message || 'Failed to cancel registration');
+      }
+    }
   };
 
   const getStatusColor = (status: EventStatus) => {
@@ -151,7 +164,6 @@ const EventList = () => {
       };
       
       await createEvent(eventData);
-      setSuccessMessage('Event created successfully!');
       setShowCreateCard(false);
       setCreateForm({
         name: '',
@@ -466,12 +478,6 @@ const EventList = () => {
           </Grid>
         </Box>
 
-        {successMessage && (
-          <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage(null)}>
-            {successMessage}
-          </Alert>
-        )}
-
         {errorMessage && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErrorMessage(null)}>
             {errorMessage}
@@ -547,30 +553,38 @@ const EventList = () => {
                   flexDirection: isMobile ? 'column' : 'row',
                   gap: 1
                 }}>
-                  {event.status === 'Registration Open' ? (
-                      <Button
-                        fullWidth={isMobile}
-                        variant="contained"
-                        color="primary"
-                        startIcon={<SignUpIcon />}
-                        onClick={() => handleSignUpClick(event.id)}
-                        size={isMobile ? 'small' : 'medium'}
-                      >
-                        Register
-                      </Button>
-                    ) : (
-                      <Button
-                        fullWidth={isMobile}
-                        variant="outlined"
-                        color="error"
-                        startIcon={<CancelIcon />}
-                        onClick={() => handleCancelClick(event.id)}
-                        size={isMobile ? 'small' : 'medium'}
-                      >
-                        Cancel Registration
-                      </Button>
-                    )
-                  }
+                  {event.status === 'Registration Open' && !isRegisteredForEvent(event.id) ? (
+                    <Button
+                      fullWidth={isMobile}
+                      variant="contained"
+                      color="primary"
+                      startIcon={<SignUpIcon />}
+                      onClick={() => handleSignUpClick(event.id)}
+                      size={isMobile ? 'small' : 'medium'}
+                    >
+                      Register
+                    </Button>
+                  ) : isRegisteredForEvent(event.id) ? (
+                    <Button
+                      fullWidth={isMobile}
+                      variant="outlined"
+                      color="error"
+                      startIcon={<CancelIcon />}
+                      onClick={() => handleCancelClick(event.id)}
+                      size={isMobile ? 'small' : 'medium'}
+                    >
+                      Cancel Registration
+                    </Button>
+                  ) : (
+                    <Button
+                      fullWidth={isMobile}
+                      variant="outlined"
+                      disabled
+                      size={isMobile ? 'small' : 'medium'}
+                    >
+                      {event.status}
+                    </Button>
+                  )}
                 </CardActions>
               </Card>
             </Grid>
@@ -596,6 +610,22 @@ const EventList = () => {
             <Button onClick={() => setSignUpDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSignUpConfirm} color="primary" variant="contained">
               Sign Up
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={cancelDialogOpen}
+          onClose={() => setCancelDialogOpen(false)}
+        >
+          <DialogTitle>Cancel Event Registration</DialogTitle>
+          <DialogContent>
+            Are you sure you want to cancel your registration for this event?
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setCancelDialogOpen(false)}>No</Button>
+            <Button onClick={handleCancelConfirm} color="error" variant="contained">
+              Yes, Cancel Registration
             </Button>
           </DialogActions>
         </Dialog>

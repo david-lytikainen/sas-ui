@@ -226,7 +226,7 @@ const realAuthApi = {
 interface EventsApi {
   getAll: () => Promise<Event[]>;
   create: (eventData: Omit<Event, 'id' | 'creator_id' | 'created_at' | 'updated_at' | 'registration_deadline'>) => Promise<Event>;
-  registerForEvent: (eventId: string) => Promise<User>;
+  registerForEvent: (eventId: string) => Promise<{ message: string }>;
   cancelRegistration: (eventId: string) => Promise<{ message: string }>;
   testGetEvents: () => Promise<Event[]>;
 }
