@@ -7,8 +7,15 @@ interface EventContextType {
   events: Event[];
   loading: boolean;
   error: string | null;
+  userRegisteredEvents: number[];
   createEvent: (eventData: Omit<Event, 'id' | 'creator_id' | 'updated_at' | 'created_at' | 'registration_deadline'>) => Promise<void>;
   refreshEvents: () => Promise<void>;
+  isRegisteredForEvent: (eventId: number) => boolean;
+}
+
+interface EventsResponse {
+  events?: Event[];
+  registrations?: Array<{event_id: number}>;
 }
 
 const EventContext = createContext<EventContextType | undefined>(undefined);
@@ -23,6 +30,7 @@ export const useEvents = () => {
 
 export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [events, setEvents] = useState<Event[]>([]);
+  const [userRegisteredEvents, setUserRegisteredEvents] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user, isAdmin, isOrganizer } = useAuth();
@@ -38,8 +46,20 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       setLoading(true);
       try {
-        const data = await eventsApi.getAll();
-        setEvents(data);
+        const response = await eventsApi.getAll();
+        const data = response as EventsResponse;
+        
+        if (Array.isArray(data)) {
+          // If it's just an array of events
+          setEvents(data);
+        } else if (data.events) {
+          // If it has events and registrations
+          setEvents(data.events);
+          
+          if (data.registrations) {
+            setUserRegisteredEvents(data.registrations.map(reg => reg.event_id));
+          }
+        }
       } catch (err: any) {
         setError(err.message || 'Failed to fetch events');
       } finally {
@@ -72,13 +92,29 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const refreshEvents = async () => {
     setLoading(true);
     try {
-      const data = await eventsApi.getAll();
-      setEvents(data);
+      const response = await eventsApi.getAll();
+      const data = response as EventsResponse;
+      
+      if (Array.isArray(data)) {
+        // If it's just an array of events
+        setEvents(data);
+      } else if (data.events) {
+        // If it has events and registrations
+        setEvents(data.events);
+        
+        if (data.registrations) {
+          setUserRegisteredEvents(data.registrations.map(reg => reg.event_id));
+        }
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to refresh events');
     } finally {
       setLoading(false);
     }
+  };
+  
+  const isRegisteredForEvent = (eventId: number): boolean => {
+    return userRegisteredEvents.includes(eventId);
   };
 
   return (
@@ -87,8 +123,10 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         events,
         loading,
         error,
+        userRegisteredEvents,
         createEvent,
         refreshEvents,
+        isRegisteredForEvent,
       }}
     >
       {children}
