@@ -18,35 +18,13 @@ import { useAuth } from '../context/AuthContext';
 import { ColorModeContext } from '../context/ColorModeContext';
 import useHoverAnimation from '../hooks/useHoverAnimation';
 import {
-  Event as EventIcon,
-  CalendarMonth as CalendarMonthIcon,
-  Favorite as FavoriteIcon,
-  Notes as NotesIcon,
-  HowToReg as CheckInIcon,
-  CalendarToday as CalendarTodayIcon,
   HowToReg as HowToRegIcon,
-  Person as PersonIcon,
   ExitToApp as ExitIcon,
-  People as PeopleIcon,
-  Note as NoteIcon,
-  Menu as MenuIcon,
   Home as HomeIcon,
 } from '@mui/icons-material';
-import EventAvailableIcon from '@mui/icons-material/EventAvailable';
-import TodayIcon from '@mui/icons-material/Today';
-import CelebrationIcon from '@mui/icons-material/Celebration';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 
-const AnimatedButton = animated(Button);
 const AnimatedIconButton = animated(IconButton);
 const AnimatedBox = animated(Box);
-const AnimatedTypography = animated(Typography);
-
-const ROLES = {
-  ADMIN: { id: 1, name: 'admin', permission_level: 100 },
-  ORGANIZER: { id: 2, name: 'organizer', permission_level: 50 },
-  ATTENDEE: { id: 3, name: 'attendee', permission_level: 10 },
-} as const;
 
 const Navigation = () => {
   const { user, logout, isAdmin, isOrganizer } = useAuth();
@@ -54,42 +32,6 @@ const Navigation = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const colorMode = useContext(ColorModeContext);
-
-  const buttonHover = useHoverAnimation({ 
-    scale: 1.02,
-    lift: 2,
-    config: { 
-      tension: 340,
-      friction: 25,
-      mass: 1
-    }
-  });
-  
-  const iconHover = useHoverAnimation({ 
-    scale: 1.08,
-    rotation: 180,
-    config: { 
-      tension: 320,
-      friction: 20,
-      mass: 0.8
-    }
-  });
-  
-  const logoSpring = useSpring({
-    from: { scale: 1, rotate: 0 },
-    to: async (next) => {
-      while (true) {
-        await next({ scale: 1.02, rotate: 2 });
-        await next({ scale: 1, rotate: 0 });
-      }
-    },
-    config: {
-      tension: 300,
-      friction: 10,
-      mass: 1
-    },
-    pause: true,
-  });
 
   const [logoHovered, setLogoHovered] = useState(false);
 
@@ -157,7 +99,7 @@ const Navigation = () => {
         label: 'Check-in',
         icon: <HowToRegIcon />,
         to: '/check-in',
-        show: user.role_id === ROLES.ADMIN.id || user.role_id === ROLES.ORGANIZER.id,
+        show: isAdmin() || isOrganizer(),
       },
     ];
 
@@ -216,11 +158,11 @@ const Navigation = () => {
                   },
                 }}
               >
-                SAS-UI
+                S&S
               </Typography>
             </AnimatedBox>
 
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', gap: isMobile ? 1 : 2, alignItems: 'center' }}>
               {trail.map(({ y, opacity }, index) => (
                 <animated.div 
                   key={navItems[index].to} 
@@ -250,7 +192,11 @@ const Navigation = () => {
                       display: 'flex',
                       alignItems: 'center',
                       height: '100%',
-                      padding: '8px 16px',
+                      padding: isMobile ? '6px 8px' : '8px 16px',
+                      minWidth: isMobile ? 'auto' : undefined,
+                      '& .MuiButton-startIcon': {
+                        marginRight: isMobile ? 0 : 2,
+                      },
                     }}
                   >
                     {!isMobile && (
@@ -260,6 +206,7 @@ const Navigation = () => {
                           color: 'inherit',
                           fontSize: '0.875rem',
                           lineHeight: 1.5,
+                          ml: -0.5,
                         }}
                       >
                         {navItems[index].label}

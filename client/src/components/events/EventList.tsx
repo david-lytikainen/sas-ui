@@ -205,7 +205,7 @@ const EventList = () => {
             {(isAdmin() || isOrganizer()) && (
               <Button
                 variant="contained"
-                startIcon={showCreateCard ? <CancelIcon /> : <EventIcon />}
+                startIcon={isMobile ? undefined : (showCreateCard ? <CancelIcon /> : <EventIcon />)}
                 onClick={handleToggleCreateCard}
                 size={isMobile ? 'small' : 'medium'}
               >
@@ -311,7 +311,7 @@ const EventList = () => {
                         }
                       }}>
                         <Box sx={{ 
-                          display: 'flex', 
+                          display: isMobile ? 'none' : 'flex', 
                           alignItems: 'center', 
                           p: 1,
                           color: theme.palette.text.secondary
@@ -328,7 +328,7 @@ const EventList = () => {
                             outline: 'none',
                             background: 'transparent',
                             color: theme.palette.text.primary,
-                            padding: '8px 12px 8px 0',
+                            padding: isMobile ? '8px 12px 8px 12px' : '8px 12px 8px 0',
                             fontSize: '0.9rem',
                             colorScheme: theme.palette.mode
                           }}
@@ -338,8 +338,8 @@ const EventList = () => {
                     </Box>
                     <Box sx={{ display: 'flex', gap: 2, mb: 1, flexWrap: 'wrap' }}>
                       <Box sx={{ 
-                        flex: 2, 
-                        minWidth: 180, 
+                        flex: 2,
+                        minWidth: 180,
                         display: 'flex', 
                         alignItems: 'center',
                         border: `1px solid ${theme.palette.divider}`,
@@ -347,10 +347,13 @@ const EventList = () => {
                         overflow: 'hidden',
                         '&:focus-within': {
                           borderColor: theme.palette.primary.main,
-                        }
+                        },
+                        ...(isMobile && {
+                          minWidth: '100%'
+                        })
                       }}>
                         <Box sx={{ 
-                          display: 'flex', 
+                          display: isMobile ? 'none' : 'flex', 
                           alignItems: 'center', 
                           p: 1,
                           color: theme.palette.text.secondary
@@ -368,7 +371,7 @@ const EventList = () => {
                             outline: 'none',
                             background: 'transparent',
                             color: theme.palette.text.primary,
-                            padding: '8px 0',
+                            padding: isMobile ? '8px 12px' : '8px 0',
                             fontSize: '0.9rem'
                           }}
                           required
@@ -387,7 +390,7 @@ const EventList = () => {
                         }
                       }}>
                         <Box sx={{ 
-                          display: 'flex', 
+                          display: isMobile ? 'none' : 'flex', 
                           alignItems: 'center', 
                           p: 1,
                           color: theme.palette.text.secondary
@@ -405,7 +408,7 @@ const EventList = () => {
                             outline: 'none',
                             background: 'transparent',
                             color: theme.palette.text.primary,
-                            padding: '8px 12px 8px 0',
+                            padding: isMobile ? '8px 12px' : '8px 12px 8px 0',
                             fontSize: '0.9rem',
                             colorScheme: theme.palette.mode
                           }}
@@ -425,7 +428,7 @@ const EventList = () => {
                         }
                       }}>
                         <Box sx={{ 
-                          display: 'flex', 
+                          display: isMobile ? 'none' : 'flex', 
                           alignItems: 'center', 
                           p: 1,
                           color: theme.palette.text.secondary
@@ -443,7 +446,7 @@ const EventList = () => {
                             outline: 'none',
                             background: 'transparent',
                             color: theme.palette.text.primary,
-                            padding: '8px 12px 8px 0',
+                            padding: isMobile ? '8px 12px' : '8px 12px 8px 0',
                             fontSize: '0.9rem',
                             colorScheme: theme.palette.mode
                           }}
