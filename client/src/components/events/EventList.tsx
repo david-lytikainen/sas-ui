@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Container,
   Box,
@@ -131,23 +131,27 @@ const EventList = () => {
     });
   };
 
-  // Sort events by status priority and date
+  // Sort events like a SQL database would
   const sortedEvents = [...events].sort((a, b) => {
-    const statusPriority: Record<EventStatus, number> = {
-      'In Progress': 0,
-      'Registration Open': 1,
-      'Completed': 2,
-      'Cancelled': 3
+    // First by status using the statusPriority
+    const statusOrder: Record<EventStatus, number> = {
+      'In Progress': 1,
+      'Registration Open': 2,
+      'Completed': 3,
+      'Cancelled': 4
     };
     
-    const priorityA = statusPriority[a.status];
-    const priorityB = statusPriority[b.status];
+    // Primary sort by status
+    const statusCompare = statusOrder[a.status] - statusOrder[b.status];
+    if (statusCompare !== 0) return statusCompare;
     
-    if (priorityA !== priorityB) {
-      return priorityA - priorityB;
-    }
+    // Secondary sort by starts_at date string (direct string comparison)
+    // This is more like how SQL would compare date strings in ORDER BY
+    if (a.starts_at < b.starts_at) return 1;
+    if (a.starts_at > b.starts_at) return -1;
     
-    return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+    // If both status and date are equal, sort by ID for consistent order
+    return a.id - b.id;
   });
 
   const handleCreateEvent = async () => {
