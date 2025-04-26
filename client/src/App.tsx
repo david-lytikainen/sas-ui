@@ -16,7 +16,6 @@ import Navigation from './components/Navigation';
 import { ColorModeContext } from './context/ColorModeContext';
 import SystemSettings from './components/profile/SystemSettings';
 import AnimatedWrapper from './components/common/AnimatedWrapper';
-import UserManagement from './components/admin/UserManagement';
 
 // Add global styles for animations
 const GlobalStyles = {
@@ -116,22 +115,6 @@ const ProtectedRoutes = () => {
           </PrivateRoute>
         }
       />
-
-      {/* Admin routes - only accessible to admins */}
-      {isAdmin() && (
-        <>
-          <Route
-            path="/admin/users"
-            element={
-              <PrivateRoute>
-                <AnimatedWrapper>
-                  <UserManagement />
-                </AnimatedWrapper>
-              </PrivateRoute>
-            }
-          />
-        </>
-      )}
       
       {/* Routes available to all user roles */}
       <Route
