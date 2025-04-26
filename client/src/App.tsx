@@ -10,7 +10,7 @@ import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import EventList from './components/events/EventList';
 import PrivateRoute from './components/routing/PrivateRoute';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 import { EventProvider } from './context/EventContext';
 import Navigation from './components/Navigation';
 import { ColorModeContext } from './context/ColorModeContext';
@@ -97,7 +97,6 @@ const GlobalStyles = {
 
 // Create a separate component for the protected routes
 const ProtectedRoutes = () => {
-  const { isAdmin } = useAuth();
   
   return (
     <Routes>
