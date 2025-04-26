@@ -22,12 +22,14 @@ jobs:
           pwd
           ls
           cd client
+          ls
           npm install
 
       - name: Build React app
         run: |
           pwd 
           ls
+          cd client
           npm run build
 
       - name: Upload build artifacts
