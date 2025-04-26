@@ -19,13 +19,15 @@ jobs:
 
       - name: Install dependencies
         run: |
-          echo "we chillin"
+          pwd
+          ls
           cd client
           npm install
 
       - name: Build React app
         run: |
-          echo "test test"
+          pwd 
+          ls
           npm run build
 
       - name: Upload build artifacts
