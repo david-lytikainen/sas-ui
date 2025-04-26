@@ -19,7 +19,6 @@ import {
   MenuItem,
   InputLabel,
   SelectChangeEvent,
-  FormHelperText,
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';

@@ -73,7 +73,6 @@ const UserManagement: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<User>>({});
-  const [createFormData, setCreateFormData] = useState<Partial<User>>({});
 
   useEffect(() => {
     const fetchData = async () => {

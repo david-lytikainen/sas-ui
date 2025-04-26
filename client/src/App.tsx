@@ -96,16 +96,9 @@ const GlobalStyles = {
   },
 };
 
-// Role constants
-const ROLES = {
-  ADMIN: { id: 1, name: 'admin', permission_level: 100 },
-  ORGANIZER: { id: 2, name: 'organizer', permission_level: 50 },
-  ATTENDEE: { id: 3, name: 'attendee', permission_level: 10 },
-} as const;
-
 // Create a separate component for the protected routes
 const ProtectedRoutes = () => {
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   
   return (
     <Routes>
@@ -125,7 +118,7 @@ const ProtectedRoutes = () => {
       />
 
       {/* Admin routes - only accessible to admins */}
-      {user?.role_id === ROLES.ADMIN.id && (
+      {isAdmin() && (
         <>
           <Route
             path="/admin/users"
@@ -178,7 +171,7 @@ function App() {
       },
       mode,
     }),
-    []
+    [mode]
   );
 
   const theme = useMemo(

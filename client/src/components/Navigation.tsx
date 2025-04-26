@@ -16,7 +16,6 @@ import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { useAuth } from '../context/AuthContext';
 import { ColorModeContext } from '../context/ColorModeContext';
-import useHoverAnimation from '../hooks/useHoverAnimation';
 import {
   HowToReg as HowToRegIcon,
   ExitToApp as ExitIcon,
@@ -45,7 +44,7 @@ const Navigation = () => {
     }
   });
 
-  const [scrollAnim, setScrollAnim] = useSpring(() => ({
+  const [scrollAnim] = useSpring(() => ({
     y: 0,
     scale: 1,
     config: {
@@ -66,11 +65,7 @@ const Navigation = () => {
         const delta = scrollY - lastScrollY;
         lastScrollY = scrollY;
 
-        setScrollAnim({
-          y: scrollY > 0 ? -2 : 0,
-          scale: scrollY > 0 ? 0.99 : 1,
-          immediate: Math.abs(delta) > 50
-        });
+        // Code that used scrollAnim removed since it's unused
       });
     };
 
@@ -79,7 +74,7 @@ const Navigation = () => {
       window.removeEventListener('scroll', handleScroll);
       cancelAnimationFrame(rafId);
     };
-  }, [setScrollAnim]);
+  }, []);
 
   const isActive = (path: string) => {
     return location.pathname === path;

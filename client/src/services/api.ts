@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { AuthResponse, TokenValidationResponse, User } from '../types/user';
+import { AuthResponse, TokenValidationResponse } from '../types/user';
 import { Event } from '../types/event';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
