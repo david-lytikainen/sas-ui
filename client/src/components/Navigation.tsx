@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useState } from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import {
   AppBar,
@@ -11,12 +11,11 @@ import {
   useTheme,
   useMediaQuery,
 } from '@mui/material';
-import { animated, useSpring, useTrail, config } from '@react-spring/web';
+import { animated, useSpring, useTrail } from '@react-spring/web';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { useAuth } from '../context/AuthContext';
 import { ColorModeContext } from '../context/ColorModeContext';
-import useHoverAnimation from '../hooks/useHoverAnimation';
 import {
   HowToReg as HowToRegIcon,
   ExitToApp as ExitIcon,
@@ -44,42 +43,6 @@ const Navigation = () => {
       mass: 1
     }
   });
-
-  const [scrollAnim, setScrollAnim] = useSpring(() => ({
-    y: 0,
-    scale: 1,
-    config: {
-      ...config.gentle,
-      tension: 200,
-      friction: 25,
-      mass: 1
-    }
-  }));
-
-  useEffect(() => {
-    let lastScrollY = window.scrollY;
-    let rafId: number;
-
-    const handleScroll = () => {
-      rafId = requestAnimationFrame(() => {
-        const scrollY = window.scrollY;
-        const delta = scrollY - lastScrollY;
-        lastScrollY = scrollY;
-
-        setScrollAnim({
-          y: scrollY > 0 ? -2 : 0,
-          scale: scrollY > 0 ? 0.99 : 1,
-          immediate: Math.abs(delta) > 50
-        });
-      });
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      cancelAnimationFrame(rafId);
-    };
-  }, [setScrollAnim]);
 
   const isActive = (path: string) => {
     return location.pathname === path;

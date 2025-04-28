@@ -1,0 +1,87 @@
+name: Build and Deploy sas-ui
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get latest code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          pwd
+          ls
+          cd client
+          ls
+          npm install
+
+      - name: Build React app
+        run: |
+          pwd 
+          ls
+          cd client
+          npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: react-build
+          path: client/build
+
+  deploy-dev:
+    name: Deploy to dev
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: react-build
+          path: build
+
+      - name: Deploy to Dev server
+        run: |
+          scp -r build/ ubuntu@<dev-server-ip>:/path/to/dev/frontend/
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
+
+      - name: Reload Nginx on Dev
+        run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@<dev-server-ip> "sudo systemctl reload nginx"
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
+
+  deploy-prod:
+    name: Deploy to Prod Server
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: react-build
+          path: build
+
+      - name: Deploy to Prod server
+        run: |
+          scp -r build/ ubuntu@<prod-server-ip>:/path/to/prod/frontend/
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
+
+      - name: Reload Nginx on Prod
+        run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@<prod-server-ip> "sudo systemctl reload nginx"
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
