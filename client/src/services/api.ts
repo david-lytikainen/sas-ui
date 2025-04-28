@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { AuthResponse, TokenValidationResponse, User } from '../types/user';
+import { AuthResponse, TokenValidationResponse} from '../types/user';
 import { Event } from '../types/event';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
@@ -205,9 +205,13 @@ const realAuthApi = {
   },
   
   updateUser: async (userId: string, userData: any) => {
-    // This would call a backend endpoint to update a user
-    // For now, return the userData
-    return { ...userData, id: userId };
+    try {
+      const response = await api.patch(`/user/users/${userId}`, userData);
+      return response.data.user;
+    } catch (error) {
+      console.error('Error updating user:', error);
+      throw error;
+    }
   },
   
   createUser: async (userData: any) => {
@@ -225,10 +229,58 @@ const realAuthApi = {
 
 interface EventsApi {
   getAll: () => Promise<Event[]>;
+  getById: (eventId: string) => Promise<Event>;
   create: (eventData: Omit<Event, 'id' | 'creator_id' | 'created_at' | 'updated_at' | 'registration_deadline'>) => Promise<Event>;
   registerForEvent: (eventId: string) => Promise<{ message: string }>;
   cancelRegistration: (eventId: string) => Promise<{ message: string }>;
+  checkIn: (eventId: string, pin: string) => Promise<{ message: string }>;
   testGetEvents: () => Promise<Event[]>;
+  updateEventStatus: (eventId: string, status: string) => Promise<{ message: string }>;
+  getEventAttendeePins: (eventId: string) => Promise<{ data: {name: string, email: string, pin: string, status: string}[] }>;
+  getEventAttendees: (eventId: string) => Promise<{ data: {
+    id: number,
+    name: string,
+    email: string,
+    first_name: string,
+    last_name: string,
+    birthday: string,
+    age: number,
+    gender: string,
+    phone: string,
+    registration_date: string,
+    check_in_date: string | null,
+    status: string,
+    pin: string
+  }[] }>;
+  updateAttendeeDetails: (eventId: string, attendeeId: string, data: {
+    pin?: string,
+    first_name?: string,
+    last_name?: string,
+    email?: string,
+    phone?: string,
+    gender?: string,
+    birthday?: string
+  }) => Promise<{ message: string, updated_fields: string[] }>;
+  getSchedule: (eventId: string) => Promise<{ 
+    schedule: Array<{
+      round: number,
+      table: number,
+      partner_id: number,
+      partner_name: string,
+      partner_age: number
+    }> 
+  }>;
+  getAllSchedules: (eventId: string) => Promise<{ 
+    schedules: Record<number, Array<{
+      round: number,
+      table: number,
+      partner_id: number,
+      partner_name: string,
+      partner_age: number
+    }>> 
+  }>;
+  startEvent: (eventId: string) => Promise<{ message: string }>;
+  resumeEvent: (eventId: string) => Promise<{ message: string }>;
 }
 
 const realEventsApi: EventsApi = {
@@ -236,6 +288,19 @@ const realEventsApi: EventsApi = {
     const response = await api.get('/events');
     console.log('getting events please...',response)
     return response.data;
+  },
+
+  getById: async (eventId: string) => {
+    try {
+      const response = await api.get(`/events/${eventId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Error fetching event with ID ${eventId}:`, error);
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error('Failed to fetch event details');
+    }
   },
 
   create: async (eventData) => {
@@ -250,6 +315,11 @@ const realEventsApi: EventsApi = {
 
   cancelRegistration: async (eventId: string) => {
     const response = await api.post(`/events/${eventId}/cancel-registration`);
+    return response.data;
+  },
+  
+  checkIn: async (eventId: string, pin: string) => {
+    const response = await api.post(`/events/${eventId}/check-in`, { pin });
     return response.data;
   },
 
@@ -270,8 +340,83 @@ const realEventsApi: EventsApi = {
       console.error('Error testing get_events:', error);
       throw error;
     }
-  }
+  },
   
+  updateEventStatus: async (eventId: string, status: string) => {
+    const response = await api.patch(`/events/${eventId}/status`, { status });
+    return response.data;
+  },
+  
+  getEventAttendeePins: async (eventId: string) => {
+    const response = await api.get(`/events/${eventId}/attendee-pins`);
+    return { data: response.data };
+  },
+  
+  getEventAttendees: async (eventId: string) => {
+    const response = await api.get(`/events/${eventId}/attendees`);
+    return { data: response.data };
+  },
+  
+  updateAttendeeDetails: async (eventId: string, attendeeId: string, data: any) => {
+    try {
+      const response = await api.patch(`/events/${eventId}/attendees/${attendeeId}`, data);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error('Failed to update attendee details');
+    }
+  },
+  
+  getSchedule: async (eventId: string) => {
+    try {
+      const response = await api.get(`/events/${eventId}/schedule`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error('Failed to retrieve schedule');
+    }
+  },
+  
+  getAllSchedules: async (eventId: string) => {
+    try {
+      const response = await api.get(`/events/${eventId}/all-schedules`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error('Failed to retrieve all schedules');
+    }
+  },
+  
+  startEvent: async (eventId: string) => {
+    try {
+      const response = await api.post(`/events/${eventId}/start`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error('Failed to start event');
+    }
+  },
+  
+  resumeEvent: async (eventId: string) => {
+    try {
+      // Use the updateEventStatus method to set the event back to "In Progress"
+      const response = await api.patch(`/events/${eventId}/status`, { status: 'In Progress' });
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error('Failed to resume event');
+    }
+  }
 };
 
 // Export the real API implementation

@@ -1,4 +1,4 @@
-export type EventStatus = 'Registration Open' | 'In Progress' | 'Completed' | 'Cancelled';
+export type EventStatus = 'Registration Open' | 'In Progress' | 'Completed' | 'Cancelled' | 'Paused';
 
 export interface Event {
   id: number;
@@ -11,4 +11,18 @@ export interface Event {
   status: EventStatus;
   price_per_person: string;
   registration_deadline: string;
+  registration?: {
+    status: string;
+    pin?: string;
+    registration_date?: string;
+    check_in_date?: string;
+  };
+}
+
+export interface ScheduleItem {
+  round: number;
+  table: number;
+  partner_id: number;
+  partner_name: string;
+  partner_age: number;
 }

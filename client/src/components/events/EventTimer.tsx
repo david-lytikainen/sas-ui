@@ -41,7 +41,7 @@ const formatTime = (seconds: number): string => {
 };
 
 const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus = 'In Progress' }) => {
-  // Only show timer for active events
+  // Only activate timer for active events
   const isEventActive = eventStatus === 'In Progress' || eventStatus === 'Paused';
   
   const [timerState, setTimerState] = useState<TimerState | null>(null);
@@ -56,13 +56,13 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
   const [isInitializing, setIsInitializing] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [notifiedZero, setNotifiedZero] = useState<boolean>(false);
+  const [isUsingApiFallback, setIsUsingApiFallback] = useState<boolean>(false);
   
   const socketRef = useRef<Socket | null>(null);
   const lastFetchTimeRef = useRef<number>(Date.now());
   const timerAudioRef = useRef<HTMLAudioElement | null>(null);
   const countdownIntervalRef = useRef<number | null>(null);
-  const timerEndTimeRef = useRef<number | null>(null);
-  const localTimerRef = useRef<number | null>(null);
+  const apiRequestInProgressRef = useRef<boolean>(false);
 
   // Create audio element for notifications
   useEffect(() => {
@@ -78,7 +78,7 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
-  // Function to fetch timer status directly via API - with much less frequency
+  // Function to fetch timer status directly via API - with debouncing
   const fetchTimerStatus = useCallback(async (force: boolean = false) => {
     // Don't fetch if event is not active
     if (!isEventActive) {
@@ -86,16 +86,23 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
       return;
     }
     
-    // Don't fetch too frequently unless forced
+    // Prevent concurrent API requests
+    if (apiRequestInProgressRef.current && !force) {
+      return;
+    }
+    
+    // Rate limiting - don't fetch too frequently unless forced
     const now = Date.now();
-    if (!force && now - lastFetchTimeRef.current < 60000) { // Only fetch once per minute unless forced
+    if (!force && now - lastFetchTimeRef.current < 120000) { // 2 minutes between regular refreshes 
       return;
     }
     
     lastFetchTimeRef.current = now;
+    apiRequestInProgressRef.current = true;
     
     try {
-      if (isLoading) {
+      // Only show loading indicator on initial load
+      if (isAdmin && isLoading) {
         setIsLoading(true);
       }
       
@@ -112,19 +119,13 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
       
       // Check if there was a valid response
       if (response.data) {
+        setIsUsingApiFallback(true);
+        
         if (isAdmin) {
           setTimerState(response.data);
           
           if (response.data.time_remaining !== undefined) {
             setTimeRemaining(response.data.time_remaining);
-            
-            // Calculate end time for local timer
-            if (response.data.status === 'active') {
-              timerEndTimeRef.current = Date.now() + (response.data.time_remaining * 1000);
-            } else {
-              timerEndTimeRef.current = null;
-            }
-            
             // Reset notification flag if we're not at zero
             if (response.data.time_remaining > 0) {
               setNotifiedZero(false);
@@ -135,7 +136,7 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
             setTimeRemaining(response.data.timer.round_duration);
           }
         } else {
-          // For regular users, just get round info
+          // For regular users, we just need round info
           setRoundInfo({
             has_timer: response.data.has_timer,
             status: response.data.status,
@@ -146,12 +147,11 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
         
         setError(null);
       } else {
-        throw new Error('Invalid response from timer API');
+        throw new Error('Invalid response data from timer API');
       }
     } catch (err: any) {
       console.error('Error fetching timer status:', err);
       
-      // More detailed error message for debugging
       const errorMessage = err.response 
         ? `Error ${err.response.status}: ${err.response.data?.error || err.message}` 
         : `Network error: ${err.message}`;
@@ -159,20 +159,22 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
       setError(`Failed to load timer. ${errorMessage}`);
     } finally {
       setIsLoading(false);
+      apiRequestInProgressRef.current = false;
     }
   }, [eventId, API_URL, isAdmin, isLoading, isEventActive]);
 
-  // Function to fetch round info only - with much less frequency
+  // Function to fetch round info only - for regular users
   const fetchRoundInfo = useCallback(async (force: boolean = false) => {
-    // Skip if admin or if event not active
-    if (isAdmin || !isEventActive) return;
+    // Skip if admin, if event is not active, or if request already in progress
+    if (isAdmin || !isEventActive || apiRequestInProgressRef.current) return;
     
     const now = Date.now();
-    if (!force && now - lastFetchTimeRef.current < 120000) { // Only fetch every 2 minutes unless forced
+    if (!force && now - lastFetchTimeRef.current < 60000) { // Once every 60 seconds
       return;
     }
     
     lastFetchTimeRef.current = now;
+    apiRequestInProgressRef.current = true;
     
     try {
       const token = localStorage.getItem('token');
@@ -199,6 +201,7 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
       setError(`Failed to load round info. ${errorMessage}`);
     } finally {
       setIsLoading(false);
+      apiRequestInProgressRef.current = false;
     }
   }, [eventId, API_URL, isAdmin, isEventActive]);
 
@@ -226,7 +229,7 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
 
       setTimerInitialized(true);
       
-      // Fetch timer status after initialization
+      // Fetch the timer status again after initialization
       await fetchTimerStatus(true);
     } catch (err: any) {
       console.error('Error initializing timer:', err);
@@ -289,79 +292,115 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
     }
   }, [soundEnabled, notifiedZero]);
 
-  // Initialize socket and fetch initial timer state when component mounts
+  // Initialize socket and join event room when component mounts
   useEffect(() => {
     if (!isEventActive) {
       setIsLoading(false);
       return;
     }
     
-    // Fetch initial timer state
+    // First, fetch the timer status via API (reliable way to get initial state)
     if (isAdmin) {
       fetchTimerStatus(true);
     } else {
       fetchRoundInfo(true);
     }
     
-    // Only admins need socket connections
+    // Setup socket connection only for admins
     if (isAdmin) {
-      try {
-        // Setup socket only if admin
-        socketRef.current = socketService.initSocket();
-        
-        // Join event room
-        socketRef.current.emit('join', { event_id: eventId });
-        
-        // Setup socket event handlers
-        socketRef.current.on('connect', () => {
-          setSocketConnected(true);
-          setError(null);
-          // Re-join room on reconnect
-          socketRef.current?.emit('join', { event_id: eventId });
+      const setupSocket = () => {
+        try {
+          // Force create a new socket connection
+          socketService.disconnectSocket();
+          const socket = socketService.initSocket();
+          socketRef.current = socket;
           
-          // Refresh timer data on connection
-          fetchTimerStatus(true);
-        });
+          // Join the event room
+          socket.emit('join', { event_id: eventId });
+          
+          socket.on('connect', () => {
+            setSocketConnected(true);
+            setIsUsingApiFallback(false);
+            setError(null);
+            
+            // Re-join room on reconnect
+            socket.emit('join', { event_id: eventId });
+            
+            // Immediately refresh timer data on connection
+            fetchTimerStatus(true);
+          });
 
-        socketRef.current.on('disconnect', () => {
-          setSocketConnected(false);
-        });
-        
-        // Listen for timer updates
-        socketRef.current.on('timer_update', (data: TimerState) => {
-          if (data) {
-            setTimerState(data);
+          socket.on('connect_error', (error: Error) => {
+            setSocketConnected(false);
+            setIsUsingApiFallback(true);
             
-            if (data.time_remaining !== undefined) {
-              setTimeRemaining(data.time_remaining);
+            const errorDetail = error instanceof Error ? error.message : 'Unknown error';
+            setError(`Connection error: ${errorDetail}. Using client-side timer.`);
+            
+            // Update the state one time when the socket fails
+            fetchTimerStatus(true);
+            // We don't set up polling here anymore
+          });
+
+          socket.on('disconnect', (reason) => {
+            setSocketConnected(false);
+            setIsUsingApiFallback(true);
+            
+            // Update the state one time when the socket disconnects
+            fetchTimerStatus(true);
+            // We don't set up polling here anymore
+          });
+          
+          // Subscribe to timer updates
+          socket.on('timer_update', (data: TimerState) => {
+            // Verify we received valid data
+            if (data) {
+              setTimerState(data);
+              setIsUsingApiFallback(false);
               
-              // Calculate end time for local timer
-              if (data.status === 'active') {
-                timerEndTimeRef.current = Date.now() + (data.time_remaining * 1000);
-              } else {
-                timerEndTimeRef.current = null;
+              if (data.time_remaining !== undefined) {
+                setTimeRemaining(data.time_remaining);
+                // Reset notification flag if we're not at zero
+                if (data.time_remaining > 0) {
+                  setNotifiedZero(false);
+                }
+              } else if (data.timer?.pause_time_remaining) {
+                setTimeRemaining(data.timer.pause_time_remaining);
+              } else if (data.timer?.round_duration) {
+                setTimeRemaining(data.timer.round_duration);
               }
               
-              // Reset notification flag if we're not at zero
-              if (data.time_remaining > 0) {
-                setNotifiedZero(false);
+              // If we were showing an error, clear it since we got valid data
+              if (error) {
+                setError(null);
               }
-            } else if (data.timer?.pause_time_remaining) {
-              setTimeRemaining(data.timer.pause_time_remaining);
-            } else if (data.timer?.round_duration) {
-              setTimeRemaining(data.timer.round_duration);
             }
-            
-            if (error) setError(null);
-          }
-        });
-        
-        setSocketConnected(socketRef.current.connected);
-      } catch (err) {
-        console.error('Failed to initialize socket:', err);
-        setSocketConnected(false);
-        setError('Socket connection failed. Using API fallback.');
-      }
+          });
+          
+          // Listen for errors from server
+          socket.on('error', (errorData: any) => {
+            console.error('Socket server error:', errorData);
+            setError(`Server error: ${errorData.message || 'Unknown error'}`);
+          });
+          
+          setSocketConnected(socket.connected);
+        } catch (error) {
+          console.error('EventTimer: Error initializing socket:', error);
+          setSocketConnected(false);
+          setIsUsingApiFallback(true);
+          setError('Failed to connect to timer service. Using client-side timer.');
+          
+          // Update the state one time when the socket fails
+          fetchTimerStatus(true);
+          // We don't set up polling here anymore
+        }
+      };
+      
+      setupSocket();
+    } else {
+      // For non-admins, a one-time fetch is sufficient
+      // Instead of polling, we'll rely on the client-side timer
+      setIsUsingApiFallback(true);
     }
 
     // Request notification permission
@@ -369,82 +408,66 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
       Notification.requestPermission();
     }
 
-    // Cleanup
+    // Cleanup on unmount
     return () => {
       if (socketRef.current) {
         socketRef.current.emit('leave', { event_id: eventId });
         socketRef.current.off('timer_update');
-        socketService.disconnectSocket();
-        socketRef.current = null;
+        socketRef.current.off('error');
       }
       
-      // Clear all intervals
+      socketService.disconnectSocket();
+      
       if (countdownIntervalRef.current !== null) {
         window.clearInterval(countdownIntervalRef.current);
         countdownIntervalRef.current = null;
       }
-      
-      if (localTimerRef.current !== null) {
-        window.clearInterval(localTimerRef.current);
-        localTimerRef.current = null;
-      }
     };
   }, [eventId, fetchTimerStatus, fetchRoundInfo, error, isAdmin, isEventActive]);
 
-  // Very infrequent fallback API polling when socket disconnects
+  // Countdown timer - locally maintained to avoid glitches
   useEffect(() => {
-    let apiPollInterval: number | null = null;
-    
-    if (isAdmin && !socketConnected && isEventActive) {
-      apiPollInterval = window.setInterval(() => {
-        fetchTimerStatus(false);
-      }, 60000); // Only poll every minute when socket is down
+    // Clear any existing interval
+    if (countdownIntervalRef.current !== null) {
+      window.clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
     }
-    
-    return () => {
-      if (apiPollInterval !== null) {
-        window.clearInterval(apiPollInterval);
-      }
-    };
-  }, [socketConnected, fetchTimerStatus, isAdmin, isEventActive]);
 
-  // Use local timing for smooth countdown instead of constant API requests
-  useEffect(() => {
-    // Clear existing intervals
-    if (localTimerRef.current !== null) {
-      window.clearInterval(localTimerRef.current);
-      localTimerRef.current = null;
-    }
-    
-    // Only run local timer for active timers
-    if (isAdmin && timerState?.status === 'active' && isEventActive && timerEndTimeRef.current) {
-      localTimerRef.current = window.setInterval(() => {
-        if (timerEndTimeRef.current) {
-          const now = Date.now();
-          const remaining = Math.max(0, Math.floor((timerEndTimeRef.current - now) / 1000));
-          
-          setTimeRemaining(remaining);
+    // Only run countdown for active timers
+    if ((isAdmin || !isAdmin) && timerState?.status === 'active' && timeRemaining > 0 && isEventActive) {
+      countdownIntervalRef.current = window.setInterval(() => {
+        setTimeRemaining((prev) => {
+          const newTime = Math.max(prev - 1, 0);
           
           // Play notification when timer reaches zero
-          if (remaining === 0 && !notifiedZero) {
+          if (newTime === 0 && !notifiedZero) {
             playNotificationSound();
           }
-        }
-      }, 500); // Update twice per second for smoother display
+          
+          return newTime;
+        });
+      }, 1000);
     }
-    
+
+    // Cleanup interval on unmount or when timer stops
     return () => {
-      if (localTimerRef.current !== null) {
-        window.clearInterval(localTimerRef.current);
-        localTimerRef.current = null;
+      if (countdownIntervalRef.current !== null) {
+        window.clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
       }
     };
-  }, [timerState?.status, isAdmin, playNotificationSound, notifiedZero, isEventActive]);
+  }, [timerState?.status, timeRemaining, isAdmin, playNotificationSound, notifiedZero, isEventActive]);
 
   // Initialize timer if admin and no timer exists
   useEffect(() => {
-    if (isAdmin && timerState && !timerState.has_timer && !timerInitialized && !isInitializing && isEventActive) {
-      initializeTimerViaApi();
+    const checkAndInitializeTimer = async () => {
+      if (isAdmin && timerState && !timerState.has_timer && !timerInitialized && !isInitializing && isEventActive) {
+        await initializeTimerViaApi();
+      }
+    };
+
+    if (timerState !== null) {
+      checkAndInitializeTimer();
     }
   }, [isAdmin, timerState, timerInitialized, initializeTimerViaApi, isInitializing, isEventActive]);
 
@@ -458,7 +481,7 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
   ) => {
     if (!isEventActive) return;
     
-    // Try socket first (preferred for real-time)
+    // Try socket first
     if (socketRef.current && socketRef.current.connected) {
       socketRef.current.emit(socketEvent, {...data, event_id: eventId});
       return;
@@ -467,7 +490,7 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
     // Fallback to REST API if socket is not available
     try {
       await makeApiRequest(apiEndpoint, apiMethod, data);
-      // Force refresh timer status after API call
+      // Refresh timer status after API call
       await fetchTimerStatus(true);
     } catch (error) {
       console.error(`Failed to ${action} via API:`, error);
@@ -791,6 +814,17 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
             variant="outlined"
           />
         </Box>
+
+        {isUsingApiFallback && (
+          <Box mt={1} mb={2} display="flex" justifyContent="center">
+            <Chip 
+              label="Using API fallback" 
+              size="small" 
+              color="warning" 
+              variant="outlined"
+            />
+          </Box>
+        )}
       </Paper>
     );
   };
