@@ -125,8 +125,8 @@ const EventDetail: React.FC = () => {
   };
 
   const canManageEvent = (eventItem: EventType): boolean => {
-    if (isAdmin()) return true;
-    if (isOrganizer() && user && eventItem.creator_id === Number(user.id)) return true;
+    if (typeof isAdmin === 'function' ? isAdmin() : isAdmin) return true;
+    if (typeof isOrganizer === 'function' ? isOrganizer() : isOrganizer && user && eventItem.creator_id === Number(user.id)) return true;
     return false;
   };
   if (loading) {
@@ -217,7 +217,6 @@ const EventDetail: React.FC = () => {
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <Card variant="outlined" sx={{ height: '100%' }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom display="flex" alignItems="center">
                   <InfoIcon sx={{ mr: 1 }} />
