@@ -290,7 +290,8 @@ const EventDetail: React.FC = () => {
                   </Typography>
                   <EventTimer 
                     eventId={event.id} 
-                    isAdmin={true} 
+                    isAdmin={true}
+                    key={`admin-timer-${event.id}`}
                   />
                 </Grid>
               </Grid>
@@ -307,7 +308,8 @@ const EventDetail: React.FC = () => {
           </Typography>
           <EventTimer 
             eventId={event.id} 
-            isAdmin={false} 
+            isAdmin={false}
+            key={`attendee-timer-${event.id}`}
           />
         </Box>
       )}

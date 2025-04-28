@@ -1,7 +1,37 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import socketService from '../../services/socketService';
-import { Box, Button, Typography, CircularProgress, Slider, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Alert, Paper, Switch, FormControlLabel, Chip } from '@mui/material';
-import { PlayArrow, Pause, SkipNext, Settings, Refresh, VolumeUp, VolumeOff } from '@mui/icons-material';
+import { 
+  Box, 
+  Button, 
+  Typography, 
+  CircularProgress, 
+  Slider, 
+  Dialog, 
+  DialogTitle, 
+  DialogContent, 
+  DialogActions, 
+  IconButton, 
+  Alert, 
+  Paper, 
+  Switch, 
+  FormControlLabel, 
+  Chip, 
+  Collapse,
+  Tooltip,
+  useTheme,
+  Snackbar
+} from '@mui/material';
+import { 
+  PlayArrow, 
+  Pause, 
+  SkipNext, 
+  Settings, 
+  VolumeUp, 
+  VolumeOff, 
+  Timer as TimerIcon,
+  KeyboardArrowDown,
+  NotificationImportant
+} from '@mui/icons-material';
 import axios from 'axios';
 import { Socket } from 'socket.io-client';
 
@@ -41,6 +71,8 @@ const formatTime = (seconds: number): string => {
 };
 
 const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus = 'In Progress' }) => {
+  const theme = useTheme();
+  
   // Only activate timer for active events
   const isEventActive = eventStatus === 'In Progress' || eventStatus === 'Paused';
   
@@ -52,11 +84,12 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
   const [timerInitialized, setTimerInitialized] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [socketConnected, setSocketConnected] = useState<boolean>(false);
   const [isInitializing, setIsInitializing] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [notifiedZero, setNotifiedZero] = useState<boolean>(false);
-  const [isUsingApiFallback, setIsUsingApiFallback] = useState<boolean>(false);
+  const [showControls, setShowControls] = useState<boolean>(false);
+  const [showTimerEndAlert, setShowTimerEndAlert] = useState<boolean>(false);
+  const [notificationPermission, setNotificationPermission] = useState<string>('default');
   
   const socketRef = useRef<Socket | null>(null);
   const lastFetchTimeRef = useRef<number>(Date.now());
@@ -78,7 +111,7 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
-  // Function to fetch timer status directly via API - with debouncing
+  // Function to fetch timer status directly via API - with less frequency
   const fetchTimerStatus = useCallback(async (force: boolean = false) => {
     // Don't fetch if event is not active
     if (!isEventActive) {
@@ -91,13 +124,14 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
       return;
     }
     
-    // Rate limiting - don't fetch too frequently unless forced
-    const now = Date.now();
-    if (!force && now - lastFetchTimeRef.current < 120000) { // 2 minutes between regular refreshes 
+    // CRITICAL: Only fetch if forced (initial load or explicit action)
+    // Never allow non-forced API calls to prevent polling
+    if (!force) {
       return;
     }
     
-    lastFetchTimeRef.current = now;
+    // Set a reference that we're fetching data to prevent duplicates
+    lastFetchTimeRef.current = Date.now();
     apiRequestInProgressRef.current = true;
     
     try {
@@ -119,7 +153,7 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
       
       // Check if there was a valid response
       if (response.data) {
-        setIsUsingApiFallback(true);
+        console.log('Using client-side timer with server sync');
         
         if (isAdmin) {
           setTimerState(response.data);
@@ -163,48 +197,6 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
     }
   }, [eventId, API_URL, isAdmin, isLoading, isEventActive]);
 
-  // Function to fetch round info only - for regular users
-  const fetchRoundInfo = useCallback(async (force: boolean = false) => {
-    // Skip if admin, if event is not active, or if request already in progress
-    if (isAdmin || !isEventActive || apiRequestInProgressRef.current) return;
-    
-    const now = Date.now();
-    if (!force && now - lastFetchTimeRef.current < 60000) { // Once every 60 seconds
-      return;
-    }
-    
-    lastFetchTimeRef.current = now;
-    apiRequestInProgressRef.current = true;
-    
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await axios.get(`${API_URL}/events/${eventId}/round-info`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (response.data) {
-        setRoundInfo(response.data);
-        setError(null);
-      }
-    } catch (err: any) {
-      console.error('Error fetching round info:', err);
-      const errorMessage = err.response 
-        ? `Error ${err.response.status}: ${err.response.data?.error || err.message}` 
-        : `Network error: ${err.message}`;
-      
-      setError(`Failed to load round info. ${errorMessage}`);
-    } finally {
-      setIsLoading(false);
-      apiRequestInProgressRef.current = false;
-    }
-  }, [eventId, API_URL, isAdmin, isEventActive]);
-
   // Initialize timer directly via API
   const initializeTimerViaApi = useCallback(async () => {
     if (!isEventActive) return;
@@ -216,7 +208,7 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
         throw new Error('No authentication token found');
       }
 
-      const response = await axios.post(
+      await axios.post(
         `${API_URL}/events/${eventId}/timer/initialize`,
         { round_duration: 180 },
         {
@@ -275,202 +267,6 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
     }
   }, [API_URL, eventId, isEventActive]);
 
-  // Play notification sound
-  const playNotificationSound = useCallback(() => {
-    if (soundEnabled && timerAudioRef.current && !notifiedZero) {
-      timerAudioRef.current.play()
-        .catch(err => console.error('Error playing notification sound:', err));
-      setNotifiedZero(true);
-      
-      // Visual notification
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Timer Complete', { 
-          body: 'The current round has ended',
-          icon: '/logo192.png'
-        });
-      }
-    }
-  }, [soundEnabled, notifiedZero]);
-
-  // Initialize socket and join event room when component mounts
-  useEffect(() => {
-    if (!isEventActive) {
-      setIsLoading(false);
-      return;
-    }
-    
-    // First, fetch the timer status via API (reliable way to get initial state)
-    if (isAdmin) {
-      fetchTimerStatus(true);
-    } else {
-      fetchRoundInfo(true);
-    }
-    
-    // Setup socket connection only for admins
-    if (isAdmin) {
-      const setupSocket = () => {
-        try {
-          // Force create a new socket connection
-          socketService.disconnectSocket();
-          const socket = socketService.initSocket();
-          socketRef.current = socket;
-          
-          // Join the event room
-          socket.emit('join', { event_id: eventId });
-          
-          socket.on('connect', () => {
-            setSocketConnected(true);
-            setIsUsingApiFallback(false);
-            setError(null);
-            
-            // Re-join room on reconnect
-            socket.emit('join', { event_id: eventId });
-            
-            // Immediately refresh timer data on connection
-            fetchTimerStatus(true);
-          });
-
-          socket.on('connect_error', (error: Error) => {
-            setSocketConnected(false);
-            setIsUsingApiFallback(true);
-            
-            const errorDetail = error instanceof Error ? error.message : 'Unknown error';
-            setError(`Connection error: ${errorDetail}. Using client-side timer.`);
-            
-            // Update the state one time when the socket fails
-            fetchTimerStatus(true);
-            // We don't set up polling here anymore
-          });
-
-          socket.on('disconnect', (reason) => {
-            setSocketConnected(false);
-            setIsUsingApiFallback(true);
-            
-            // Update the state one time when the socket disconnects
-            fetchTimerStatus(true);
-            // We don't set up polling here anymore
-          });
-          
-          // Subscribe to timer updates
-          socket.on('timer_update', (data: TimerState) => {
-            // Verify we received valid data
-            if (data) {
-              setTimerState(data);
-              setIsUsingApiFallback(false);
-              
-              if (data.time_remaining !== undefined) {
-                setTimeRemaining(data.time_remaining);
-                // Reset notification flag if we're not at zero
-                if (data.time_remaining > 0) {
-                  setNotifiedZero(false);
-                }
-              } else if (data.timer?.pause_time_remaining) {
-                setTimeRemaining(data.timer.pause_time_remaining);
-              } else if (data.timer?.round_duration) {
-                setTimeRemaining(data.timer.round_duration);
-              }
-              
-              // If we were showing an error, clear it since we got valid data
-              if (error) {
-                setError(null);
-              }
-            }
-          });
-          
-          // Listen for errors from server
-          socket.on('error', (errorData: any) => {
-            console.error('Socket server error:', errorData);
-            setError(`Server error: ${errorData.message || 'Unknown error'}`);
-          });
-          
-          setSocketConnected(socket.connected);
-        } catch (error) {
-          console.error('EventTimer: Error initializing socket:', error);
-          setSocketConnected(false);
-          setIsUsingApiFallback(true);
-          setError('Failed to connect to timer service. Using client-side timer.');
-          
-          // Update the state one time when the socket fails
-          fetchTimerStatus(true);
-          // We don't set up polling here anymore
-        }
-      };
-      
-      setupSocket();
-    } else {
-      // For non-admins, a one-time fetch is sufficient
-      // Instead of polling, we'll rely on the client-side timer
-      setIsUsingApiFallback(true);
-    }
-
-    // Request notification permission
-    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-      Notification.requestPermission();
-    }
-
-    // Cleanup on unmount
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.emit('leave', { event_id: eventId });
-        socketRef.current.off('timer_update');
-        socketRef.current.off('error');
-      }
-      
-      socketService.disconnectSocket();
-      
-      if (countdownIntervalRef.current !== null) {
-        window.clearInterval(countdownIntervalRef.current);
-        countdownIntervalRef.current = null;
-      }
-    };
-  }, [eventId, fetchTimerStatus, fetchRoundInfo, error, isAdmin, isEventActive]);
-
-  // Countdown timer - locally maintained to avoid glitches
-  useEffect(() => {
-    // Clear any existing interval
-    if (countdownIntervalRef.current !== null) {
-      window.clearInterval(countdownIntervalRef.current);
-      countdownIntervalRef.current = null;
-    }
-
-    // Only run countdown for active timers
-    if ((isAdmin || !isAdmin) && timerState?.status === 'active' && timeRemaining > 0 && isEventActive) {
-      countdownIntervalRef.current = window.setInterval(() => {
-        setTimeRemaining((prev) => {
-          const newTime = Math.max(prev - 1, 0);
-          
-          // Play notification when timer reaches zero
-          if (newTime === 0 && !notifiedZero) {
-            playNotificationSound();
-          }
-          
-          return newTime;
-        });
-      }, 1000);
-    }
-
-    // Cleanup interval on unmount or when timer stops
-    return () => {
-      if (countdownIntervalRef.current !== null) {
-        window.clearInterval(countdownIntervalRef.current);
-        countdownIntervalRef.current = null;
-      }
-    };
-  }, [timerState?.status, timeRemaining, isAdmin, playNotificationSound, notifiedZero, isEventActive]);
-
-  // Initialize timer if admin and no timer exists
-  useEffect(() => {
-    const checkAndInitializeTimer = async () => {
-      if (isAdmin && timerState && !timerState.has_timer && !timerInitialized && !isInitializing && isEventActive) {
-        await initializeTimerViaApi();
-      }
-    };
-
-    if (timerState !== null) {
-      checkAndInitializeTimer();
-    }
-  }, [isAdmin, timerState, timerInitialized, initializeTimerViaApi, isInitializing, isEventActive]);
-
   // Handler function with socket and fallback API
   const handleSocketAction = useCallback(async (
     action: string, 
@@ -481,13 +277,13 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
   ) => {
     if (!isEventActive) return;
     
-    // Try socket first
+    // Try socket first if available
     if (socketRef.current && socketRef.current.connected) {
       socketRef.current.emit(socketEvent, {...data, event_id: eventId});
       return;
     }
     
-    // Fallback to REST API if socket is not available
+    // Fallback to REST API
     try {
       await makeApiRequest(apiEndpoint, apiMethod, data);
       // Refresh timer status after API call
@@ -532,6 +328,200 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
     setNotifiedZero(false); // Reset notification state for the new round
   }, [handleSocketAction]);
 
+  // Request notification permission
+  const requestNotificationPermission = useCallback(async () => {
+    if (!('Notification' in window)) {
+      console.log('This browser does not support notifications');
+      return;
+    }
+
+    try {
+      if (Notification.permission !== 'denied') {
+        const permission = await Notification.requestPermission();
+        setNotificationPermission(permission);
+        return permission;
+      }
+      return Notification.permission;
+    } catch (error) {
+      console.error('Error requesting notification permission:', error);
+      return 'denied';
+    }
+  }, []);
+
+  // Check notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationPermission(Notification.permission);
+    }
+  }, []);
+
+  // Play notification sound
+  const playNotificationSound = useCallback(() => {
+    if (soundEnabled && timerAudioRef.current && !notifiedZero) {
+      timerAudioRef.current.play()
+        .catch(err => console.error('Error playing notification sound:', err));
+      setNotifiedZero(true);
+      setShowTimerEndAlert(true);
+      
+      // Auto-hide the alert after 10 seconds
+      setTimeout(() => {
+        setShowTimerEndAlert(false);
+      }, 10000);
+      
+      // Visual browser notification
+      if ('Notification' in window) {
+        if (notificationPermission === 'granted') {
+          try {
+            // Create and show the notification
+            const notification = new Notification('Timer Complete', { 
+              body: 'The current round has ended',
+              icon: '/logo192.png',
+              tag: 'timer-end',
+              requireInteraction: true
+            });
+            
+            notification.onclick = () => {
+              window.focus();
+              notification.close();
+            };
+          } catch (error) {
+            console.error('Error creating notification:', error);
+          }
+        } else if (notificationPermission === 'default') {
+          // Try to request permission when the sound plays (user interaction)
+          requestNotificationPermission().then(permission => {
+            if (permission === 'granted') {
+              // Permission was just granted, show notification immediately
+              try {
+                const notification = new Notification('Timer Complete', { 
+                  body: 'The current round has ended',
+                  icon: '/logo192.png',
+                  tag: 'timer-end'
+                });
+                
+                notification.onclick = () => {
+                  window.focus();
+                  notification.close();
+                };
+              } catch (error) {
+                console.error('Error creating notification after permission:', error);
+              }
+            }
+          });
+        }
+      }
+    }
+  }, [soundEnabled, notifiedZero, notificationPermission, requestNotificationPermission]);
+
+  // Initialize and fetch timer status when component mounts
+  useEffect(() => {
+    if (isEventActive) {
+      fetchTimerStatus(true);
+      
+      // Initialize socket only for notification purposes
+      const socket = socketService.initSocket();
+      socketRef.current = socket;
+      
+      // Join the event room to receive updates
+      socketService.joinEventRoom(eventId);
+      
+      // Listen for timer updates but only to stay in sync with round changes
+      const unsubscribe = socketService.subscribeToTimerUpdates((data) => {
+        console.log('Timer update received:', data);
+        
+        // Only update on significant changes like status or round changes
+        if (isAdmin) {
+          if (data.status !== timerState?.status || 
+              data.current_round !== timerState?.current_round) {
+            setTimerState(data);
+          }
+        } else {
+          if (data.status !== roundInfo?.status || 
+              data.current_round !== roundInfo?.current_round) {
+            setRoundInfo({
+              has_timer: data.has_timer,
+              status: data.status,
+              current_round: data.current_round || (data.timer?.current_round)
+            });
+          }
+        }
+      });
+      
+      return () => {
+        if (socketRef.current) {
+          socketService.leaveEventRoom(eventId);
+          unsubscribe();
+        }
+        
+        socketService.disconnectSocket();
+        
+        if (countdownIntervalRef.current !== null) {
+          window.clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+        }
+      };
+    }
+  }, [eventId, fetchTimerStatus, isEventActive, isAdmin, timerState?.status, timerState?.current_round, roundInfo?.status, roundInfo?.current_round]);
+
+  // Countdown timer - locally maintained to avoid glitches
+  useEffect(() => {
+    // Clear any existing interval
+    if (countdownIntervalRef.current !== null) {
+      window.clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+
+    // Only run countdown for active timers
+    if (timerState?.status === 'active' && timeRemaining > 0 && isEventActive) {
+      countdownIntervalRef.current = window.setInterval(() => {
+        setTimeRemaining((prev) => {
+          const newTime = Math.max(prev - 1, 0);
+          
+          // Play notification when timer reaches zero
+          if (newTime === 0 && !notifiedZero) {
+            playNotificationSound();
+            setShowTimerEndAlert(true);
+            
+            // Only admins should notify the server when the timer hits zero
+            if (isAdmin) {
+              // Use direct pause action to avoid circular references in the dependency array
+              handleSocketAction(
+                'pause round',
+                'timer_pause',
+                'pause',
+                'POST',
+                { time_remaining: 0 }
+              );
+            }
+          }
+          
+          return newTime;
+        });
+      }, 1000);
+    }
+
+    // Cleanup interval on unmount or when timer stops
+    return () => {
+      if (countdownIntervalRef.current !== null) {
+        window.clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+    };
+  }, [timerState?.status, timeRemaining, isAdmin, playNotificationSound, notifiedZero, isEventActive, handleSocketAction]);
+
+  // Initialize timer if admin and no timer exists
+  useEffect(() => {
+    const checkAndInitializeTimer = async () => {
+      if (isAdmin && timerState && !timerState.has_timer && !timerInitialized && !isInitializing && isEventActive) {
+        await initializeTimerViaApi();
+      }
+    };
+
+    if (timerState !== null) {
+      checkAndInitializeTimer();
+    }
+  }, [isAdmin, timerState, timerInitialized, initializeTimerViaApi, isInitializing, isEventActive]);
+
   const handleUpdateDuration = useCallback(() => {
     handleSocketAction(
       'update duration', 
@@ -543,6 +533,7 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
     setIsSettingsOpen(false);
   }, [handleSocketAction, newDuration]);
 
+  // Open settings dialog
   const openSettingsDialog = () => {
     if (timerState?.timer?.round_duration) {
       setNewDuration(timerState.timer.round_duration);
@@ -550,293 +541,519 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
     setIsSettingsOpen(true);
   };
 
+  // Toggle sound setting
   const toggleSound = () => {
     setSoundEnabled(!soundEnabled);
   };
 
+  // Toggle controls visibility
+  const toggleControls = () => {
+    setShowControls(!showControls);
+  };
+
+  // Request notification permission on user interaction
+  const handleEnableNotifications = () => {
+    requestNotificationPermission().then(permission => {
+      if (permission === 'granted') {
+        console.log('Notification permission granted');
+      }
+    });
+  };
+
+  // Get progress percentage for circular progress
+  const getProgressPercentage = () => {
+    if (!timerState || !timerState.timer) return 0;
+    const totalDuration = timerState.timer.round_duration;
+    return ((totalDuration - timeRemaining) / totalDuration) * 100;
+  };
+
   const renderAttendeeView = () => {
     if (!isEventActive) {
-      return (
-        <Box p={2} textAlign="center">
-          <Typography variant="body1">Timer available when event is in progress</Typography>
-        </Box>
-      );
+      return null;
     }
     
     if (isLoading) {
       return (
-        <Box display="flex" justifyContent="center" p={2}>
-          <CircularProgress size={32} />
+        <Box display="flex" justifyContent="center" p={1}>
+          <CircularProgress size={24} />
         </Box>
       );
     }
 
     if (error) {
-      return (
-        <Box p={2}>
-          <Alert severity="error" variant="outlined">
-            Timer unavailable
-          </Alert>
-        </Box>
-      );
+      return null;
     }
 
     if (!roundInfo?.has_timer) {
-      return (
-        <Box p={2} textAlign="center">
-          <Typography variant="body1">Timer not initialized yet</Typography>
-        </Box>
-      );
+      return null;
     }
 
+    const isActive = roundInfo?.status === 'active';
+    
     return (
-      <Paper 
-        elevation={0} 
-        sx={{ 
-          p: 2, 
-          textAlign: 'center',
-          bgcolor: 'background.paper',
-          borderRadius: 2
-        }}
-      >
-        <Typography variant="h6">
-          Round {roundInfo?.current_round || '-'}
-        </Typography>
+      <>
+        {/* Timer End Alert for attendees - Visible when timer reaches zero */}
+        {timeRemaining === 0 && showTimerEndAlert && roundInfo?.status !== 'inactive' && (
+          <Snackbar
+            open={showTimerEndAlert}
+            autoHideDuration={6000}
+            onClose={() => setShowTimerEndAlert(false)}
+            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          >
+            <Alert 
+              onClose={() => setShowTimerEndAlert(false)} 
+              severity="info"
+              icon={<NotificationImportant />}
+              sx={{ width: '100%', fontWeight: 500 }}
+            >
+              Time's up! This round has ended.
+            </Alert>
+          </Snackbar>
+        )}
         
-        <Box mt={1}>
-          <Chip 
-            label={roundInfo?.status === 'active' ? 'In Progress' : roundInfo?.status === 'paused' ? 'Paused' : 'Waiting'} 
-            color={roundInfo?.status === 'active' ? 'primary' : roundInfo?.status === 'paused' ? 'warning' : 'default'}
-          />
+        <Box 
+          sx={{ 
+            display: 'inline-flex',
+            alignItems: 'center',
+            height: '36px',
+            ml: 1,
+            mr: 1
+          }}
+        >
+          <Box 
+            sx={{ 
+              display: 'flex',
+              alignItems: 'center',
+              px: 1.5,
+              py: 0.5,
+              borderRadius: '6px',
+              bgcolor: theme.palette.background.paper,
+              boxShadow: 1,
+            }}
+          >
+            <TimerIcon 
+              sx={{ 
+                mr: 1, 
+                color: theme.palette.primary.main,
+                fontSize: '1.1rem'
+              }} 
+            />
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                fontWeight: 600,
+                mr: 1
+              }}
+            >
+              Round {roundInfo?.current_round || '-'}
+            </Typography>
+            {isActive && (
+              <Typography 
+                color="primary"
+                variant="body1" 
+                sx={{ fontWeight: 700 }}
+              >
+                {formatTime(timeRemaining)}
+              </Typography>
+            )}
+          </Box>
         </Box>
-        
-        <Box display="flex" justifyContent="center" mt={1}>
-          <FormControlLabel
-            control={
-              <Switch 
-                checked={soundEnabled}
-                onChange={toggleSound}
-                size="small"
-              />
-            }
-            label={
-              <Box display="flex" alignItems="center">
-                {soundEnabled ? <VolumeUp fontSize="small" /> : <VolumeOff fontSize="small" />}
-                <Typography variant="body2" sx={{ ml: 0.5 }}>
-                  {soundEnabled ? "Sound On" : "Sound Off"}
-                </Typography>
-              </Box>
-            }
-          />
-        </Box>
-      </Paper>
+      </>
     );
   };
 
   const renderAdminView = () => {
     if (!isEventActive) {
-      return (
-        <Box p={2} textAlign="center">
-          <Typography variant="body1">Timer controls available when event is in progress</Typography>
-        </Box>
-      );
+      return null;
     }
     
     if (isLoading) {
       return (
-        <Box display="flex" justifyContent="center" p={2}>
-          <CircularProgress size={40} />
+        <Box display="flex" justifyContent="center" p={1}>
+          <CircularProgress size={24} />
         </Box>
       );
     }
 
     if (error) {
-      return (
-        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
-          <Alert 
-            severity="error" 
-            action={
-              <Button color="inherit" size="small" onClick={() => fetchTimerStatus(true)}>
-                Retry
-              </Button>
-            }
-          >
-            {error}
-          </Alert>
-        </Paper>
-      );
+      return null;
     }
 
     if (!timerState?.has_timer) {
       return (
-        <Paper variant="outlined" sx={{ p: 2 }}>
-          <Box textAlign="center" mb={2}>
-            <Typography variant="h6">Timer not initialized</Typography>
-          </Box>
-          
-          <Box display="flex" justifyContent="center">
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={initializeTimerViaApi}
-              disabled={isInitializing}
-              startIcon={isInitializing ? <CircularProgress size={20} /> : <Refresh />}
-            >
-              {isInitializing ? 'Initializing...' : 'Initialize Timer'}
-            </Button>
-          </Box>
-        </Paper>
+        <Box 
+          sx={{ 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '100%',
+            my: 2
+          }}
+        >
+          <Button
+            variant="outlined"
+            size="medium"
+            color="primary"
+            onClick={initializeTimerViaApi}
+            disabled={isInitializing}
+            startIcon={isInitializing ? <CircularProgress size={16} /> : <TimerIcon />}
+            sx={{ 
+              py: 1,
+              px: 2,
+              textTransform: 'none',
+              fontWeight: 500
+            }}
+          >
+            Initialize Timer
+          </Button>
+        </Box>
       );
     }
 
     const isActive = timerState.status === 'active';
     const isPaused = timerState.status === 'paused';
-    const isInactive = timerState.status === 'inactive';
     const currentRound = timerState.timer?.current_round || 1;
+    const isAlmostDone = timeRemaining <= 10 && isActive;
+    
+    // Calculate progress percentage for background color
+    const progressPercentage = getProgressPercentage();
     
     return (
-      <Paper variant="outlined" sx={{ p: 2 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="h6">
-            Round {currentRound}
-          </Typography>
-          
-          <Box>
-            <Chip 
-              label={isActive ? 'Active' : isPaused ? 'Paused' : 'Inactive'} 
-              color={isActive ? 'primary' : isPaused ? 'warning' : 'default'}
-              sx={{ mr: 1 }}
-            />
-            
-            <IconButton 
-              size="small" 
-              onClick={openSettingsDialog}
-              title="Settings"
-            >
-              <Settings fontSize="small" />
-            </IconButton>
-          </Box>
-        </Box>
-        
+      <>
         <Box 
-          display="flex" 
-          flexDirection="column" 
-          alignItems="center" 
-          justifyContent="center" 
-          my={2}
-          position="relative"
+          sx={{ 
+            width: '100%',
+            my: 2
+          }}
         >
-          <Typography 
-            variant="h3" 
-            color={timeRemaining <= 10 && isActive ? 'error' : 'textPrimary'}
-            sx={{
-              animation: timeRemaining <= 10 && isActive ? 'pulse 1s infinite' : 'none',
-              '@keyframes pulse': {
-                '0%': { opacity: 1 },
-                '50%': { opacity: 0.5 },
-                '100%': { opacity: 1 },
+          {/* Timer End Alert - Visible when timer reaches zero - make it go away after 10 seconds*/}
+          {timeRemaining === 0 && showTimerEndAlert && (
+            <Alert 
+              severity="info" 
+              icon={<NotificationImportant />}
+              variant="filled"
+              sx={{ 
+                mb: 2, 
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}
+              action={
+                <Button 
+                  color="inherit" 
+                  size="small" 
+                  onClick={() => setShowTimerEndAlert(false)}
+                  sx={{ ml: 2 }}
+                >
+                  Dismiss
+                </Button>
               }
+            >
+              Timer has ended! Please move to the next round.
+            </Alert>
+          )}
+
+          <Paper
+            elevation={2}
+            sx={{ 
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: '100%',
+              px: 3,
+              py: 2,
+              borderRadius: '8px',
+              bgcolor: isAlmostDone ? '#fff2f2' : isActive ? '#f9f8ff' : isPaused ? '#fff8ee' : '#f5f5f5',
+              border: isAlmostDone ? '1px solid #ffcdd2' : 
+                      isActive ? '1px solid #e3e1ff' : 
+                      isPaused ? '1px solid #ffe0b2' : 
+                      '1px solid #e0e0e0',
+              position: 'relative',
+              overflow: 'hidden'
             }}
           >
-            {formatTime(timeRemaining)}
-          </Typography>
-          
-          {/* Mute/unmute toggle */}
-          <Box position="absolute" right={0} top={0}>
-            <IconButton onClick={toggleSound} size="small" title={soundEnabled ? "Mute" : "Unmute"}>
-              {soundEnabled ? <VolumeUp /> : <VolumeOff />}
-            </IconButton>
-          </Box>
-        </Box>
-        
-        <Box 
-          display="flex" 
-          justifyContent="center" 
-          alignItems="center" 
-          flexWrap="wrap"
-          gap={1}
-          mt={2}
-        >
-          {/* Timer control buttons */}
-          {isInactive && (
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<PlayArrow />}
-              onClick={handleStartRound}
-              sx={{ minWidth: 120 }}
+            {/* Progress indicator */}
+            {isActive && (
+              <Box 
+                sx={{ 
+                  position: 'absolute', 
+                  top: 0, 
+                  left: 0, 
+                  height: '100%',
+                  width: `${progressPercentage}%`, 
+                  bgcolor: isAlmostDone ? 
+                    'rgba(229, 115, 115, 0.1)' : 
+                    'rgba(103, 58, 183, 0.05)', 
+                  transition: 'width 1s linear',
+                  zIndex: 1
+                }} 
+              />
+            )}
+            
+            {/* Left side - round info */}
+            <Box 
+              sx={{ 
+                display: 'flex',
+                alignItems: 'center',
+                zIndex: 2
+              }}
             >
-              Start Round
-            </Button>
-          )}
-          
-          {isActive && (
-            <Button
-              variant="contained"
-              color="warning"
-              startIcon={<Pause />}
-              onClick={handlePauseRound}
-              sx={{ minWidth: 120 }}
+              <TimerIcon 
+                sx={{ 
+                  mr: 2, 
+                  color: isAlmostDone ? theme.palette.error.main : 
+                        isActive ? theme.palette.primary.main : 
+                        isPaused ? theme.palette.warning.main : 
+                        theme.palette.text.secondary,
+                  fontSize: '1.5rem'
+                }} 
+              />
+              <Box>
+                <Typography 
+                  variant="h6" 
+                  sx={{ 
+                    fontWeight: 600,
+                    lineHeight: 1.2
+                  }}
+                >
+                  Round {currentRound}
+                </Typography>
+                <Chip 
+                  label={isActive ? 'Active' : isPaused ? 'Paused' : 'Inactive'} 
+                  color={isActive ? 'primary' : isPaused ? 'warning' : 'default'}
+                  size="small"
+                  sx={{ 
+                    fontWeight: 500, 
+                    height: '24px',
+                    mt: 0.5,
+                    '& .MuiChip-label': {
+                      px: 0.75,
+                      py: 0
+                    }
+                  }}
+                />
+              </Box>
+            </Box>
+            
+            {/* Center - timer */}
+            <Typography 
+              variant="h3" 
+              color={isAlmostDone ? 'error' : isActive ? 'primary' : isPaused ? 'warning.dark' : 'text.secondary'}
+              sx={{
+                fontWeight: 700, 
+                animation: isAlmostDone ? 'pulse 1s infinite' : 'none',
+                '@keyframes pulse': {
+                  '0%': { opacity: 1 },
+                  '50%': { opacity: 0.7 },
+                  '100%': { opacity: 1 },
+                },
+                fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' }
+              }}
             >
-              Pause
-            </Button>
-          )}
+              {formatTime(timeRemaining)}
+            </Typography>
+            
+            {/* Right side - controls */}
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              {/* Sound toggle */}
+              <FormControlLabel
+                control={
+                  <Switch 
+                    checked={soundEnabled}
+                    onChange={toggleSound}
+                    size="small"
+                    color="primary"
+                  />
+                }
+                label={
+                  <Box display="flex" alignItems="center">
+                    {soundEnabled ? 
+                      <VolumeUp fontSize="small" color="primary" /> : 
+                      <VolumeOff fontSize="small" color="disabled" />
+                    }
+                    <Typography variant="body2" sx={{ ml: 0.5, display: { xs: 'none', sm: 'block' } }}>
+                      {soundEnabled ? "Sound On" : "Sound Off"}
+                    </Typography>
+                  </Box>
+                }
+                sx={{ mr: 1 }}
+              />
+              
+              <Tooltip title="Settings">
+                <IconButton 
+                  size="small" 
+                  onClick={openSettingsDialog}
+                  sx={{ 
+                    color: theme.palette.text.secondary,
+                    '&:hover': {
+                      color: theme.palette.primary.main
+                    },
+                    mr: 1
+                  }}
+                >
+                  <Settings fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              
+              <Tooltip title={showControls ? "Hide controls" : "Show controls"}>
+                <IconButton 
+                  onClick={toggleControls}
+                  sx={{ 
+                    color: theme.palette.text.secondary,
+                    transition: 'transform 0.3s',
+                    transform: showControls ? 'rotate(180deg)' : 'rotate(0)',
+                    '&:hover': {
+                      color: theme.palette.primary.main
+                    }
+                  }}
+                >
+                  <KeyboardArrowDown />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Paper>
           
-          {isPaused && (
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<PlayArrow />}
-              onClick={handleResumeRound}
-              sx={{ minWidth: 120 }}
+          {/* Timer Controls */}
+          <Collapse in={showControls}>
+            <Paper 
+              elevation={1}
+              sx={{ 
+                mt: 1, 
+                mb: 2,
+                p: 2,
+                width: '100%',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: 2,
+                borderRadius: '8px'
+              }}
             >
-              Resume
-            </Button>
-          )}
-          
-          <Button
-            variant="contained"
-            color="secondary"
-            startIcon={<SkipNext />}
-            onClick={handleNextRound}
-            sx={{ minWidth: 120 }}
-          >
-            Next Round
-          </Button>
+              {isActive && (
+                <>
+                  <Button
+                    variant="contained"
+                    color="warning"
+                    startIcon={<Pause />}
+                    onClick={handlePauseRound}
+                    size="medium"
+                    sx={{ 
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      py: 1,
+                      px: 3,
+                      fontWeight: 600
+                    }}
+                  >
+                    Pause
+                  </Button>
+                  
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    startIcon={<SkipNext />}
+                    onClick={handleNextRound}
+                    size="medium"
+                    sx={{ 
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      py: 1,
+                      px: 3,
+                      fontWeight: 600
+                    }}
+                  >
+                    Next Round
+                  </Button>
+                </>
+              )}
+              
+              {isPaused && (
+                <>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={<PlayArrow />}
+                    onClick={handleResumeRound}
+                    size="medium"
+                    sx={{ 
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      py: 1,
+                      px: 3,
+                      fontWeight: 600
+                    }}
+                  >
+                    Resume
+                  </Button>
+                  
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    startIcon={<SkipNext />}
+                    onClick={handleNextRound}
+                    size="medium"
+                    sx={{ 
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      py: 1,
+                      px: 3,
+                      fontWeight: 600
+                    }}
+                  >
+                    Next Round
+                  </Button>
+                </>
+              )}
+              
+              {!isActive && !isPaused && (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<PlayArrow />}
+                  onClick={handleStartRound}
+                  size="medium"
+                  sx={{ 
+                    borderRadius: '8px',
+                    textTransform: 'none',
+                    py: 1,
+                    px: 3,
+                    fontWeight: 600
+                  }}
+                >
+                  Start Round
+                </Button>
+              )}
+            </Paper>
+          </Collapse>
         </Box>
-        
-        {/* Socket connection status */}
-        <Box display="flex" justifyContent="center" mt={2}>
-          <Chip 
-            size="small"
-            label={socketConnected ? "Real-time connected" : "Using API fallback"} 
-            color={socketConnected ? "success" : "default"}
-            variant="outlined"
-          />
-        </Box>
-
-        {isUsingApiFallback && (
-          <Box mt={1} mb={2} display="flex" justifyContent="center">
-            <Chip 
-              label="Using API fallback" 
-              size="small" 
-              color="warning" 
-              variant="outlined"
-            />
-          </Box>
-        )}
-      </Paper>
+      </>
     );
   };
 
-  // Settings dialog
+  // Settings dialog with modern styling
   const renderSettingsDialog = () => {
     return (
-      <Dialog open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)}>
-        <DialogTitle>Timer Settings</DialogTitle>
-        <DialogContent>
-          <Typography id="round-duration-slider" gutterBottom>
-            Round Duration: {formatTime(newDuration)}
+      <Dialog 
+        open={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            maxWidth: '400px',
+            width: '100%'
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box display="flex" alignItems="center">
+            <Settings sx={{ mr: 1, color: theme.palette.primary.main }} />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>Timer Settings</Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 1 }}>
+          <Typography id="round-duration-slider" gutterBottom fontWeight={500}>
+            Round Duration: <span style={{ color: theme.palette.primary.main }}>{formatTime(newDuration)}</span>
           </Typography>
           <Slider
             value={newDuration}
@@ -847,16 +1064,31 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
             aria-labelledby="round-duration-slider"
             valueLabelDisplay="auto"
             valueLabelFormat={(value) => formatTime(value)}
+            sx={{ mb: 2 }}
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsSettingsOpen(false)}>Cancel</Button>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button 
+            onClick={() => setIsSettingsOpen(false)}
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 500
+            }}
+          >
+            Cancel
+          </Button>
           <Button 
             onClick={handleUpdateDuration} 
             color="primary" 
             variant="contained"
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 600,
+              px: 2,
+              borderRadius: '8px'
+            }}
           >
-            Save
+            Save Settings
           </Button>
         </DialogActions>
       </Dialog>
@@ -872,6 +1104,25 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
     <>
       {isAdmin ? renderAdminView() : renderAttendeeView()}
       {renderSettingsDialog()}
+      
+      {/* Notification permission prompt */}
+      {notificationPermission === 'default' && (
+        <Snackbar
+          open={true}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert 
+            severity="info" 
+            action={
+              <Button color="inherit" size="small" onClick={handleEnableNotifications}>
+                Enable
+              </Button>
+            }
+          >
+            Enable browser notifications for timer alerts
+          </Alert>
+        </Snackbar>
+      )}
     </>
   );
 };
