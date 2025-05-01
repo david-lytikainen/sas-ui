@@ -9,6 +9,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import EventList from './components/events/EventList';
+import EventDetail from './components/events/EventDetail';
 import PrivateRoute from './components/routing/PrivateRoute';
 import { AuthProvider } from './context/AuthContext';
 import { EventProvider } from './context/EventContext';
@@ -16,6 +17,9 @@ import Navigation from './components/Navigation';
 import { ColorModeContext } from './context/ColorModeContext';
 import SystemSettings from './components/profile/SystemSettings';
 import AnimatedWrapper from './components/common/AnimatedWrapper';
+import UserManagement from './components/admin/UserManagement';
+import EventAttendees from './components/admin/EventAttendees';
+
 
 // Add global styles for animations
 const GlobalStyles = {
@@ -98,6 +102,7 @@ const GlobalStyles = {
 // Create a separate component for the protected routes
 const ProtectedRoutes = () => {
   
+  console.log(user, isAdmin);
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
@@ -114,6 +119,22 @@ const ProtectedRoutes = () => {
           </PrivateRoute>
         }
       />
+      
+      {/* Admin/Organizer routes - accessible to admins and organizers */}
+      {(user?.role_id === ROLES.ADMIN.id || user?.role_id === ROLES.ORGANIZER.id) && (
+        <>
+          <Route
+            path="/admin/events/:eventId/attendees"
+            element={
+              <PrivateRoute>
+                <AnimatedWrapper>
+                  <EventAttendees />
+                </AnimatedWrapper>
+              </PrivateRoute>
+            }
+          />
+        </>
+      )}
       
       {/* Routes available to all user roles */}
       <Route
@@ -133,6 +154,17 @@ const ProtectedRoutes = () => {
           <PrivateRoute>
             <AnimatedWrapper>
               <EventList />
+            </AnimatedWrapper>
+          </PrivateRoute>
+        }
+      />
+      
+      <Route
+        path="/events/:id"
+        element={
+          <PrivateRoute>
+            <AnimatedWrapper>
+              <EventDetail />
             </AnimatedWrapper>
           </PrivateRoute>
         }
