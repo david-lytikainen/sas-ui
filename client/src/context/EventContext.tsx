@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { eventsApi } from '../services/api';
 import { Event } from '../types/event';
@@ -113,9 +113,9 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
   
-  const isRegisteredForEvent = (eventId: number): boolean => {
+  const isRegisteredForEvent = useCallback((eventId: number): boolean => {
     return userRegisteredEvents.includes(eventId);
-  };
+  }, [userRegisteredEvents]);
 
   return (
     <EventContext.Provider
