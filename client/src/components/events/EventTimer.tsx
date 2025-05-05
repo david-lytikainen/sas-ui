@@ -23,13 +23,13 @@ import {
 import { 
   PlayArrow, 
   Pause, 
-  SkipNext, 
   Settings, 
   VolumeUp, 
   VolumeOff, 
   Timer as TimerIcon,
   KeyboardArrowDown,
-  NotificationImportant
+  NotificationImportant,
+  SkipNext
 } from '@mui/icons-material';
 import axios from 'axios';
 import { ScheduleItem } from '../../types/event';
@@ -76,7 +76,7 @@ const EventTimer = ({
   userSchedule 
 }: EventTimerProps): React.ReactElement | null => {
   const theme = useTheme();
-  
+
   // Only activate timer for active events
   const isEventActive = eventStatus === 'In Progress' || eventStatus === 'Paused';
   
@@ -97,6 +97,8 @@ const EventTimer = ({
   const [showControls, setShowControls] = useState<boolean>(false);
   const [showTimerEndAlert, setShowTimerEndAlert] = useState<boolean>(false);
   const [notificationPermission, setNotificationPermission] = useState<string>('default');
+  // State to remember status before pausing
+  const [statusBeforePause, setStatusBeforePause] = useState<'active' | 'between_rounds' | null>(null);
   
   const lastFetchTimeRef = useRef<number>(Date.now());
   const timerAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -767,12 +769,26 @@ const EventTimer = ({
         console.warn("Pause action ignored: Timer status is already paused.");
         return; 
     }
-    console.log("USER ACTION: Pause round button clicked (Status is not paused)");
+    // Guard against pausing when ended
+    if (timerStatus === 'ended') {
+        console.warn("Pause action ignored: Timer status is ended.");
+        return; 
+    }
+    
+    // Determine which time to send based on current status
+    const timeToPause = (timerStatus === 'between_rounds') ? breakTimeRemaining : timeRemaining;
+    console.log(`USER ACTION: Pause button clicked (Status: ${timerStatus}). Pausing with time: ${timeToPause}`);
+    
+    // Remember the status before pausing
+    if (timerStatus === 'active' || timerStatus === 'between_rounds') {
+      setStatusBeforePause(timerStatus);
+    }
+    
     handleApiAction(
       'Pause Timer', 
       'pause', 
       'POST', 
-      { time_remaining: timeRemaining }
+      { time_remaining: timeToPause } // Send the correct remaining time
     ).then((result) => {
         if (result && !result.error) {
             console.log("Pause API successful, setting status to paused and clearing interval.");
@@ -789,104 +805,7 @@ const EventTimer = ({
         // Optionally fetch status again on error to re-sync
         // fetchTimerStatus(true);
     });
-  }, [handleApiAction, timeRemaining, clearTimerInterval, setTimerStatus, timerStatus]); // Added dependencies
-
-  const handleResumeRound = useCallback(() => {
-    // Add guard clause: Only attempt resume if status is actually paused
-    if (timerStatus !== 'paused') {
-        console.warn("Resume action ignored: Timer status is not paused (", timerStatus, ")");
-        return; 
-    }
-    console.log("USER ACTION: Resume round button clicked (Status is paused)");
-    handleApiAction('Resume Timer', 'resume')
-        .then((result) => {
-            if (result && !result.error) {
-                console.log("Resume API successful, setting status to active and updating time.");
-                // Ensure status is active
-                setTimerStatus('active'); 
-                // Update time remaining from the response
-                if(result.timer) {
-                    // Use pause_time_remaining from the timer object returned by the resume endpoint
-                    setTimeRemaining(result.timer.pause_time_remaining ?? 0);
-                }
-                 // The main useEffect hook will now pick up the 'active' status 
-                 // and the correct timeRemaining to start the interval.
-            }
-        }).catch(err => {
-            console.error("Resume API call failed:", err);
-            // Optionally fetch status again on error to re-sync
-            // fetchTimerStatus(true);
-        });
-
-  }, [handleApiAction, timerStatus, setTimerStatus, setTimeRemaining]); // Added state setters
-
-  const handleNextRound = useCallback(() => {
-    console.log("USER ACTION: Next round button clicked");
-    
-    // CRITICAL FIX: More aggressive state reset to prevent carry-over state issues
-    setBreakTimeRemaining(0);  // Reset break time immediately
-    setNotifiedZero(false);    // Reset notification flags
-    setNotifiedBreakEnd(false);
-    
-    // Clear any existing timer interval to prevent duplicates
-    clearTimerInterval();
-    
-    // If we're between rounds, we need to call a different endpoint
-    if (timerStatus === 'between_rounds') {
-      console.log('Starting next round after break period');
-      
-      // First call the next endpoint to advance the round
-      handleApiAction('Advance to next round', 'next')
-        .then(() => {
-          console.log('Successfully advanced to next round');
-          
-          // After advancing the round, explicitly start it
-          return handleApiAction('Start next round', 'start');
-        })
-        .then(() => {
-          console.log('Successfully started the next round');
-          
-          // Force a timer status refresh to get the new round state
-          fetchTimerStatus(true);
-        })
-        .catch(error => {
-          console.error('Error handling next round after break:', error);
-        });
-    } else {
-      // For all other states, just call the API next endpoint
-      console.log('Ending current round and starting break period');
-      
-      handleApiAction('End current round', 'next')
-        .then((result) => {
-          console.log('Successfully ended round, checking completion status');
-          
-          // Check if the API indicated completion
-          if (result && result.complete) {
-            console.log("API confirms all rounds completed. Setting state to 'ended'.");
-            clearTimerInterval();
-            setTimerStatus('ended');
-            setTimeRemaining(0);
-            setBreakTimeRemaining(0);
-            // Persist ended state
-             try {
-               sessionStorage.setItem(`timer_status_${eventId}`, 'ended');
-               sessionStorage.setItem(`time_remaining_${eventId}`, '0');
-               sessionStorage.setItem(`break_time_remaining_${eventId}`, '0');
-             } catch (err) {
-               console.error("Error saving ended state:", err);
-             }
-          } else {
-            // If not complete, fetch updated status (will likely be between_rounds)
-            console.log('Round ended, but not complete. Fetching updated status.');
-            fetchTimerStatus(true);
-          }
-        })
-        .catch(error => {
-          console.error('Error handling next round:', error);
-        });
-    }
-  }, [timerStatus, clearTimerInterval, handleApiAction, fetchTimerStatus]);
-
+  }, [handleApiAction, timeRemaining, breakTimeRemaining, clearTimerInterval, setTimerStatus, timerStatus]); // Added breakTimeRemaining and timerStatus dependencies
   const requestNotificationPermission = useCallback(async () => {
     if (!('Notification' in window)) {
       console.log('This browser does not support notifications');
@@ -905,13 +824,8 @@ const EventTimer = ({
       return 'denied';
     }
   }, []);
-
-  useEffect(() => {
-    if ('Notification' in window) {
-      setNotificationPermission(Notification.permission);
-    }
-  }, []);
-
+  
+  // Moved playRoundEndSound definition earlier
   const playRoundEndSound = useCallback(() => {
     if (soundEnabled && timerAudioRef.current) {
       try {
@@ -972,6 +886,165 @@ const EventTimer = ({
       }
     }
   }, [soundEnabled, notificationPermission, requestNotificationPermission]);
+
+  
+  const handleResumeRound = useCallback(() => {
+    // Add guard clause: Only attempt resume if status is actually paused
+    if (timerStatus !== 'paused') {
+        console.warn("Resume action ignored: Timer status is not paused (", timerStatus, ")");
+        return; 
+    }
+    console.log("USER ACTION: Resume round button clicked (Status is paused)");
+    handleApiAction('Resume Timer', 'resume')
+        .then((result) => {
+            if (result && result.timer) {
+                console.log("Resume API successful. Status before pause:", statusBeforePause);
+                const pausedTime = result.timer.pause_time_remaining ?? 0;
+                
+                // Restore the correct state based on what was paused
+                if (statusBeforePause === 'between_rounds') {
+                    console.log(`Resuming break timer with ${pausedTime}s remaining.`);
+                    setTimerStatus('between_rounds');
+                    setBreakTimeRemaining(pausedTime);
+                } else { // Assumes it was 'active' if not 'between_rounds'
+                    const currentRoundDuration = roundDuration; 
+                    const timeToSet = Math.min(pausedTime, currentRoundDuration);
+                    
+                    if (timeToSet <= 0) {
+                      // --- RESUMING WITH ZERO TIME --- 
+                      console.log(`Resuming round timer with ${timeToSet}s remaining. Immediately transitioning...`);
+                      // Manually trigger end-of-round logic (similar to useEffect)
+                      clearTimerInterval(); // Ensure no stray interval
+                      if (!notifiedZero) { 
+                          const isFinalRound = currentRound >= 10; 
+                          playRoundEndSound(); // Play sound
+                          
+                          if (isFinalRound) {
+                            console.log("Final round ended immediately upon resume. Setting status to 'ended'.");
+                            setTimerStatus('ended');
+                            setTimeRemaining(0);
+                            setBreakTimeRemaining(0);
+                          } else {
+                            console.log("Regular round ended immediately upon resume. Transitioning to break state.");
+                            setTimerStatus('between_rounds');
+                            const actualBreakDuration = timerState?.timer?.break_duration ?? 90;
+                            setBreakTimeRemaining(actualBreakDuration);
+                            setTimeRemaining(0);
+                            setNotifiedBreakEnd(false); 
+                          }
+                          setNotifiedZero(true); // Mark as notified
+                      }
+                    } else {
+                       // --- RESUMING WITH TIME LEFT --- 
+                       console.log(`Resuming round timer. Paused time: ${pausedTime}, Current duration: ${currentRoundDuration}. Setting remaining to: ${timeToSet}`);
+                       setTimerStatus('active'); 
+                       setTimeRemaining(timeToSet);
+                    }
+                }
+                
+                // Reset the pre-pause status memory
+                setStatusBeforePause(null);
+                 
+                 // The relevant useEffect hook will now pick up the correct status 
+                 // and remaining time to restart the interval.
+            } else {
+               console.error("Resume API call succeeded but returned unexpected data:", result);
+               setStatusBeforePause(null); // Reset on error too
+            }
+        }).catch(err => {
+            console.error("Resume API call failed:", err);
+            setStatusBeforePause(null); // Reset on error too
+            // Optionally fetch status again on error to re-sync
+            // fetchTimerStatus(true);
+        });
+
+  }, [handleApiAction, timerStatus, statusBeforePause, roundDuration, setTimerStatus, setTimeRemaining, setBreakTimeRemaining, clearTimerInterval, currentRound, notifiedZero, playRoundEndSound, timerState?.timer?.break_duration]); // Added missing dependencies
+
+  const handleNextRound = useCallback(() => {
+    console.log("USER ACTION: Next round button clicked");
+    
+    // CRITICAL FIX: More aggressive state reset to prevent carry-over state issues
+    setBreakTimeRemaining(0);  // Reset break time immediately
+    setNotifiedZero(false);    // Reset notification flags
+    setNotifiedBreakEnd(false);
+    
+    // Clear any existing timer interval to prevent duplicates
+    clearTimerInterval();
+    
+    // If we're between rounds, we need to call a different endpoint
+    if (timerStatus === 'between_rounds') {
+      console.log('Starting next round after break period');
+      
+      // First call the next endpoint to advance the round
+      handleApiAction('Advance to next round', 'next')
+        .then(() => {
+          console.log('Successfully advanced to next round');
+          
+          // After advancing the round, explicitly start it
+          return handleApiAction('Start next round', 'start');
+        })
+        .then(() => {
+          console.log('Successfully started the next round');
+          
+          // Force a timer status refresh to get the new round state
+          fetchTimerStatus(true);
+        })
+        .catch(error => {
+          console.error('Error handling next round after break:', error);
+        });
+    } else {
+      // For all other states, just call the API next endpoint
+      console.log('Ending current round and starting break period');
+      
+      handleApiAction('End current round', 'next') // Pass only suffix
+        .then((result) => { // Capture the result
+          console.log('Successfully ended round, checking completion status and current round:', result);
+          
+          // Check if the API indicated completion
+          if (result && result.complete) {
+            console.log("API confirms all rounds completed. Setting state to 'ended'.");
+            clearTimerInterval();
+            setTimerStatus('ended');
+            setTimeRemaining(0);
+            setBreakTimeRemaining(0);
+            // Persist ended state
+             try {
+               sessionStorage.setItem(`timer_status_${eventId}`, 'ended');
+               sessionStorage.setItem(`time_remaining_${eventId}`, '0');
+               sessionStorage.setItem(`break_time_remaining_${eventId}`, '0');
+             } catch (err) {
+               console.error("Error saving ended state:", err);
+             }
+          } else {
+            // If not complete, update round number explicitly and fetch full status
+            if (result && result.timer && typeof result.timer.current_round === 'number') {
+              const newRound = result.timer.current_round;
+              console.log(`Explicitly setting current round to ${newRound} after next round call.`);
+              setCurrentRound(newRound);
+            } else {
+              console.warn("Next round API response didn't contain expected timer.current_round.");
+              // Fallback: Increment locally? Risky.
+               setCurrentRound(prev => prev + 1); 
+            }
+            
+            // Fetch updated status (will confirm break state, etc.)
+            console.log('Round advanced, fetching updated status.');
+            fetchTimerStatus(true); 
+          }
+        })
+        .catch(error => {
+          console.error('Error handling next round:', error);
+        });
+    }
+  }, [timerStatus, clearTimerInterval, handleApiAction, fetchTimerStatus, eventId]);
+
+  
+
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationPermission(Notification.permission);
+    }
+  }, []);
 
   const playBreakEndSound = useCallback(() => {
     if (soundEnabled && breakAudioRef.current) {
@@ -1147,6 +1220,8 @@ const EventTimer = ({
       console.log(`Started active timer interval ID: ${timerIntervalRef.current}`);
     }
   }, [
+    currentRound,
+    timerState?.timer?.break_duration,
     timerStatus, 
     timeRemaining, 
     clearTimerInterval, 
@@ -1281,9 +1356,33 @@ const EventTimer = ({
             });
              // Directly update roundDuration state used elsewhere
              setRoundDuration(updatedTimerData.timer.round_duration);
-             // Update the display value in the settings dialog immediately for feedback
-             // setNewDuration(updatedTimerData.timer.round_duration); // No - keep slider value
-             // setNewBreakDuration(updatedTimerData.timer.break_duration); // No - keep slider value
+             
+             // --- Adjust active timer if duration changed --- 
+             if (timerStatus === 'active' && updatedTimerData.timer.round_start_time) {
+               const newRoundDuration = updatedTimerData.timer.round_duration;
+               const startTime = new Date(updatedTimerData.timer.round_start_time).getTime();
+               const now = Date.now();
+               const elapsedSeconds = Math.floor((now - startTime) / 1000);
+               const newTimeRemaining = Math.max(0, newRoundDuration - elapsedSeconds);
+               
+               console.log(`Round duration updated while active. New duration: ${newRoundDuration}, Elapsed: ${elapsedSeconds}, New Remaining: ${newTimeRemaining}`);
+               
+               // Set the new remaining time
+               setTimeRemaining(newTimeRemaining);
+               
+               // Clear the existing interval so the useEffect picks up the change
+               // and restarts the countdown correctly.
+               clearTimerInterval(); 
+             } else if (timerStatus === 'paused') {
+                // If paused, update the displayed time based on new duration?
+                // For simplicity, let's just update the underlying roundDuration.
+                // The new duration will apply when resumed.
+                // We already setRoundDuration above.
+             }
+            // ------------------------------------------------
+            
+            // Update the display value in the settings dialog immediately for feedback
+            
           } else {
             console.warn("Duration update API call succeeded but returned unexpected data:", updatedTimerData);
           }
@@ -1304,7 +1403,7 @@ const EventTimer = ({
     // Move setIsSettingsOpen(false) inside the .then() and .catch() blocks, 
     // and the 'else' block, so it only closes after action or if no action needed.
     //setIsSettingsOpen(false); // REMOVED FROM HERE
-  }, [handleApiAction, newDuration, newBreakDuration, timerState, eventId]); // Added eventId dependency
+  }, [handleApiAction, newDuration, newBreakDuration, timerState, eventId, clearTimerInterval, timerStatus]); // Added eventId dependency
 
   const openSettingsDialog = () => {
     // Set initial slider values from current timer state
@@ -1354,7 +1453,6 @@ const EventTimer = ({
 
     const isActive = timerStatus === 'active';
     const isBetweenRounds = timerStatus === 'between_rounds';
-    const isEnded = timerStatus === 'ended';
     const currentRoundSchedule = userSchedule?.find(item => item.round === currentRound);
     
     return (
@@ -1522,14 +1620,12 @@ const EventTimer = ({
                       isActive ? theme.palette.primary.light + '33' :
                       isPaused ? theme.palette.warning.light + '33' :
                       isBetweenRounds ? theme.palette.info.light + '33' :
-                      isEnded ? theme.palette.grey[300] + '33' :
                       theme.palette.background.default,
               border: `1px solid ${ 
                         isAlmostDone ? theme.palette.error.light :
                         isActive ? theme.palette.primary.light :
                         isPaused ? theme.palette.warning.light :
                         isBetweenRounds ? theme.palette.info.light :
-                        isEnded ? theme.palette.grey[400] :
                         theme.palette.divider
                       }`,
               position: 'relative',
@@ -1574,7 +1670,6 @@ const EventTimer = ({
                         isActive ? theme.palette.primary.main :
                         isPaused ? theme.palette.warning.main :
                         isBetweenRounds ? theme.palette.info.main :
-                        isEnded ? theme.palette.text.secondary :
                         theme.palette.text.secondary,
                   fontSize: '1.5rem'
                 }}
@@ -1598,8 +1693,8 @@ const EventTimer = ({
                   </Typography>
                 )}
                 <Chip 
-                  label={isActive ? 'Active' : isPaused ? 'Paused' : isBetweenRounds ? 'Break' : isEnded ? 'Ended' : 'Inactive'} 
-                  color={isActive ? 'primary' : isPaused ? 'warning' : isBetweenRounds ? 'info' : isEnded ? 'default' : 'default'}
+                  label={isActive ? 'Active' : isPaused ? 'Paused' : isBetweenRounds ? 'Break' : 'Inactive'} 
+                  color={isActive ? 'primary' : isPaused ? 'warning' : isBetweenRounds ? 'info' : 'default'}
                   size="small"
                   sx={{ 
                     fontWeight: 500, 
@@ -1621,7 +1716,6 @@ const EventTimer = ({
                      isActive ? theme.palette.primary.main :
                      isPaused ? theme.palette.warning.main :
                      isBetweenRounds ? theme.palette.info.main :
-                     isEnded ? theme.palette.text.secondary :
                      theme.palette.text.secondary}
               sx={{
                 fontWeight: 700,
@@ -1736,8 +1830,29 @@ const EventTimer = ({
                   }
                 }}
               >
-                {isActive && (
+                {/* --- ACTIVE OR BETWEEN ROUNDS STATE --- */}
+                {(isActive || isBetweenRounds) && currentRound <= 10 && (
                   <>
+                    {/* End Round Button: Show only if active */}
+                    {isActive && (
+                      <Button
+                        variant="outlined"
+                        color="secondary"
+                        startIcon={<SkipNext />}
+                        onClick={handleNextRound}
+                        size="medium"
+                        sx={{
+                          borderRadius: '8px',
+                          textTransform: 'none',
+                          py: 1,
+                          px: 3,
+                          fontWeight: 600
+                        }}
+                      >
+                        End Round
+                      </Button>
+                    )}
+                    {/* Pause Button: Show if active or between rounds (and not ended) */}
                     <Button
                       variant="contained"
                       color="warning"
@@ -1752,53 +1867,59 @@ const EventTimer = ({
                         fontWeight: 600
                       }}
                     >
-                      Pause
+                      Pause {isBetweenRounds ? 'Break' : 'Round'}
                     </Button>
-                    
-                    {/* Only show Next Round if not the last round */} 
-                    {currentRound < 10 && (
-                      <Button
-                        variant="outlined"
-                        color="secondary"
-                        startIcon={<SkipNext />}
-                        onClick={handleNextRound}
-                        size="medium"
-                        sx={{ 
-                          borderRadius: '8px',
-                          textTransform: 'none',
-                          py: 1,
-                          px: 3,
-                          fontWeight: 600
-                        }}
-                      >
-                        Next Round
-                      </Button>
-                    )}
                   </>
                 )}
-                
-                {/* Refined Button Logic */} 
-                {isPaused && currentRound <= 10 && (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<PlayArrow />}
-                    onClick={handleResumeRound}
-                    size="medium"
-                    sx={{
-                      borderRadius: '8px',
-                      textTransform: 'none',
-                      py: 1,
-                      px: 3,
-                      fontWeight: 600
-                    }}
-                  >
-                    Resume Round
-                  </Button>
-                )}
-                
-                {/* The Active state buttons (Pause, Next Round) are handled above */} 
+                 
+                 {/* --- PAUSED STATE --- */}
+                 {isPaused && currentRound <= 10 && (
+                   <Button
+                     variant="contained"
+                     color="primary"
+                     startIcon={<PlayArrow />}
+                     onClick={handleResumeRound}
+                     size="medium"
+                     sx={{
+                       borderRadius: '8px',
+                       textTransform: 'none',
+                       py: 1,
+                       px: 3,
+                       fontWeight: 600
+                     }}
+                   >
+                     Resume Round
+                   </Button>
+                 )}
+                 
+                  {/* --- INACTIVE or BETWEEN ROUNDS STATE --- */}
+                  {(timerStatus === 'inactive' || timerStatus === 'between_rounds') && currentRound < 10 && (
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      startIcon={<PlayArrow />}
+                      onClick={handleStartRound}
+                      size="medium"
+                      sx={{
+                        borderRadius: '8px',
+                        textTransform: 'none',
+                        py: 1,
+                        px: 3,
+                        fontWeight: 600
+                      }}
+                    >
+                      {timerStatus === 'between_rounds' ? 
+                        (breakTimeRemaining <= 0 ? 'Start Next Round' : `Start Next Round (${formatTime(breakTimeRemaining)} left)`) : 
+                        'Start Round'}
+                    </Button>
+                  )}
 
+                  {/* --- ENDED STATE --- */}
+                  {isEnded && (
+                     <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center', width: '100%' }}>
+                       Event Finished
+                     </Typography>
+                  )}
               </Box>
             </Paper>
           </Collapse>
