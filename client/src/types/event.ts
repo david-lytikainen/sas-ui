@@ -24,5 +24,5 @@ export interface ScheduleItem {
   table: number;
   partner_id: number;
   partner_name: string;
-  partner_age: number;
+  partner_age?: number;
 }

@@ -15,21 +15,21 @@ const AnimatedNotification: React.FC<AnimatedNotificationProps> = ({
   open,
   message,
   onClose,
-  autoHideDuration = 6000,
+  autoHideDuration = 15000,
   ...alertProps
 }) => {
   const transitions = useTransition(open, {
-    from: { 
+    from: {
       opacity: 0,
-      transform: 'translateX(100%) scale(0.9)',
+      transform: 'translateY(-100%) scale(0.9)',
     },
-    enter: { 
+    enter: {
       opacity: 1,
-      transform: 'translateX(0%) scale(1)',
+      transform: 'translateY(0%) scale(1)',
     },
-    leave: { 
+    leave: {
       opacity: 0,
-      transform: 'translateX(100%) scale(0.9)',
+      transform: 'translateY(-100%) scale(0.9)',
     },
     config: {
       tension: 280,

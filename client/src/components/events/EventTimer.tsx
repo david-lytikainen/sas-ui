@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import socketService from '../../services/socketService';
 import { 
   Box, 
   Button, 
@@ -33,12 +32,13 @@ import {
   NotificationImportant
 } from '@mui/icons-material';
 import axios from 'axios';
-import { Socket } from 'socket.io-client';
+import { ScheduleItem } from '../../types/event';
 
 interface EventTimerProps {
   eventId: number;
   isAdmin: boolean;
   eventStatus?: string;
+  userSchedule?: ScheduleItem[];
 }
 
 interface TimerState {
@@ -53,15 +53,20 @@ interface TimerState {
     pause_time_remaining: number | null;
   };
   time_remaining?: number;
-  status?: 'active' | 'paused' | 'inactive';
+  status?: 'active' | 'paused' | 'inactive' | 'ended';
   message?: string;
   current_round?: number;
+  next_round?: number;
+  break_duration?: number;
 }
 
-interface RoundInfo {
-  has_timer: boolean;
-  status?: 'active' | 'paused' | 'inactive';
-  current_round?: number;
+interface TimerUpdateSSE {
+  status: 'active' | 'paused' | 'ended' | 'between_rounds';
+  time_remaining: number;
+  current_round: number;
+  round_duration: number;
+  next_round?: number;
+  break_duration?: number;
 }
 
 const formatTime = (seconds: number): string => {
@@ -70,32 +75,43 @@ const formatTime = (seconds: number): string => {
   return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
 };
 
-const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus = 'In Progress' }) => {
+const EventTimer = ({ 
+  eventId, 
+  isAdmin, 
+  eventStatus = 'In Progress', 
+  userSchedule 
+}: EventTimerProps): React.ReactElement | null => {
   const theme = useTheme();
   
   // Only activate timer for active events
   const isEventActive = eventStatus === 'In Progress' || eventStatus === 'Paused';
   
   const [timerState, setTimerState] = useState<TimerState | null>(null);
-  const [roundInfo, setRoundInfo] = useState<RoundInfo | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [newDuration, setNewDuration] = useState<number>(180);
   const [timerInitialized, setTimerInitialized] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [timerStatus, setTimerStatus] = useState<'active' | 'paused' | 'inactive' | 'ended' | 'between_rounds'>('inactive');
+  const [currentRound, setCurrentRound] = useState<number>(0);
+  const [nextRoundInfo, setNextRoundInfo] = useState<number | null>(null);
+  const [roundDuration, setRoundDuration] = useState<number>(180);
   const [isInitializing, setIsInitializing] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [notifiedZero, setNotifiedZero] = useState<boolean>(false);
+  const [breakTimeRemaining, setBreakTimeRemaining] = useState<number>(0);
+  const [notifiedBreakEnd, setNotifiedBreakEnd] = useState<boolean>(false);
   const [showControls, setShowControls] = useState<boolean>(false);
   const [showTimerEndAlert, setShowTimerEndAlert] = useState<boolean>(false);
   const [notificationPermission, setNotificationPermission] = useState<string>('default');
   
-  const socketRef = useRef<Socket | null>(null);
   const lastFetchTimeRef = useRef<number>(Date.now());
   const timerAudioRef = useRef<HTMLAudioElement | null>(null);
   const countdownIntervalRef = useRef<number | null>(null);
-  const apiRequestInProgressRef = useRef<boolean>(false);
+  const breakCountdownIntervalRef = useRef<number | null>(null);
+  const breakAudioRef = useRef<HTMLAudioElement | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
   // Create audio element for notifications
   useEffect(() => {
@@ -109,33 +125,32 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
     };
   }, []);
 
+  // Create audio element for break end notifications
+  useEffect(() => {
+    // Ensure this path matches where you place the sound file in /public
+    breakAudioRef.current = new Audio('/sounds/next-round-start.mp3'); 
+    breakAudioRef.current.preload = 'auto';
+  }, []);
+
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
-  // Function to fetch timer status directly via API - with less frequency
   const fetchTimerStatus = useCallback(async (force: boolean = false) => {
-    // Don't fetch if event is not active
     if (!isEventActive) {
       setIsLoading(false);
       return;
     }
     
-    // Prevent concurrent API requests
-    if (apiRequestInProgressRef.current && !force) {
+    if (Date.now() - lastFetchTimeRef.current < 1000 && !force) {
       return;
     }
     
-    // CRITICAL: Only fetch if forced (initial load or explicit action)
-    // Never allow non-forced API calls to prevent polling
     if (!force) {
       return;
     }
     
-    // Set a reference that we're fetching data to prevent duplicates
     lastFetchTimeRef.current = Date.now();
-    apiRequestInProgressRef.current = true;
     
     try {
-      // Only show loading indicator on initial load
       if (isAdmin && isLoading) {
         setIsLoading(true);
       }
@@ -151,35 +166,42 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
         }
       });
       
-      // Check if there was a valid response
       if (response.data) {
-        console.log('Using client-side timer with server sync');
-        
-        if (isAdmin) {
-          setTimerState(response.data);
-          
-          if (response.data.time_remaining !== undefined) {
-            setTimeRemaining(response.data.time_remaining);
-            // Reset notification flag if we're not at zero
-            if (response.data.time_remaining > 0) {
-              setNotifiedZero(false);
-            }
-          } else if (response.data.timer?.pause_time_remaining) {
-            setTimeRemaining(response.data.timer.pause_time_remaining);
-          } else if (response.data.timer?.round_duration) {
-            setTimeRemaining(response.data.timer.round_duration);
-          }
+        console.log('Fetched initial timer state via API:', response.data);
+        const data = response.data;
+        setTimerState(data);
+        const fetchedStatus = data.status ?? (data.timer?.is_paused ? 'paused' : (data.timer?.round_start_time ? 'active' : 'inactive'));
+        setTimerStatus(fetchedStatus);
+        if (fetchedStatus === 'active') {
+          setTimeRemaining(data.time_remaining ?? data.timer?.round_duration ?? 0);
+        } else if (fetchedStatus === 'paused') {
+          setTimeRemaining(data.timer?.pause_time_remaining ?? 0);
+        } else if (fetchedStatus === 'between_rounds') {
+          setBreakTimeRemaining(data.time_remaining ?? data.break_duration ?? 0);
         } else {
-          // For regular users, we just need round info
-          setRoundInfo({
-            has_timer: response.data.has_timer,
-            status: response.data.status,
-            current_round: response.data.current_round || 
-                          (response.data.timer?.current_round)
-          });
+          setTimeRemaining(0);
+          setBreakTimeRemaining(0);
         }
         
+        setCurrentRound(data.current_round ?? data.timer?.current_round ?? 0);
+        setNextRoundInfo(data.next_round ?? null);
+        setRoundDuration(data.timer?.round_duration ?? data.round_duration ?? 180);
+
+        if ((data.time_remaining ?? 0) > 0 || fetchedStatus === 'active') {
+          setNotifiedZero(false);
+        }
+        if ((data.time_remaining ?? 0) > 0 || fetchedStatus === 'between_rounds') {
+          setNotifiedBreakEnd(false);
+        }
+        
+        if (data.has_timer && !data.status && !data.timer?.is_paused && data.timer?.round_start_time) {
+            setTimerStatus('active');
+        } else if (!data.has_timer) {
+             setTimerStatus('inactive');
+        }
         setError(null);
+        setTimerInitialized(data.has_timer);
+        setIsLoading(false);
       } else {
         throw new Error('Invalid response data from timer API');
       }
@@ -191,13 +213,9 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
         : `Network error: ${err.message}`;
       
       setError(`Failed to load timer. ${errorMessage}`);
-    } finally {
-      setIsLoading(false);
-      apiRequestInProgressRef.current = false;
     }
   }, [eventId, API_URL, isAdmin, isLoading, isEventActive]);
 
-  // Initialize timer directly via API
   const initializeTimerViaApi = useCallback(async () => {
     if (!isEventActive) return;
     
@@ -221,7 +239,6 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
 
       setTimerInitialized(true);
       
-      // Fetch the timer status again after initialization
       await fetchTimerStatus(true);
     } catch (err: any) {
       console.error('Error initializing timer:', err);
@@ -236,7 +253,6 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
     }
   }, [eventId, API_URL, fetchTimerStatus, isEventActive]);
 
-  // Function to directly interact with the backend using REST API as fallback
   const makeApiRequest = useCallback(async (endpoint: string, method: string, data: any = {}) => {
     if (!isEventActive) return null;
     
@@ -267,68 +283,53 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
     }
   }, [API_URL, eventId, isEventActive]);
 
-  // Handler function with socket and fallback API
-  const handleSocketAction = useCallback(async (
+  const handleApiAction = useCallback(async (
     action: string, 
-    socketEvent: string, 
     apiEndpoint: string, 
     apiMethod: string = 'POST',
     data: any = {}
   ) => {
-    if (!isEventActive) return;
+    if (!isAdmin || !isEventActive) return;
     
-    // Try socket first if available
-    if (socketRef.current && socketRef.current.connected) {
-      socketRef.current.emit(socketEvent, {...data, event_id: eventId});
-      return;
-    }
-    
-    // Fallback to REST API
     try {
       await makeApiRequest(apiEndpoint, apiMethod, data);
-      // Refresh timer status after API call
       await fetchTimerStatus(true);
     } catch (error) {
       console.error(`Failed to ${action} via API:`, error);
     }
-  }, [eventId, makeApiRequest, fetchTimerStatus, isEventActive]);
+  }, [eventId, makeApiRequest, fetchTimerStatus, isAdmin, isEventActive]);
 
   const handleStartRound = useCallback(() => {
-    handleSocketAction(
+    handleApiAction(
       'start round', 
-      'timer_start', 
       'start'
     );
-  }, [handleSocketAction]);
+  }, [handleApiAction]);
 
   const handlePauseRound = useCallback(() => {
-    handleSocketAction(
+    handleApiAction(
       'pause round', 
-      'timer_pause', 
       'pause', 
       'POST',
       { time_remaining: timeRemaining }
     );
-  }, [handleSocketAction, timeRemaining]);
+  }, [handleApiAction, timeRemaining]);
 
   const handleResumeRound = useCallback(() => {
-    handleSocketAction(
+    handleApiAction(
       'resume round', 
-      'timer_resume', 
       'resume'
     );
-  }, [handleSocketAction]);
+  }, [handleApiAction]);
 
   const handleNextRound = useCallback(() => {
-    handleSocketAction(
+    handleApiAction(
       'next round', 
-      'timer_next', 
       'next'
     );
-    setNotifiedZero(false); // Reset notification state for the new round
-  }, [handleSocketAction]);
+    setNotifiedZero(false);
+  }, [handleApiAction]);
 
-  // Request notification permission
   const requestNotificationPermission = useCallback(async () => {
     if (!('Notification' in window)) {
       console.log('This browser does not support notifications');
@@ -348,31 +349,25 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
     }
   }, []);
 
-  // Check notification permission on mount
   useEffect(() => {
     if ('Notification' in window) {
       setNotificationPermission(Notification.permission);
     }
   }, []);
 
-  // Play notification sound
   const playNotificationSound = useCallback(() => {
     if (soundEnabled && timerAudioRef.current && !notifiedZero) {
-      timerAudioRef.current.play()
-        .catch(err => console.error('Error playing notification sound:', err));
+      timerAudioRef.current.play().catch(err => console.error('Error playing ROUND END sound:', err));
       setNotifiedZero(true);
       setShowTimerEndAlert(true);
       
-      // Auto-hide the alert after 10 seconds
       setTimeout(() => {
         setShowTimerEndAlert(false);
       }, 10000);
       
-      // Visual browser notification
       if ('Notification' in window) {
         if (notificationPermission === 'granted') {
           try {
-            // Create and show the notification
             const notification = new Notification('Timer Complete', { 
               body: 'The current round has ended',
               icon: '/logo192.png',
@@ -388,10 +383,8 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
             console.error('Error creating notification:', error);
           }
         } else if (notificationPermission === 'default') {
-          // Try to request permission when the sound plays (user interaction)
           requestNotificationPermission().then(permission => {
             if (permission === 'granted') {
-              // Permission was just granted, show notification immediately
               try {
                 const notification = new Notification('Timer Complete', { 
                   body: 'The current round has ended',
@@ -413,103 +406,139 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
     }
   }, [soundEnabled, notifiedZero, notificationPermission, requestNotificationPermission]);
 
-  // Initialize and fetch timer status when component mounts
+  const playRoundEndSound = playNotificationSound;
+
+  const playBreakEndSound = useCallback(() => {
+    if (soundEnabled && breakAudioRef.current && !notifiedBreakEnd) {
+      breakAudioRef.current.play().catch(err => console.error('Error playing BREAK END sound:', err));
+      setNotifiedBreakEnd(true);
+      if ('Notification' in window && notificationPermission === 'granted') {
+        try {
+          const notification = new Notification('Break Over Soon', { 
+            body: `Get ready! Round ${nextRoundInfo || 'next'} is about to start.`,
+            icon: '/logo192.png',
+            tag: 'break-end'
+          });
+          notification.onclick = () => { window.focus(); notification.close(); };
+        } catch (error) {
+          console.error('Error creating break end notification:', error);
+        }
+      }
+    }
+  }, [soundEnabled, notifiedBreakEnd, notificationPermission, nextRoundInfo]);
+
   useEffect(() => {
     if (isEventActive) {
       fetchTimerStatus(true);
       
-      // Initialize socket only for notification purposes
-      const socket = socketService.initSocket();
-      socketRef.current = socket;
-      
-      // Join the event room to receive updates
-      socketService.joinEventRoom(eventId);
-      
-      // Listen for timer updates but only to stay in sync with round changes
-      const unsubscribe = socketService.subscribeToTimerUpdates((data) => {
-        console.log('Timer update received:', data);
-        
-        // Only update on significant changes like status or round changes
-        if (isAdmin) {
-          if (data.status !== timerState?.status || 
-              data.current_round !== timerState?.current_round) {
-            setTimerState(data);
-          }
-        } else {
-          if (data.status !== roundInfo?.status || 
-              data.current_round !== roundInfo?.current_round) {
-            setRoundInfo({
-              has_timer: data.has_timer,
-              status: data.status,
-              current_round: data.current_round || (data.timer?.current_round)
-            });
-          }
-        }
-      });
-      
       return () => {
-        if (socketRef.current) {
-          socketService.leaveEventRoom(eventId);
-          unsubscribe();
-        }
-        
-        socketService.disconnectSocket();
-        
         if (countdownIntervalRef.current !== null) {
           window.clearInterval(countdownIntervalRef.current);
           countdownIntervalRef.current = null;
         }
       };
     }
-  }, [eventId, fetchTimerStatus, isEventActive, isAdmin, timerState?.status, timerState?.current_round, roundInfo?.status, roundInfo?.current_round]);
+  }, [eventId, fetchTimerStatus, isEventActive]);
 
-  // Countdown timer - locally maintained to avoid glitches
   useEffect(() => {
-    // Clear any existing interval
     if (countdownIntervalRef.current !== null) {
       window.clearInterval(countdownIntervalRef.current);
       countdownIntervalRef.current = null;
     }
 
-    // Only run countdown for active timers
-    if (timerState?.status === 'active' && timeRemaining > 0 && isEventActive) {
+    if (timerStatus === 'active' && isEventActive) {
       countdownIntervalRef.current = window.setInterval(() => {
         setTimeRemaining((prev) => {
-          const newTime = Math.max(prev - 1, 0);
-          
-          // Play notification when timer reaches zero
-          if (newTime === 0 && !notifiedZero) {
-            playNotificationSound();
-            setShowTimerEndAlert(true);
+          if (prev <= 1) {
+            if(countdownIntervalRef.current !== null) {
+              console.log(`Clearing ROUND interval ID: ${countdownIntervalRef.current} because time reached zero.`);
+              clearInterval(countdownIntervalRef.current);
+              countdownIntervalRef.current = null;
+            }
+            if (!notifiedZero) {
+              console.log("Round Timer reached zero, playing sound/notification.");
+              playRoundEndSound(); 
+              setShowTimerEndAlert(true);
+            }
             
-            // Only admins should notify the server when the timer hits zero
             if (isAdmin) {
-              // Use direct pause action to avoid circular references in the dependency array
-              handleSocketAction(
-                'pause round',
-                'timer_pause',
+              console.log("Admin timer reached zero, automatically pausing.");
+              handleApiAction(
+                'pause round (auto)',
                 'pause',
                 'POST',
                 { time_remaining: 0 }
               );
             }
+            return 0;
           }
-          
-          return newTime;
+          return prev - 1;
         });
       }, 1000);
+      console.log(`Set new ROUND interval ID: ${countdownIntervalRef.current}`);
+    } else {
+      console.log(`ROUND interval NOT started. Status: ${timerStatus}, Event Active: ${isEventActive}`);
+      if (countdownIntervalRef.current !== null) {
+        console.log(`Clearing interval ID: ${countdownIntervalRef.current} due to status becoming non-active.`);
+        window.clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
     }
 
-    // Cleanup interval on unmount or when timer stops
     return () => {
       if (countdownIntervalRef.current !== null) {
+        console.log(`Cleanup: Clearing ROUND interval ID: ${countdownIntervalRef.current}`);
         window.clearInterval(countdownIntervalRef.current);
         countdownIntervalRef.current = null;
       }
     };
-  }, [timerState?.status, timeRemaining, isAdmin, playNotificationSound, notifiedZero, isEventActive, handleSocketAction]);
+  }, [timerStatus, isEventActive, isAdmin, notifiedZero, playRoundEndSound, handleApiAction]);
 
-  // Initialize timer if admin and no timer exists
+  useEffect(() => {
+    if (breakCountdownIntervalRef.current !== null) {
+      console.log(`Clearing BREAK interval ID: ${breakCountdownIntervalRef.current} due to status change or unmount.`);
+      window.clearInterval(breakCountdownIntervalRef.current);
+      breakCountdownIntervalRef.current = null;
+    }
+
+    if (timerStatus === 'between_rounds' && isEventActive) {
+      console.log(`Starting new BREAK interval. Status: ${timerStatus}, Event Active: ${isEventActive}`);
+      breakCountdownIntervalRef.current = window.setInterval(() => {
+        setBreakTimeRemaining((prevTime) => {
+          if (prevTime <= 1) {
+            if(breakCountdownIntervalRef.current !== null) {
+                console.log(`Clearing BREAK interval ID: ${breakCountdownIntervalRef.current} because time reached zero.`);
+                clearInterval(breakCountdownIntervalRef.current);
+                breakCountdownIntervalRef.current = null;
+            }
+            if (!notifiedBreakEnd) {
+              console.log("Break Timer reached zero, playing sound/notification.");
+              playBreakEndSound();
+            }
+            return 0;
+          }
+          return prevTime - 1;
+        });
+      }, 1000);
+      console.log(`Set new BREAK interval ID: ${breakCountdownIntervalRef.current}`);
+    } else {
+      console.log(`BREAK interval NOT started. Status: ${timerStatus}, Event Active: ${isEventActive}`);
+      if (breakCountdownIntervalRef.current !== null) {
+          console.log(`Clearing BREAK interval ID: ${breakCountdownIntervalRef.current} due to status change.`);
+          window.clearInterval(breakCountdownIntervalRef.current);
+          breakCountdownIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (breakCountdownIntervalRef.current !== null) {
+        console.log(`Cleanup: Clearing BREAK interval ID: ${breakCountdownIntervalRef.current}`);
+        window.clearInterval(breakCountdownIntervalRef.current);
+        breakCountdownIntervalRef.current = null;
+      }
+    };
+  }, [timerStatus, isEventActive, notifiedBreakEnd, playBreakEndSound]);
+
   useEffect(() => {
     const checkAndInitializeTimer = async () => {
       if (isAdmin && timerState && !timerState.has_timer && !timerInitialized && !isInitializing && isEventActive) {
@@ -523,17 +552,15 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
   }, [isAdmin, timerState, timerInitialized, initializeTimerViaApi, isInitializing, isEventActive]);
 
   const handleUpdateDuration = useCallback(() => {
-    handleSocketAction(
+    handleApiAction(
       'update duration', 
-      'timer_update_duration', 
       'duration', 
-      'PATCH',
+      'PUT',
       { round_duration: newDuration }
     );
     setIsSettingsOpen(false);
-  }, [handleSocketAction, newDuration]);
+  }, [handleApiAction, newDuration]);
 
-  // Open settings dialog
   const openSettingsDialog = () => {
     if (timerState?.timer?.round_duration) {
       setNewDuration(timerState.timer.round_duration);
@@ -541,17 +568,14 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
     setIsSettingsOpen(true);
   };
 
-  // Toggle sound setting
   const toggleSound = () => {
     setSoundEnabled(!soundEnabled);
   };
 
-  // Toggle controls visibility
   const toggleControls = () => {
     setShowControls(!showControls);
   };
 
-  // Request notification permission on user interaction
   const handleEnableNotifications = () => {
     requestNotificationPermission().then(permission => {
       if (permission === 'granted') {
@@ -560,7 +584,6 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
     });
   };
 
-  // Get progress percentage for circular progress
   const getProgressPercentage = () => {
     if (!timerState || !timerState.timer) return 0;
     const totalDuration = timerState.timer.round_duration;
@@ -584,16 +607,17 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
       return null;
     }
 
-    if (!roundInfo?.has_timer) {
+    if (!timerInitialized) {
       return null;
     }
 
-    const isActive = roundInfo?.status === 'active';
+    const isActive = timerStatus === 'active';
+    const isBetweenRounds = timerStatus === 'between_rounds';
+    const currentRoundSchedule = userSchedule?.find(item => item.round === currentRound);
     
     return (
       <>
-        {/* Timer End Alert for attendees - Visible when timer reaches zero */}
-        {timeRemaining === 0 && showTimerEndAlert && roundInfo?.status !== 'inactive' && (
+        {timeRemaining === 0 && showTimerEndAlert && timerStatus !== 'ended' && (
           <Snackbar
             open={showTimerEndAlert}
             autoHideDuration={6000}
@@ -615,48 +639,69 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
           sx={{ 
             display: 'inline-flex',
             alignItems: 'center',
-            height: '36px',
+            height: 'auto',
+            minHeight: '36px',
             ml: 1,
-            mr: 1
+            mr: 1,
+            px: 1.5,
+            py: 1,
+            borderRadius: '6px',
+            bgcolor: theme.palette.background.paper,
+            border: `1px solid ${ isBetweenRounds ? theme.palette.info.light : theme.palette.divider }`,
+            boxShadow: 1,
           }}
         >
-          <Box 
+          <TimerIcon 
             sx={{ 
-              display: 'flex',
-              alignItems: 'center',
-              px: 1.5,
-              py: 0.5,
-              borderRadius: '6px',
-              bgcolor: theme.palette.background.paper,
-              boxShadow: 1,
-            }}
-          >
-            <TimerIcon 
-              sx={{ 
-                mr: 1, 
-                color: theme.palette.primary.main,
-                fontSize: '1.1rem'
-              }} 
-            />
-            <Typography 
-              variant="body1" 
-              sx={{ 
-                fontWeight: 600,
-                mr: 1
-              }}
-            >
-              Round {roundInfo?.current_round || '-'}
-            </Typography>
-            {isActive && (
-              <Typography 
-                color="primary"
-                variant="body1" 
-                sx={{ fontWeight: 700 }}
-              >
-                {formatTime(timeRemaining)}
+              mr: 1.5, 
+              color: isActive ? theme.palette.primary.main : theme.palette.text.secondary,
+              fontSize: '1.2rem'
+            }} 
+          />
+          {isBetweenRounds ? (
+            <Box>
+               <Typography variant="body1" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
+                 Break Time
+               </Typography>
+               <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.3 }}>
+                  Next: Round {nextRoundInfo || '-'} starting soon.
+               </Typography>
+                <Typography 
+                   color="info.main"
+                   variant="body1" 
+                   sx={{ fontWeight: 700, mt: 0.5 }}
+                >
+                   {formatTime(breakTimeRemaining)}
+                </Typography>
+             </Box>
+          ) : isActive && currentRoundSchedule ? (
+            <Box>
+              <Typography variant="body1" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
+                Round {currentRoundSchedule.round}
               </Typography>
-            )}
-          </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.3 }}>
+                Table {currentRoundSchedule.table} with {currentRoundSchedule.partner_name} (Age: {currentRoundSchedule.partner_age || 'N/A'})
+              </Typography>
+              {isActive && (
+                 <Typography 
+                     color="primary"
+                     variant="body1" 
+                     sx={{ fontWeight: 700, mt: 0.5 }}
+                 >
+                     {formatTime(timeRemaining)}
+                 </Typography>
+              )}
+            </Box>
+          ) : currentRound > 0 ? (
+            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                  Round {currentRound} 
+                  {isActive ? formatTime(timeRemaining) : (timerStatus === 'paused' ? ' (Paused)' : ' (Waiting...)')}
+              </Typography>
+          ) : timerStatus === 'inactive' ? (
+            <Typography variant="body1" color="text.secondary">Waiting for event to start...</Typography>
+          ) : (
+            <Typography variant="body1" color="text.secondary">Waiting for round...</Typography>
+          )}
         </Box>
       </>
     );
@@ -679,7 +724,7 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
       return null;
     }
 
-    if (!timerState?.has_timer) {
+    if (!timerInitialized) {
       return (
         <Box 
           sx={{ 
@@ -710,12 +755,12 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
       );
     }
 
-    const isActive = timerState.status === 'active';
-    const isPaused = timerState.status === 'paused';
-    const currentRound = timerState.timer?.current_round || 1;
+    const isActive = timerStatus === 'active';
+    const isPaused = timerStatus === 'paused';
+    const isBetweenRounds = timerStatus === 'between_rounds';
+    const currentRound = timerState?.timer?.current_round || 1;
     const isAlmostDone = timeRemaining <= 10 && isActive;
     
-    // Calculate progress percentage for background color
     const progressPercentage = getProgressPercentage();
     
     return (
@@ -726,7 +771,6 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
             my: 2
           }}
         >
-          {/* Timer End Alert - Visible when timer reaches zero - make it go away after 10 seconds*/}
           {timeRemaining === 0 && showTimerEndAlert && (
             <Alert 
               severity="info" 
@@ -750,13 +794,13 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
                 </Button>
               }
             >
-              Timer has ended! Please move to the next round.
+              {isBetweenRounds ? `Break time: ${formatTime(breakTimeRemaining)}` : 'Prepare for next round.'}
             </Alert>
           )}
 
           <Paper
             elevation={2}
-            sx={{ 
+            sx={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -764,64 +808,72 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
               px: 3,
               py: 2,
               borderRadius: '8px',
-              bgcolor: isAlmostDone ? '#fff2f2' : isActive ? '#f9f8ff' : isPaused ? '#fff8ee' : '#f5f5f5',
-              border: isAlmostDone ? '1px solid #ffcdd2' : 
-                      isActive ? '1px solid #e3e1ff' : 
-                      isPaused ? '1px solid #ffe0b2' : 
-                      '1px solid #e0e0e0',
+              bgcolor: isAlmostDone ? theme.palette.error.light + '33' :
+                      isActive ? theme.palette.primary.light + '33' :
+                      isPaused ? theme.palette.warning.light + '33' :
+                      isBetweenRounds ? theme.palette.info.light + '33' :
+                      theme.palette.background.default,
+              border: `1px solid ${
+                        isAlmostDone ? theme.palette.error.light :
+                        isActive ? theme.palette.primary.light :
+                        isPaused ? theme.palette.warning.light :
+                        isBetweenRounds ? theme.palette.info.light :
+                        theme.palette.divider
+                      }`,
               position: 'relative',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              transition: 'background-color 0.3s ease, border-color 0.3s ease',
             }}
           >
-            {/* Progress indicator */}
             {isActive && (
-              <Box 
-                sx={{ 
-                  position: 'absolute', 
-                  top: 0, 
-                  left: 0, 
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
                   height: '100%',
-                  width: `${progressPercentage}%`, 
-                  bgcolor: isAlmostDone ? 
-                    'rgba(229, 115, 115, 0.1)' : 
-                    'rgba(103, 58, 183, 0.05)', 
-                  transition: 'width 1s linear',
+                  width: `${progressPercentage}%`,
+                  bgcolor: isAlmostDone ?
+                    theme.palette.error.light + '4D' :
+                    theme.palette.primary.light + '4D',
+                  transition: 'width 1s linear, background-color 0.3s ease',
                   zIndex: 1
-                }} 
+                }}
               />
             )}
             
-            {/* Left side - round info */}
-            <Box 
-              sx={{ 
+            <Box
+              sx={{
                 display: 'flex',
                 alignItems: 'center',
                 zIndex: 2
               }}
             >
-              <TimerIcon 
-                sx={{ 
-                  mr: 2, 
-                  color: isAlmostDone ? theme.palette.error.main : 
-                        isActive ? theme.palette.primary.main : 
-                        isPaused ? theme.palette.warning.main : 
+              <TimerIcon
+                sx={{
+                  mr: 2,
+                  color: isAlmostDone ? theme.palette.error.main :
+                        isActive ? theme.palette.primary.main :
+                        isPaused ? theme.palette.warning.main :
+                        isBetweenRounds ? theme.palette.info.main :
                         theme.palette.text.secondary,
                   fontSize: '1.5rem'
-                }} 
+                }}
               />
               <Box>
                 <Typography 
                   variant="h6" 
                   sx={{ 
                     fontWeight: 600,
-                    lineHeight: 1.2
+                    lineHeight: 1.2,
+                    color: theme.palette.text.primary
                   }}
                 >
                   Round {currentRound}
                 </Typography>
                 <Chip 
-                  label={isActive ? 'Active' : isPaused ? 'Paused' : 'Inactive'} 
-                  color={isActive ? 'primary' : isPaused ? 'warning' : 'default'}
+                  label={isActive ? 'Active' : isPaused ? 'Paused' : isBetweenRounds ? 'Break' : 'Inactive'} 
+                  color={isActive ? 'primary' : isPaused ? 'warning' : isBetweenRounds ? 'info' : 'default'}
                   size="small"
                   sx={{ 
                     fontWeight: 500, 
@@ -836,27 +888,28 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
               </Box>
             </Box>
             
-            {/* Center - timer */}
-            <Typography 
-              variant="h3" 
-              color={isAlmostDone ? 'error' : isActive ? 'primary' : isPaused ? 'warning.dark' : 'text.secondary'}
+            <Typography
+              variant="h3"
+              color={isAlmostDone ? theme.palette.error.main :
+                     isActive ? theme.palette.primary.main :
+                     isPaused ? theme.palette.warning.main :
+                     isBetweenRounds ? theme.palette.info.main :
+                     theme.palette.text.secondary}
               sx={{
-                fontWeight: 700, 
+                fontWeight: 700,
                 animation: isAlmostDone ? 'pulse 1s infinite' : 'none',
                 '@keyframes pulse': {
                   '0%': { opacity: 1 },
                   '50%': { opacity: 0.7 },
                   '100%': { opacity: 1 },
                 },
-                fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' }
+                fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
               }}
             >
-              {formatTime(timeRemaining)}
+              {isActive || isPaused ? formatTime(timeRemaining) : formatTime(breakTimeRemaining)}
             </Typography>
             
-            {/* Right side - controls */}
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              {/* Sound toggle */}
               <FormControlLabel
                 control={
                   <Switch 
@@ -872,7 +925,14 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
                       <VolumeUp fontSize="small" color="primary" /> : 
                       <VolumeOff fontSize="small" color="disabled" />
                     }
-                    <Typography variant="body2" sx={{ ml: 0.5, display: { xs: 'none', sm: 'block' } }}>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        ml: 0.5, 
+                        display: { xs: 'none', sm: 'block' },
+                        color: theme.palette.text.primary
+                      }}
+                    >
                       {soundEnabled ? "Sound On" : "Sound Off"}
                     </Typography>
                   </Box>
@@ -914,7 +974,6 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
             </Box>
           </Paper>
           
-          {/* Timer Controls */}
           <Collapse in={showControls}>
             <Paper 
               elevation={1}
@@ -968,45 +1027,7 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
                 </>
               )}
               
-              {isPaused && (
-                <>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<PlayArrow />}
-                    onClick={handleResumeRound}
-                    size="medium"
-                    sx={{ 
-                      borderRadius: '8px',
-                      textTransform: 'none',
-                      py: 1,
-                      px: 3,
-                      fontWeight: 600
-                    }}
-                  >
-                    Resume
-                  </Button>
-                  
-                  <Button
-                    variant="outlined"
-                    color="secondary"
-                    startIcon={<SkipNext />}
-                    onClick={handleNextRound}
-                    size="medium"
-                    sx={{ 
-                      borderRadius: '8px',
-                      textTransform: 'none',
-                      py: 1,
-                      px: 3,
-                      fontWeight: 600
-                    }}
-                  >
-                    Next Round
-                  </Button>
-                </>
-              )}
-              
-              {!isActive && !isPaused && (
+              {(isBetweenRounds || (!isActive && !isPaused)) && (
                 <Button
                   variant="contained"
                   color="primary"
@@ -1024,6 +1045,25 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
                   Start Round
                 </Button>
               )}
+              {isBetweenRounds && (
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  startIcon={<SkipNext />} 
+                  onClick={handleNextRound}
+                  size="medium"
+                  disabled
+                  sx={{ 
+                    borderRadius: '8px',
+                    textTransform: 'none',
+                    py: 1,
+                    px: 3,
+                    fontWeight: 600
+                  }}
+                >
+                  Next Round
+                </Button>
+              )}
             </Paper>
           </Collapse>
         </Box>
@@ -1031,7 +1071,6 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
     );
   };
 
-  // Settings dialog with modern styling
   const renderSettingsDialog = () => {
     return (
       <Dialog 
@@ -1095,35 +1134,34 @@ const EventTimer: React.FC<EventTimerProps> = ({ eventId, isAdmin, eventStatus =
     );
   };
 
-  // Don't render anything if event is not active and user is not admin
   if (!isEventActive && !isAdmin) {
+    console.log("EventTimer: Not rendering (event inactive and not admin).");
     return null;
   }
 
   return (
-    <>
-      {isAdmin ? renderAdminView() : renderAttendeeView()}
-      {renderSettingsDialog()}
+    <Box sx={{ my: 2 }}>
+       {isAdmin ? renderAdminView() : renderAttendeeView()}
+       {renderSettingsDialog()}
       
-      {/* Notification permission prompt */}
-      {notificationPermission === 'default' && (
-        <Snackbar
-          open={true}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        >
-          <Alert 
-            severity="info" 
-            action={
-              <Button color="inherit" size="small" onClick={handleEnableNotifications}>
-                Enable
-              </Button>
-            }
-          >
-            Enable browser notifications for timer alerts
-          </Alert>
-        </Snackbar>
-      )}
-    </>
+       {notificationPermission === 'default' && (
+         <Snackbar
+           open={true}
+           anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+         >
+           <Alert 
+             severity="info" 
+             action={
+               <Button color="inherit" size="small" onClick={handleEnableNotifications}>
+                 Enable
+               </Button>
+             }
+           >
+             Enable browser notifications for timer alerts
+           </Alert>
+         </Snackbar>
+       )}
+    </Box>
   );
 };
 

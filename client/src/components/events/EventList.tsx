@@ -61,16 +61,14 @@ import {
 } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
-import { eventsApi, authApi } from '../../services/api';
+import { eventsApi } from '../../services/api';
 import { Event, EventStatus, ScheduleItem } from '../../types/event';
-import { useNavigate } from 'react-router-dom';
 import EventTimer from './EventTimer';
 
 const EventList = () => {
-  const { events: contextEvents, createEvent, refreshEvents, isRegisteredForEvent } = useEvents();
+  const { events: contextEvents, createEvent, refreshEvents, isRegisteredForEvent, userRegisteredEvents } = useEvents();
   const { user, isAdmin, isOrganizer } = useAuth();
   const theme = useTheme();
-  const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [signUpDialogOpen, setSignUpDialogOpen] = useState(false);
   const [signUpEventId, setSignUpEventId] = useState<string | null>(null);
@@ -88,22 +86,15 @@ const EventList = () => {
     status: 'Registration Open' as EventStatus,
   });
   
-  const [creatingEvent, setCreatingEvent] = useState(false);
-  
   const [globalCheckInDialogOpen, setGlobalCheckInDialogOpen] = useState(false);
   const [selectedEventForCheckIn, setSelectedEventForCheckIn] = useState<Event | null>(null);
-  const [eventOptions, setEventOptions] = useState<Event[]>([]);
   const [checkInPin, setCheckInPin] = useState('');
   const [checkInError, setCheckInError] = useState<string | null>(null);
 
   // Expanded event controls state
   const [expandedEventControls, setExpandedEventControls] = useState<number | null>(null);
   
-  // Toggle event controls expansion
-  const handleExpandEventControls = (eventId: number) => {
-    setExpandedEventControls(expandedEventControls === eventId ? null : eventId);
-  };
-
+ 
   const [viewPinsDialogOpen, setViewPinsDialogOpen] = useState(false);
   const [selectedEventForPins, setSelectedEventForPins] = useState<Event | null>(null);
   const [attendeePins, setAttendeePins] = useState<{name: string, email: string, pin: string}[]>([]);
@@ -163,6 +154,9 @@ const EventList = () => {
   const [pinSearchTerm, setPinSearchTerm] = useState('');
   const [filteredPins, setFilteredPins] = useState<{name: string, email: string, pin: string}[]>([]);
 
+  // State to hold fetched user schedules keyed by eventId
+  const [userSchedules, setUserSchedules] = useState<Record<number, ScheduleItem[]>>({});
+
   const events: Event[] = contextEvents.map((contextEvent: any) => {
     // Find the corresponding registration if it exists
     const registration = contextEvent.registration || null;
@@ -184,13 +178,11 @@ const EventList = () => {
     } as Event;
   });
 
-  useEffect(() => {
-    const registeredEvents = events.filter(event => 
-      isRegisteredForEvent(event.id) && 
-      event.registration?.status === 'Registered'
-    );
-    setEventOptions(registeredEvents);
-  }, [events, isRegisteredForEvent]);
+  // Calculate eventOptions directly instead of storing in state
+  const eventOptions = events.filter(event => 
+    userRegisteredEvents.includes(event.id) && 
+    event.registration?.status === 'Registered'
+  );
 
   const handleSignUpClick = (eventId: number) => {
     const event = events.find(e => e.id === eventId);
@@ -332,8 +324,6 @@ const EventList = () => {
 
   const handleCreateEvent = async () => {
     try {
-      setCreatingEvent(true);
-      
       // Convert form data to correct types for API
       const eventData = {
         name: createForm.name || 'Unnamed Event',
@@ -359,10 +349,8 @@ const EventList = () => {
         price_per_person: '',
         status: 'Registration Open' as EventStatus,
       });
-      setCreatingEvent(false);
     } catch (error: any) {
       setErrorMessage(error.message || 'Failed to create event');
-      setCreatingEvent(false);
     }
   };
 
@@ -453,20 +441,26 @@ const EventList = () => {
     // Events in progress or paused
     if ((event.status === 'In Progress' || event.status === 'Paused') && isRegistered) {
       if (registrationStatus === 'Checked In') {
+        // User is checked in: Show Chip, View Schedule button, and potentially paused status.
+        // Schedule for current round is shown inline via EventTimer.
         return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
             <Chip
               label="Checked In"
               color="success"
               icon={<CheckInIcon />}
+              size="small"
             />
+            {/* Re-add View Schedule Button */}
             <Button
               size="small"
               variant="outlined"
               onClick={() => handleViewSchedule(event.id)}
+              startIcon={<ViewIcon fontSize="small"/>}
             >
-              View Schedule
+              View My Schedule
             </Button>
+            {/* Optionally show paused status chip */}
             {event.status === 'Paused' && (
               <Chip
                 label="Event Paused"
@@ -478,26 +472,7 @@ const EventList = () => {
           </Box>
         );
       } else {
-        return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Button 
-              size="small" 
-              startIcon={<CheckInIcon />} 
-              color="primary"
-              onClick={() => handleGlobalCheckInClick()}
-            >
-              Check In Now
-            </Button>
-            {event.status === 'Paused' && (
-              <Chip
-                label="Event Paused"
-                color="warning"
-                size="small"
-                sx={{ mt: 1 }}
-              />
-            )}
-          </Box>
-        );
+        return null;
       }
     }
     
@@ -1035,6 +1010,10 @@ const EventList = () => {
             compareA = a.partner_name.toLowerCase();
             compareB = b.partner_name.toLowerCase();
             break;
+          case 'partnerAge':
+            compareA = a.partner_age || 0;
+            compareB = b.partner_age || 0;
+            break;
           default:
             return 0;
         }
@@ -1065,11 +1044,6 @@ const EventList = () => {
     setFilteredSchedules(filtered);
   };
 
-  // Add this function to the component
-  const handleViewEventDetails = (eventId: number) => {
-    // We'll display all the details on the card instead
-    return;
-  };
 
   // Add a function to handle pin search
   const handlePinSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1085,13 +1059,66 @@ const EventList = () => {
     } else {
       const lowercaseSearch = search.toLowerCase();
       const filtered = attendeePins.filter(attendee => 
-        attendee.name.toLowerCase().includes(lowercaseSearch) || 
-        attendee.email.toLowerCase().includes(lowercaseSearch) ||
-        attendee.pin.includes(lowercaseSearch)
+        attendee.name?.toLowerCase().includes(lowercaseSearch) || 
+        attendee.email?.toLowerCase().includes(lowercaseSearch) ||
+        // Assume pin is always a string, but add check just in case
+        attendee.pin?.includes(lowercaseSearch) 
       );
       setFilteredPins(filtered);
     }
   };
+
+  // Effect to fetch user schedules for active, checked-in events
+  useEffect(() => {
+    const fetchSchedulesForActiveEvents = async () => {
+      const schedulesToUpdate: Record<number, ScheduleItem[]> = {};
+      let needsUpdate = false;
+
+      for (const event of events) {
+        const isRegistered = isRegisteredForEvent(event.id);
+        const registrationStatus = event.registration?.status || null;
+
+        // --- Add Log ---
+        // Log conditions for *every* event in the loop
+        console.log(`Event ${event.id}: Status=${event.status}, Registered=${isRegistered}, CheckInStatus=${registrationStatus}, AlreadyFetched=${userSchedules.hasOwnProperty(event.id)}`);
+        // ---------------
+
+        // Now check conditions to fetch
+        if ((event.status === 'In Progress' || event.status === 'Paused') && isRegistered && registrationStatus === 'Checked In') {
+          // Only fetch if we don\'t already have it
+          if (!userSchedules.hasOwnProperty(event.id)) { 
+            try {
+              console.log(`Fetching schedule for event ${event.id}`);
+              const response = await eventsApi.getSchedule(event.id.toString());
+              if (response && response.schedule) {
+                console.log(`Fetched schedule for event ${event.id}:`, response.schedule);
+                schedulesToUpdate[event.id] = response.schedule;
+                needsUpdate = true;
+              } else {
+                 console.log(`No schedule found for event ${event.id}`);
+                 schedulesToUpdate[event.id] = []; 
+                 needsUpdate = true;
+              }
+            } catch (err) {
+              console.error(`Failed to fetch schedule for event ${event.id}:`, err);
+              schedulesToUpdate[event.id] = []; 
+              needsUpdate = true;
+            }
+          }
+        }
+      } // End of for loop
+
+      if (needsUpdate) {
+        setUserSchedules(prev => ({ ...prev, ...schedulesToUpdate }));
+      }
+    }; // End of fetchSchedulesForActiveEvents
+
+    // Check if user data and events are loaded before fetching
+    if (user && events.length > 0) {
+        fetchSchedulesForActiveEvents();
+    }
+  // Dependencies: events array changes, user registration status changes
+  }, [events, isRegisteredForEvent, user, userSchedules]); // Added userSchedules to prevent re-fetching if already present
 
   return (
     <Container maxWidth="lg" sx={{ px: isMobile ? 2 : 3 }}>
@@ -1455,10 +1482,19 @@ const EventList = () => {
                       <Typography variant="h6" gutterBottom>
                         Round Timer
                       </Typography>
-                      <EventTimer 
-                        eventId={event.id} 
-                        isAdmin={canManageEvent(event)} 
-                      />
+                      {(() => {
+                        // Moved logging logic outside the direct JSX return
+                        const scheduleForTimer = isRegisteredForEvent(event.id) && event.registration?.status === 'Checked In' ? userSchedules[event.id] : undefined;
+                        console.log(`Passing userSchedule to EventTimer for event ${event.id}:`, scheduleForTimer);
+                        return (
+                          <EventTimer 
+                            eventId={event.id} 
+                            isAdmin={canManageEvent(event)} 
+                            eventStatus={event.status} // Pass status down
+                            userSchedule={scheduleForTimer} // Pass the determined schedule
+                          />
+                        );
+                      })()}
                     </Box>
                   )}
                   
@@ -1583,7 +1619,7 @@ const EventList = () => {
                 Select Event
               </Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {eventOptions.map(event => (
+                {eventOptions.map((event: Event) => (
                   <Paper 
                     key={event.id}
                     variant="outlined"
@@ -1748,156 +1784,84 @@ const EventList = () => {
                     {registeredUsers.map((user) => (
                       <TableRow key={user.id}>
                         {editingUserId === user.id ? (
-                          // Edit mode
+                          // Edit mode - Render all cells, including placeholders/read-only for non-editable data
                           <>
                             <TableCell>
+                              {/* Name Input */}
                               <Box sx={{ display: 'flex', gap: 1 }}>
-                                <TextField
-                                  size="small"
-                                  label="First Name"
-                                  value={editFormData.first_name}
-                                  onChange={(e) => handleEditFormChange(e.target.value, 'first_name')}
-                                  sx={{ minWidth: 120 }}
-                                />
-                                <TextField
-                                  size="small"
-                                  label="Last Name"
-                                  value={editFormData.last_name}
-                                  onChange={(e) => handleEditFormChange(e.target.value, 'last_name')}
-                                  sx={{ minWidth: 120 }}
-                                />
+                                <TextField size="small" label="First Name" value={editFormData.first_name} onChange={(e) => handleEditFormChange(e.target.value, 'first_name')} sx={{ minWidth: 120 }} />
+                                <TextField size="small" label="Last Name" value={editFormData.last_name} onChange={(e) => handleEditFormChange(e.target.value, 'last_name')} sx={{ minWidth: 120 }} />
                               </Box>
                             </TableCell>
                             <TableCell>
-                              <TextField
-                                size="small"
-                                label="Email"
-                                value={editFormData.email}
-                                onChange={(e) => handleEditFormChange(e.target.value, 'email')}
-                                sx={{ minWidth: 200 }}
-                              />
+                              {/* Email Input */}
+                              <TextField size="small" label="Email" value={editFormData.email} onChange={(e) => handleEditFormChange(e.target.value, 'email')} sx={{ minWidth: 200 }} />
                             </TableCell>
                             <TableCell>
-                              <TextField
-                                size="small"
-                                label="Phone"
-                                value={editFormData.phone}
-                                onChange={(e) => handleEditFormChange(e.target.value, 'phone')}
-                                sx={{ minWidth: 120 }}
-                              />
+                              {/* Phone Input */}
+                              <TextField size="small" label="Phone" value={editFormData.phone} onChange={(e) => handleEditFormChange(e.target.value, 'phone')} sx={{ minWidth: 120 }} />
                             </TableCell>
                             <TableCell>
+                              {/* Gender Select */}
                               <FormControl size="small" sx={{ minWidth: 100 }}>
                                 <InputLabel>Gender</InputLabel>
-                                <Select
-                                  value={editFormData.gender}
-                                  label="Gender"
-                                  onChange={(e) => handleEditFormChange(e.target.value, 'gender')}
-                                >
-                                  <MenuItem value="Male">Male</MenuItem>
-                                  <MenuItem value="Female">Female</MenuItem>
-                                </Select>
+                                <Select value={editFormData.gender} label="Gender" onChange={(e) => handleEditFormChange(e.target.value, 'gender')}> <MenuItem value="Male">Male</MenuItem> <MenuItem value="Female">Female</MenuItem> </Select>
                               </FormControl>
                             </TableCell>
                             <TableCell>
-                              {/* Age is calculated from birthday, not directly editable */}
+                              {/* Age (Read-only) */}
                               {editFormData.birthday ? calculateAge(new Date(editFormData.birthday)) : ''}
                             </TableCell>
                             <TableCell>
-                              <TextField
-                                size="small"
-                                label="Birthday"
-                                type="date"
-                                value={editFormData.birthday || ''}
-                                onChange={(e) => handleEditFormChange(e.target.value, 'birthday')}
-                                InputLabelProps={{ shrink: true }}
-                                sx={{ minWidth: 120 }}
-                              />
+                              {/* Birthday Input */}
+                              <TextField size="small" label="Birthday" type="date" value={editFormData.birthday || ''} onChange={(e) => handleEditFormChange(e.target.value, 'birthday')} InputLabelProps={{ shrink: true }} sx={{ minWidth: 120 }} />
                             </TableCell>
                             <TableCell>
+                              {/* Registered (Read-only) */}
                               {user.registration_date ? new Date(user.registration_date).toLocaleString() : 'N/A'}
                             </TableCell>
                             <TableCell>
-                              <Chip 
-                                label={user.status} 
-                                color={user.status === 'Checked In' ? 'success' : 'primary'}
-                                size="small"
-                              />
+                              {/* Status (Read-only Chip) */}
+                              <Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" />
                             </TableCell>
                             <TableCell>
+                              {/* Check-in Time (Read-only) */}
                               {user.check_in_date ? new Date(user.check_in_date).toLocaleString() : 'Not checked in'}
                             </TableCell>
                             <TableCell>
-                              <TextField
-                                size="small"
-                                label="PIN"
-                                value={editFormData.pin || ''}
-                                onChange={(e) => handleEditFormChange(e.target.value, 'pin')}
-                                inputProps={{ maxLength: 4, pattern: '[0-9]*' }}
-                                sx={{ width: 65 }}
-                              />
+                              {/* PIN Input */}
+                              <TextField size="small" label="PIN" value={editFormData.pin || ''} onChange={(e) => handleEditFormChange(e.target.value, 'pin')} inputProps={{ maxLength: 4, pattern: '[0-9]*' }} sx={{ width: 65 }} />
                             </TableCell>
+                            {(isAdmin() || isOrganizer()) && (
+                              <TableCell>
+                                {/* Save/Cancel Actions */}
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                  <IconButton size="small" color="primary" onClick={() => handleSaveEdits(user.id)} title="Save"> <SaveIcon fontSize="small" /> </IconButton>
+                                  <IconButton size="small" color="error" onClick={handleCancelEditing} title="Cancel"> <CancelEditIcon fontSize="small" /> </IconButton>
+                                </Box>
+                              </TableCell>
+                            )}
                           </>
                         ) : (
-                          // View mode
+                          // View mode - Render all cells
                           <>
                             <TableCell>{user.name}</TableCell>
                             <TableCell>{user.email}</TableCell>
                             <TableCell>{user.phone}</TableCell>
                             <TableCell>{user.gender}</TableCell>
-                          </>
-                        )}
-                        {/* These cells are not editable */}
-                        <TableCell>{user.age}</TableCell>
-                        <TableCell>
-                          {user.birthday ? new Date(user.birthday).toLocaleDateString() : 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          {user.registration_date ? new Date(user.registration_date).toLocaleString() : 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={user.status} 
-                            color={user.status === 'Checked In' ? 'success' : 'primary'}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {user.check_in_date ? new Date(user.check_in_date).toLocaleString() : 'Not checked in'}
-                        </TableCell>
-                        <TableCell>{user.pin}</TableCell>
-                        {(isAdmin() || isOrganizer()) && (
-                          <TableCell>
-                            {editingUserId === user.id ? (
-                              <Box sx={{ display: 'flex', gap: 1 }}>
-                                <IconButton 
-                                  size="small" 
-                                  color="primary" 
-                                  onClick={() => handleSaveEdits(user.id)}
-                                  title="Save"
-                                >
-                                  <SaveIcon fontSize="small" />
-                                </IconButton>
-                                <IconButton 
-                                  size="small" 
-                                  color="error" 
-                                  onClick={handleCancelEditing}
-                                  title="Cancel"
-                                >
-                                  <CancelEditIcon fontSize="small" />
-                                </IconButton>
-                              </Box>
-                            ) : (
-                              <IconButton 
-                                size="small" 
-                                color="primary" 
-                                onClick={() => handleStartEditing(user)}
-                                title="Edit"
-                              >
-                                <EditIcon fontSize="small" />
-                              </IconButton>
+                            <TableCell>{user.age}</TableCell>
+                            <TableCell> {user.birthday ? new Date(user.birthday).toLocaleDateString() : 'N/A'} </TableCell>
+                            <TableCell> {user.registration_date ? new Date(user.registration_date).toLocaleString() : 'N/A'} </TableCell>
+                            <TableCell> <Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /> </TableCell>
+                            <TableCell> {user.check_in_date ? new Date(user.check_in_date).toLocaleString() : 'Not checked in'} </TableCell>
+                            <TableCell>{user.pin}</TableCell>
+                            {(isAdmin() || isOrganizer()) && (
+                              <TableCell>
+                                {/* Edit Action */}
+                                <IconButton size="small" color="primary" onClick={() => handleStartEditing(user)} title="Edit"> <EditIcon fontSize="small" /> </IconButton>
+                              </TableCell>
                             )}
-                          </TableCell>
+                          </>
                         )}
                       </TableRow>
                     ))}
@@ -2012,8 +1976,12 @@ const EventList = () => {
                     <Typography variant="body1">
                       <strong>Table:</strong> {item.table}
                     </Typography>
+                    {/* Add Partner Info */}
                     <Typography variant="body1">
-                      <strong>Partner:</strong> {item.partner_name} ({item.partner_age})
+                      <strong>Partner:</strong> {item.partner_name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      (Age: {item.partner_age || 'N/A'})
                     </Typography>
                   </Paper>
                 ))}
@@ -2139,6 +2107,23 @@ const EventList = () => {
                             )}
                           </Box>
                         </TableCell>
+                        <TableCell 
+                          onClick={() => handleSort('partnerAge')}
+                          sx={{ 
+                            cursor: 'pointer',
+                            backgroundColor: sortConfig?.key === 'partnerAge' ? 'rgba(0, 0, 0, 0.04)' : 'inherit',
+                            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' }
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <strong>Partner Age</strong>
+                            {sortConfig?.key === 'partnerAge' && (
+                              <span style={{ marginLeft: '4px' }}>
+                                {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                              </span>
+                            )}
+                          </Box>
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -2156,9 +2141,8 @@ const EventList = () => {
                             <TableCell>{userName}</TableCell>
                             <TableCell>{item.round}</TableCell>
                             <TableCell>{item.table}</TableCell>
-                            <TableCell>
-                              {item.partner_name} ({item.partner_age})
-                            </TableCell>
+                            <TableCell>{item.partner_name}</TableCell>
+                            <TableCell>{item.partner_age || 'N/A'}</TableCell>
                           </TableRow>
                         ));
                       })}
