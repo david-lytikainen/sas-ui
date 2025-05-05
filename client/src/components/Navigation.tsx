@@ -80,10 +80,10 @@ const Navigation = () => {
 
   // Dark mode toggle button spring animation
   const toggleButtonProps = useSpring({
-    opacity: 1,
+    opacity: .5,
     transform: 'scale(1)',
     from: { opacity: 0, transform: 'scale(0.8)' },
-    config: { tension: 280, friction: 20 },
+    config: { tension: 280, friction:10 },
   });
 
   return (
@@ -110,15 +110,18 @@ const Navigation = () => {
                 component={RouterLink}
                 to="/"
                 sx={{
-                  fontWeight: 700,
+                  fontWeight: 1100,
                   color: theme.palette.primary.main,
                   textDecoration: 'none',
-                  letterSpacing: '.1rem',
+                  letterSpacing: '.05rem',
                   display: 'inline-block',
                   transition: 'color 0.2s ease-in-out',
                   '&:hover': {
-                    color: theme.palette.primary.light,
+                    color: theme.palette.primary.dark,
+                    transform: 'scale(1.05)',
+                    transition: 'color 0.2s ease-in-out, transform 0.2s ease-in-out',
                   },
+                
                 }}
               >
                 S&S

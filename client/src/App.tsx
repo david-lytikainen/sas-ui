@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -175,16 +175,29 @@ const ProtectedRoutes = () => {
 };
 
 function App() {
-  const [mode, setMode] = useState<'light' | 'dark'>('light');
+  // Initialize state by reading from localStorage, default to 'light'
+  const [mode, setMode] = useState<'light' | 'dark'>(() => {
+    const savedMode = localStorage.getItem('themeMode');
+    return (savedMode === 'light' || savedMode === 'dark') ? savedMode : 'light';
+  });
+
+  // Effect to save mode to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('themeMode', mode);
+  }, [mode]);
 
   const colorMode = useMemo(
     () => ({
       toggleColorMode: () => {
-        setMode((prevMode: 'light' | 'dark') => (prevMode === 'light' ? 'dark' : 'light'));
+        setMode((prevMode: 'light' | 'dark') => {
+          const newMode = prevMode === 'light' ? 'dark' : 'light';
+          // No need to explicitly save here, the useEffect handles it
+          return newMode;
+        });
       },
       mode,
     }),
-    [mode]
+    [mode] // Keep mode as dependency
   );
 
   const theme = useMemo(
