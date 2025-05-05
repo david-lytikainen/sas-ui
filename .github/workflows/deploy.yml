@@ -59,11 +59,12 @@ jobs:
       - name: Add server to known hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H 3.15.77.70 >> ~/.ssh/known_hosts
+          ssh-keyscan 3.15.77.70 >> ~/.ssh/known_hosts
 
       - name: Deploy to Prod server
         run: |
-          scp -r build/ ubuntu@3.15.77.70:/var/www/SAS/
+          cat ~/.ssh/known_hosts
+          scp -o StrictHostKeyChecking=no -r build/ ubuntu@3.15.77.70:/var/www/SAS/
 
       - name: Reload Nginx on Prod
         run: |
