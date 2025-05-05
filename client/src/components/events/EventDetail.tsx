@@ -19,7 +19,6 @@ import {
   Collapse
 } from '@mui/material';
 import {
-  Event as EventIcon,
   LocationOn as LocationIcon,
   AccessTime as TimeIcon,
   People as PeopleIcon,
