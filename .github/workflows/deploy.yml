@@ -39,9 +39,10 @@ jobs:
           path: client/build
 
   deploy-dev:
-    name: Deploy to dev
+    name: deploy_dev
     needs: build
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Download build artifacts
@@ -63,7 +64,7 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
 
   deploy-prod:
-    name: Deploy to Prod Server
+    name: deploy_prod
     needs: build
     runs-on: ubuntu-latest
 
