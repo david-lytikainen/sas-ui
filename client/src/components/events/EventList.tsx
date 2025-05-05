@@ -179,10 +179,7 @@ const EventList = () => {
   });
 
   // Calculate eventOptions directly instead of storing in state
-  const eventOptions = events.filter(event => 
-    userRegisteredEvents.includes(event.id) && 
-    event.registration?.status === 'Registered'
-  );
+  const eventOptions = events.filter(event => userRegisteredEvents.includes(event.id) && event.registration?.status === 'Registered');
 
   const handleSignUpClick = (eventId: number) => {
     const event = events.find(e => e.id === eventId);
@@ -1123,11 +1120,11 @@ const EventList = () => {
   return (
     <Container maxWidth="lg" sx={{ px: isMobile ? 2 : 3 }}>
       <Box sx={{ mt: 3, mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 3, gap: 2 }}>
           <Typography variant="h5" component="h1" sx={{ fontWeight: 600 }}>
             Speed Dating Events
           </Typography>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', gap: 1, alignSelf: { xs: 'flex-end', sm: 'center' } }}>
             {/* Only admins and organizers can create events */}
             {(isAdmin() || isOrganizer()) && (
               <Button
@@ -1401,7 +1398,8 @@ const EventList = () => {
                     pt: 1,
                     display: 'flex',
                     flexDirection: isMobile ? 'column' : 'row',
-                    gap: 1
+                    gap: 1,
+                    justifyContent: 'flex-start' // Align buttons to the start
                   }}>
                     <Button 
                       variant="contained" 
@@ -1447,7 +1445,8 @@ const EventList = () => {
                 }
               }}>
                 <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                  {/* Align items center for better vertical alignment on wrap */}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 /* Add gap for wrapping */ }}>
                     <Typography 
                       variant="h5" 
                       component="h2" 
@@ -1557,7 +1556,8 @@ const EventList = () => {
                   pt: 1,
                   display: 'flex',
                   flexDirection: isMobile ? 'column' : 'row',
-                  gap: 1
+                  gap: 1,
+                  justifyContent: 'flex-start' // Align buttons to the start
                 }}>
                   {renderActionButtons(event)}
                 </CardActions>
@@ -1686,7 +1686,7 @@ const EventList = () => {
           <DialogTitle>
             {selectedEventForPins?.name} - Attendee PINs
           </DialogTitle>
-          <DialogContent dividers>
+          <DialogContent dividers sx={{ p: { xs: 1, sm: 2 } }}> {/* Add responsive padding */}
             {attendeePins.length > 0 ? (
               <>
                 <Box sx={{ mb: 2 }}>
@@ -1759,7 +1759,7 @@ const EventList = () => {
           <DialogTitle>
             {selectedEventForRegisteredUsers?.name} - Registered Users
           </DialogTitle>
-          <DialogContent dividers>
+          <DialogContent dividers sx={{ p: { xs: 0, sm: 1 } }}> {/* Remove padding on xs */}
             {registeredUsers.length > 0 ? (
               <TableContainer component={Paper} sx={{ maxHeight: 500 }}>
                 <Table stickyHeader size="small">
@@ -1886,10 +1886,10 @@ const EventList = () => {
         >
           <DialogTitle>Start Event</DialogTitle>
           <DialogContent>
-            <Typography>
+            <DialogContentText>
               Are you sure you want to start "{selectedEventForStarting?.name}"? 
               This will change the event status to "In Progress".
-            </Typography>
+            </DialogContentText>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setStartEventDialogOpen(false)}>Cancel</Button>
@@ -1906,10 +1906,10 @@ const EventList = () => {
         >
           <DialogTitle>Pause Event</DialogTitle>
           <DialogContent>
-            <Typography>
+            <DialogContentText>
               Are you sure you want to pause the timer for "{selectedEventForPausing?.name}"?
               This will pause the event timer but keep the event status as "In Progress".
-            </Typography>
+            </DialogContentText>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setPauseEventDialogOpen(false)}>Cancel</Button>
@@ -1926,13 +1926,13 @@ const EventList = () => {
         >
           <DialogTitle>End Event</DialogTitle>
           <DialogContent>
-            <Typography>
+            <DialogContentText>
               Are you sure you want to end "{selectedEventForEnding?.name}"? 
               This will mark the event as completed and cannot be undone.
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            </DialogContentText>
+            <DialogContentText variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               Note: Only events that are currently in progress can be ended.
-            </Typography>
+            </DialogContentText>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setEndEventDialogOpen(false)}>Cancel</Button>
@@ -1952,7 +1952,7 @@ const EventList = () => {
           <DialogTitle>
             {selectedEventForSchedule?.name} - Your Schedule
           </DialogTitle>
-          <DialogContent dividers>
+          <DialogContent dividers sx={{ p: { xs: 1, sm: 2 } }}> {/* Add responsive padding */}
             {loadingSchedule ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                 {/* You can add a loading spinner here if you have one */}
@@ -2007,7 +2007,7 @@ const EventList = () => {
           <DialogTitle>
             {selectedEventForAllSchedules?.name} - All Schedules
           </DialogTitle>
-          <DialogContent dividers>
+          <DialogContent dividers sx={{ p: { xs: 0, sm: 1 } }}> {/* Remove padding on xs */}
             {loadingAllSchedules ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                 <Typography>Loading all schedules...</Typography>
@@ -2150,10 +2150,14 @@ const EventList = () => {
                   </Table>
                 </TableContainer>
               </Box>
-            ) : (
+            ) : !loadingAllSchedules ? ( // Show text only if not loading
               <DialogContentText sx={{ textAlign: 'center', py: 3 }}>
                 No schedules available. The event might not have started yet, or there may not be enough attendees checked in.
               </DialogContentText>
+            ) : (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                <Typography>Loading all schedules...</Typography>
+              </Box>
             )}
           </DialogContent>
           <DialogActions>

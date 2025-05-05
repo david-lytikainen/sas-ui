@@ -278,7 +278,7 @@ function App() {
               <Router>
                 <AnimatedWrapper>
                   <Navigation />
-                  <Box sx={{ pt: 8 }}>
+                  <Box sx={{ pt: { xs: 2, sm: 4, md: 8 } }}>
                     <ProtectedRoutes />
                   </Box>
                 </AnimatedWrapper>

@@ -636,71 +636,72 @@ const EventTimer = ({
         
         <Box 
           sx={{ 
-            display: 'inline-flex',
+            display: 'flex',
             alignItems: 'center',
-            height: 'auto',
-            minHeight: '36px',
-            ml: 1,
-            mr: 1,
-            px: 1.5,
-            py: 1,
+            minHeight: '50px',
+            p: 1.5,
+            ml: 1, mr: 1,
             borderRadius: '6px',
             bgcolor: theme.palette.background.paper,
             border: `1px solid ${ isBetweenRounds ? theme.palette.info.light : theme.palette.divider }`,
             boxShadow: 1,
+            maxWidth: '100%',
           }}
         >
           <TimerIcon 
             sx={{ 
               mr: 1.5, 
-              color: isActive ? theme.palette.primary.main : theme.palette.text.secondary,
-              fontSize: '1.2rem'
+              color: isActive ? theme.palette.primary.main : isBetweenRounds ? theme.palette.info.main : theme.palette.text.secondary,
+              fontSize: '1.2rem',
+              flexShrink: 0,
             }} 
           />
-          {isBetweenRounds ? (
-            <Box>
-               <Typography variant="body1" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
-                 Break Time
-               </Typography>
-               <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.3 }}>
-                  Next: Round {nextRoundInfo || '-'} starting soon.
-               </Typography>
-                <Typography 
-                   color="info.main"
-                   variant="body1" 
-                   sx={{ fontWeight: 700, mt: 0.5 }}
-                >
-                   {formatTime(breakTimeRemaining)}
+          <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+            {isBetweenRounds ? (
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.4 }}>
+                  Break Time
                 </Typography>
-             </Box>
-          ) : isActive && currentRoundSchedule ? (
-            <Box>
-              <Typography variant="body1" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
-                Round {currentRoundSchedule.round}
+                <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.4, display: 'block' }}>
+                  Next: Round {nextRoundInfo || '-'} starting soon.
+                </Typography>
+                <Typography 
+                  color="info.main"
+                  variant="body2" 
+                  sx={{ fontWeight: 700, mt: 0.25 }}
+                >
+                  {formatTime(breakTimeRemaining)}
+                </Typography>
+              </Box>
+            ) : isActive && currentRoundSchedule ? (
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.4 }}>
+                  Round {currentRoundSchedule.round}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.4, display: 'block' }}>
+                  Table {currentRoundSchedule.table} with {currentRoundSchedule.partner_name} (Age: {currentRoundSchedule.partner_age || 'N/A'})
+                </Typography>
+                {isActive && (
+                  <Typography 
+                    color="primary"
+                    variant="body2" 
+                    sx={{ fontWeight: 700, mt: 0.25 }}
+                  >
+                    {formatTime(timeRemaining)}
+                  </Typography>
+                )}
+              </Box>
+            ) : currentRound > 0 ? (
+              <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.4 }}>
+                Round {currentRound} 
+                {isActive ? formatTime(timeRemaining) : (timerStatus === 'paused' ? ' (Paused)' : ' (Waiting...)')}
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.3 }}>
-                Table {currentRoundSchedule.table} with {currentRoundSchedule.partner_name} (Age: {currentRoundSchedule.partner_age || 'N/A'})
-              </Typography>
-              {isActive && (
-                 <Typography 
-                     color="primary"
-                     variant="body1" 
-                     sx={{ fontWeight: 700, mt: 0.5 }}
-                 >
-                     {formatTime(timeRemaining)}
-                 </Typography>
-              )}
-            </Box>
-          ) : currentRound > 0 ? (
-            <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                  Round {currentRound} 
-                  {isActive ? formatTime(timeRemaining) : (timerStatus === 'paused' ? ' (Paused)' : ' (Waiting...)')}
-              </Typography>
-          ) : timerStatus === 'inactive' ? (
-            <Typography variant="body1" color="text.secondary">Waiting for event to start...</Typography>
-          ) : (
-            <Typography variant="body1" color="text.secondary">Waiting for round...</Typography>
-          )}
+            ) : timerStatus === 'inactive' ? (
+              <Typography variant="body2" color="text.secondary">Waiting for event to start...</Typography>
+            ) : (
+              <Typography variant="body2" color="text.secondary">Waiting for round...</Typography>
+            )}
+          </Box>
         </Box>
       </>
     );
@@ -801,10 +802,7 @@ const EventTimer = ({
             elevation={2}
             sx={{
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
               width: '100%',
-              px: 3,
               py: 2,
               borderRadius: '8px',
               bgcolor: isAlmostDone ? theme.palette.error.light + '33' :
@@ -812,7 +810,7 @@ const EventTimer = ({
                       isPaused ? theme.palette.warning.light + '33' :
                       isBetweenRounds ? theme.palette.info.light + '33' :
                       theme.palette.background.default,
-              border: `1px solid ${
+              border: `1px solid ${ 
                         isAlmostDone ? theme.palette.error.light :
                         isActive ? theme.palette.primary.light :
                         isPaused ? theme.palette.warning.light :
@@ -822,6 +820,11 @@ const EventTimer = ({
               position: 'relative',
               overflow: 'hidden',
               transition: 'background-color 0.3s ease, border-color 0.3s ease',
+              px: { xs: 1, sm: 2, md: 3 },
+              flexDirection: { xs: 'column', sm: 'row' },
+              alignItems: { xs: 'center', sm: 'center' },
+              gap: { xs: 3, sm: 0 },
+              justifyContent: { xs: 'center', sm: 'space-between' }
             }}
           >
             {isActive && (
@@ -850,7 +853,8 @@ const EventTimer = ({
             >
               <TimerIcon
                 sx={{
-                  mr: 2,
+                  mr: { xs: 0, sm: 2 },
+                  mb: { xs: 2, sm: 0 },
                   color: isAlmostDone ? theme.palette.error.main :
                         isActive ? theme.palette.primary.main :
                         isPaused ? theme.palette.warning.main :
@@ -865,7 +869,8 @@ const EventTimer = ({
                   sx={{ 
                     fontWeight: 600,
                     lineHeight: 1.2,
-                    color: theme.palette.text.primary
+                    color: theme.palette.text.primary,
+                    textAlign: { xs: 'center', sm: 'left' }
                   }}
                 >
                   Round {currentRound}
@@ -889,6 +894,7 @@ const EventTimer = ({
             
             <Typography
               variant="h3"
+              component="div"
               color={isAlmostDone ? theme.palette.error.main :
                      isActive ? theme.palette.primary.main :
                      isPaused ? theme.palette.warning.main :
@@ -902,13 +908,22 @@ const EventTimer = ({
                   '50%': { opacity: 0.7 },
                   '100%': { opacity: 1 },
                 },
-                fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
+                fontSize: { xs: '2.5rem', sm: '2.75rem', md: '3rem' },
+                mb: { xs: 2, sm: 0 }
               }}
             >
               {isActive || isPaused ? formatTime(timeRemaining) : formatTime(breakTimeRemaining)}
             </Typography>
             
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                flexWrap: 'wrap', 
+                justifyContent: { xs: 'center', sm: 'flex-end' },
+                gap: { xs: 1, sm: 0 },
+                width: { xs: '100%', sm: 'auto' },
+                mt: { xs: 2, sm: 0 }
+            }}>
               <FormControlLabel
                 control={
                   <Switch 
@@ -990,6 +1005,11 @@ const EventTimer = ({
                   justifyContent: 'center',
                   alignItems: 'center',
                   gap: 2,
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  '& .MuiButton-root': { 
+                     width: { xs: '80%', sm: 'auto' },
+                     minWidth: { xs: '150px', sm: 'auto'}
+                  }
                 }}
               >
                 {isActive && (
