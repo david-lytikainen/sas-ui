@@ -60,7 +60,7 @@ interface TimerState {
   break_duration?: number;
 }
 
-interface TimerUpdateSSE {
+export interface TimerUpdateSSE {
   status: 'active' | 'paused' | 'ended' | 'between_rounds';
   time_remaining: number;
   current_round: number;
@@ -111,7 +111,6 @@ const EventTimer = ({
   const countdownIntervalRef = useRef<number | null>(null);
   const breakCountdownIntervalRef = useRef<number | null>(null);
   const breakAudioRef = useRef<HTMLAudioElement | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
 
   // Create audio element for notifications
   useEffect(() => {
@@ -297,7 +296,7 @@ const EventTimer = ({
     } catch (error) {
       console.error(`Failed to ${action} via API:`, error);
     }
-  }, [eventId, makeApiRequest, fetchTimerStatus, isAdmin, isEventActive]);
+  }, [makeApiRequest, fetchTimerStatus, isAdmin, isEventActive]);
 
   const handleStartRound = useCallback(() => {
     handleApiAction(
@@ -585,9 +584,9 @@ const EventTimer = ({
   };
 
   const getProgressPercentage = () => {
-    if (!timerState || !timerState.timer) return 0;
-    const totalDuration = timerState.timer.round_duration;
-    return ((totalDuration - timeRemaining) / totalDuration) * 100;
+    if (roundDuration <= 0 || typeof timeRemaining !== 'number') return 0;
+    const progress = ((roundDuration - timeRemaining) / roundDuration) * 100;
+    return Math.min(100, Math.max(0, progress)); // Clamp value between 0-100
   };
 
   const renderAttendeeView = () => {
@@ -982,20 +981,82 @@ const EventTimer = ({
                 mb: 2,
                 p: 2,
                 width: '100%',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                gap: 2,
                 borderRadius: '8px'
               }}
             >
-              {isActive && (
-                <>
+              <Box 
+                sx={{ 
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: 2,
+                }}
+              >
+                {isActive && (
+                  <>
+                    <Button
+                      variant="contained"
+                      color="warning"
+                      startIcon={<Pause />}
+                      onClick={handlePauseRound}
+                      size="medium"
+                      sx={{ 
+                        borderRadius: '8px',
+                        textTransform: 'none',
+                        py: 1,
+                        px: 3,
+                        fontWeight: 600
+                      }}
+                    >
+                      Pause
+                    </Button>
+                    
+                    <Button
+                      variant="outlined"
+                      color="secondary"
+                      startIcon={<SkipNext />}
+                      onClick={handleNextRound}
+                      size="medium"
+                      sx={{ 
+                        borderRadius: '8px',
+                        textTransform: 'none',
+                        py: 1,
+                        px: 3,
+                        fontWeight: 600
+                      }}
+                    >
+                      Next Round
+                    </Button>
+                  </>
+                )}
+                
+                {isPaused && (
+                  <Box sx={{ display: 'flex', gap: 2 }}> 
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      startIcon={<PlayArrow />}
+                      onClick={handleStartRound}
+                      size="medium"
+                      sx={{ 
+                        borderRadius: '8px',
+                        textTransform: 'none',
+                        py: 1,
+                        px: 3,
+                        fontWeight: 600
+                      }}
+                    >
+                      Start Round
+                    </Button>
+                  </Box>
+                )}
+                
+                {(isBetweenRounds || (!isActive && !isPaused)) && (
                   <Button
                     variant="contained"
-                    color="warning"
-                    startIcon={<Pause />}
-                    onClick={handlePauseRound}
+                    color="primary"
+                    startIcon={<PlayArrow />}
+                    onClick={handleResumeRound}
                     size="medium"
                     sx={{ 
                       borderRadius: '8px',
@@ -1005,15 +1066,17 @@ const EventTimer = ({
                       fontWeight: 600
                     }}
                   >
-                    Pause
+                    {isPaused ? 'Resume' : 'Start Round'}
                   </Button>
-                  
+                )}
+                {isBetweenRounds && (
                   <Button
                     variant="outlined"
                     color="secondary"
-                    startIcon={<SkipNext />}
+                    startIcon={<SkipNext />} 
                     onClick={handleNextRound}
                     size="medium"
+                    disabled
                     sx={{ 
                       borderRadius: '8px',
                       textTransform: 'none',
@@ -1024,46 +1087,8 @@ const EventTimer = ({
                   >
                     Next Round
                   </Button>
-                </>
-              )}
-              
-              {(isBetweenRounds || (!isActive && !isPaused)) && (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  startIcon={<PlayArrow />}
-                  onClick={handleStartRound}
-                  size="medium"
-                  sx={{ 
-                    borderRadius: '8px',
-                    textTransform: 'none',
-                    py: 1,
-                    px: 3,
-                    fontWeight: 600
-                  }}
-                >
-                  Start Round
-                </Button>
-              )}
-              {isBetweenRounds && (
-                <Button
-                  variant="outlined"
-                  color="secondary"
-                  startIcon={<SkipNext />} 
-                  onClick={handleNextRound}
-                  size="medium"
-                  disabled
-                  sx={{ 
-                    borderRadius: '8px',
-                    textTransform: 'none',
-                    py: 1,
-                    px: 3,
-                    fontWeight: 600
-                  }}
-                >
-                  Next Round
-                </Button>
-              )}
+                )}
+              </Box>
             </Paper>
           </Collapse>
         </Box>
@@ -1105,6 +1130,7 @@ const EventTimer = ({
             valueLabelFormat={(value) => formatTime(value)}
             sx={{ mb: 2 }}
           />
+          <Typography gutterBottom sx={{ mt: 2 }}>Current Duration: {formatTime(roundDuration)}</Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button 
