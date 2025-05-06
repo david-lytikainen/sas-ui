@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="heartGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FF6B81;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FF4081;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="speedLineGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF80AB;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#E91E63;stop-opacity:0" />
+    </linearGradient>
+  </defs>
+  <path d="M50,10 C32,10 15,25 15,45 A35,35 0 0 0 50,80 A35,35 0 0 0 85,45 C85,25 68,10 50,10 Z" fill="url(#heartGradient)" />
+  <g id="speedLines" stroke-linecap="round">
+    <line x1="50" y1="30" x2="70" y2="10" stroke="url(#speedLineGradient)" stroke-width="3"  />
+    <line x1="50" y1="30" x2="30" y2="10" stroke="url(#speedLineGradient)" stroke-width="3"  />
+    <line x1="50" y1="70" x2="70" y2="90" stroke="url(#speedLineGradient)" stroke-width="3"  />
+    <line x1="50" y1="70" x2="30" y2="90" stroke="url(#speedLineGradient)" stroke-width="3"  />
+    <line x1="50" y1="50" x2="85" y2="20" stroke="url(#speedLineGradient)" stroke-width="3"  />
+    <line x1="50" y1="50" x2="15" y2="20" stroke="url(#speedLineGradient)" stroke-width="3"  />
+    <line x1="50" y1="50" x2="85" y2="80" stroke="url(#speedLineGradient)" stroke-width="3"  />
+    <line x1="50" y1="50" x2="15" y2="80" stroke="url(#speedLineGradient)" stroke-width="3"  />
+  </g>
+</svg> 
