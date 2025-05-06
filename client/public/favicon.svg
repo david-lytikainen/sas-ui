@@ -9,15 +9,17 @@
       <stop offset="100%" style="stop-color:#E91E63;stop-opacity:0" />
     </linearGradient>
   </defs>
-  <path d="M50,10 C32,10 15,25 15,45 A35,35 0 0 0 50,80 A35,35 0 0 0 85,45 C85,25 68,10 50,10 Z" fill="url(#heartGradient)" />
-  <g id="speedLines" stroke-linecap="round">
-    <line x1="50" y1="30" x2="70" y2="10" stroke="url(#speedLineGradient)" stroke-width="3"  />
-    <line x1="50" y1="30" x2="30" y2="10" stroke="url(#speedLineGradient)" stroke-width="3"  />
-    <line x1="50" y1="70" x2="70" y2="90" stroke="url(#speedLineGradient)" stroke-width="3"  />
-    <line x1="50" y1="70" x2="30" y2="90" stroke="url(#speedLineGradient)" stroke-width="3"  />
-    <line x1="50" y1="50" x2="85" y2="20" stroke="url(#speedLineGradient)" stroke-width="3"  />
-    <line x1="50" y1="50" x2="15" y2="20" stroke="url(#speedLineGradient)" stroke-width="3"  />
-    <line x1="50" y1="50" x2="85" y2="80" stroke="url(#speedLineGradient)" stroke-width="3"  />
-    <line x1="50" y1="50" x2="15" y2="80" stroke="url(#speedLineGradient)" stroke-width="3"  />
+  <g transform="translate(0, 5)">
+    <path d="M50,10 C32,10 15,25 15,45 A35,35 0 0 0 50,80 A35,35 0 0 0 85,45 C85,25 68,10 50,10 Z" fill="url(#heartGradient)" />
+    <g id="speedLines" stroke-linecap="round">
+      <line x1="50" y1="30" x2="70" y2="10" stroke="url(#speedLineGradient)" stroke-width="3"  />
+      <line x1="50" y1="30" x2="30" y2="10" stroke="url(#speedLineGradient)" stroke-width="3"  />
+      <line x1="50" y1="70" x2="70" y2="90" stroke="url(#speedLineGradient)" stroke-width="3"  />
+      <line x1="50" y1="70" x2="30" y2="90" stroke="url(#speedLineGradient)" stroke-width="3"  />
+      <line x1="50" y1="50" x2="85" y2="20" stroke="url(#speedLineGradient)" stroke-width="3"  />
+      <line x1="50" y1="50" x2="15" y2="20" stroke="url(#speedLineGradient)" stroke-width="3"  />
+      <line x1="50" y1="50" x2="85" y2="80" stroke="url(#speedLineGradient)" stroke-width="3"  />
+      <line x1="50" y1="50" x2="15" y2="80" stroke="url(#speedLineGradient)" stroke-width="3"  />
+    </g>
   </g>
 </svg> 
