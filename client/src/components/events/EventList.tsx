@@ -1155,14 +1155,16 @@ const EventList = () => {
         {/* Create Event Card */}
         <Box sx={{
           maxHeight: showCreateCard ? '1000px' : '0px',
-          // Keep animation only for appearing, make disappearing immediate
           transition: showCreateCard 
             ? 'max-height 2.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease-in-out, transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
             : 'max-height 0s, opacity 0s, transform 0s',
           opacity: showCreateCard ? 1 : 0,
           transform: showCreateCard ? 'scale(1)' : 'scale(0.95)',
           transformOrigin: 'top center',
-          mb: showCreateCard ? 2 : 0
+          mb: showCreateCard ? 2 : 0,
+          overflow: 'hidden',
+          visibility: showCreateCard ? 'visible' : 'hidden',
+          pointerEvents: showCreateCard ? 'auto' : 'none',
         }}>
           <Grid container spacing={2}>
             <Grid item xs={12}>
@@ -2168,6 +2170,7 @@ const EventList = () => {
         {/* Support email footer */}
         <Box sx={{ mt: 4, pt: 2, display: 'flex', justifyContent: 'center', borderTop: `1px solid ${theme.palette.divider}` }}>
           <Link 
+            component="a"
             href="mailto:savedandsingle.events@gmail.com" 
             sx={{ 
               display: 'flex', 

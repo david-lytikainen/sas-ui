@@ -239,11 +239,11 @@ const Register = () => {
                   control={<Radio />}
                   label="Attend Speed Dating Events"
                 />
-                <FormControlLabel
+                {/* <FormControlLabel
                   value="organizer"
                   control={<Radio />}
                   label="Organize Speed Dating Events"
-                />
+                /> */}
                 {/* <FormControlLabel
                   value="admin"
                   control={<Radio />}

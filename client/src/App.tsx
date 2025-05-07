@@ -217,12 +217,31 @@ function App() {
         },
         palette: {
           mode,
-          primary: {
-            main: '#1976d2',
-          },
-          secondary: {
-            main: '#dc004e',
-          },
+          ...(mode === 'light'
+            ? {
+                primary: {
+                  main: '#D98B9C',
+                },
+                secondary: {
+                  main: '#B0A1C4', 
+                },
+                background: {
+                  default: '#FFF9F5', 
+                  paper: '#FFFFFF',    
+                },
+                text: {
+                  primary: '#4A4A4A', 
+                  secondary: '#6E6E6E', 
+                },
+              }
+            : {
+                primary: {
+                  main: '#1976d2', 
+                },
+                secondary: {
+                  main: '#dc004e', 
+                },
+              }),
         },
         components: {
           MuiCssBaseline: {
@@ -240,7 +259,8 @@ function App() {
                   transform: 'scale(1.02) translateY(-1px)',
                   boxShadow: mode === 'dark' 
                     ? '0 4px 12px rgba(0, 0, 0, 0.5)' 
-                    : '0 4px 12px rgba(0, 0, 0, 0.1)',
+                    // Softer shadow for feminine light mode
+                    : '0 4px 10px rgba(217, 139, 156, 0.25)', 
                 },
                 '&:active': {
                   transform: 'scale(0.98)',
@@ -256,11 +276,13 @@ function App() {
                 ...(mode === 'dark' && {
                   backgroundColor: '#1e1e1e',
                 }),
+                 // Light mode paper background will be taken from palette.background.paper
                 '&:hover': {
                   transform: 'translateY(-2px)',
                   boxShadow: mode === 'dark' 
                     ? '0 6px 20px rgba(0, 0, 0, 0.4)' 
-                    : '0 6px 20px rgba(0, 0, 0, 0.08)',
+                    // Softer shadow for feminine light mode
+                    : '0 6px 15px rgba(217, 139, 156, 0.2)', 
                 },
               },
             },
@@ -268,11 +290,15 @@ function App() {
           MuiAppBar: {
             styleOverrides: {
               root: {
-                backgroundColor: mode === 'dark' ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+                backgroundColor: mode === 'dark' 
+                  ? 'rgba(0, 0, 0, 0.85)' 
+                  // Light mode AppBar - using warm off-white with blur
+                  : 'rgba(255, 249, 245, 0.85)', 
                 backdropFilter: 'blur(20px)',
                 borderBottom: mode === 'dark' 
                   ? '1px solid rgba(255, 255, 255, 0.1)' 
-                  : '1px solid rgba(0, 0, 0, 0.1)',
+                  // Softer, themed border for light mode
+                  : '1px solid rgba(217, 139, 156, 0.25)', 
               },
             },
           },
