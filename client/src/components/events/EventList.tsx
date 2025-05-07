@@ -1122,7 +1122,7 @@ const EventList = () => {
       <Box sx={{ mt: 3, mb: 3 }}>
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 3, gap: 2 }}>
           <Typography variant="h5" component="h1" sx={{ fontWeight: 600 }}>
-            Speed Dating Events
+            Events
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, alignSelf: { xs: 'flex-end', sm: 'center' } }}>
             {/* Only admins and organizers can create events */}
@@ -1165,6 +1165,7 @@ const EventList = () => {
           overflow: 'hidden',
           visibility: showCreateCard ? 'visible' : 'hidden',
           pointerEvents: showCreateCard ? 'auto' : 'none',
+          display: showCreateCard ? 'block' : 'none'
         }}>
           <Grid container spacing={2}>
             <Grid item xs={12}>
