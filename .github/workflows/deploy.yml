@@ -38,50 +38,34 @@ jobs:
           name: react-build
           path: client/build
 
-  deploy-dev:
-    name: Deploy to dev
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download build artifacts
-        uses: actions/download-artifact@v2
-        with:
-          name: react-build
-          path: build
-
-      - name: Deploy to Dev server
-        run: |
-          scp -r build/ ubuntu@<dev-server-ip>:/path/to/dev/frontend/
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
-
-      - name: Reload Nginx on Dev
-        run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@<dev-server-ip> "sudo systemctl reload nginx"
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
-
   deploy-prod:
-    name: Deploy to Prod Server
+    name: deploy_prod
     needs: build
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: react-build
           path: build
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
+
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan 3.15.77.70 >> ~/.ssh/known_hosts
 
       - name: Deploy to Prod server
         run: |
-          scp -r build/ ubuntu@<prod-server-ip>:/path/to/prod/frontend/
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
+          cat ~/.ssh/known_hosts
+          scp -o StrictHostKeyChecking=no -r build/ ubuntu@3.15.77.70:/var/www/SAS/
 
       - name: Reload Nginx on Prod
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@<prod-server-ip> "sudo systemctl reload nginx"
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
+          ssh -o StrictHostKeyChecking=no ubuntu@3.15.77.70 "sudo systemctl reload nginx"

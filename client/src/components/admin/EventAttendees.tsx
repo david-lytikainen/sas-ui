@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Box, 
   Typography, 
@@ -243,24 +243,22 @@ const EventAttendees: React.FC = () => {
     severity: 'success'
   });
 
-  const fetchAttendees = async () => {
+  const fetchAttendees = useCallback(async () => {
     if (!eventId) return;
     
+    setLoading(true);
+    setError(null);
+    
     try {
-      setLoading(true);
       const response = await eventsApi.getEventAttendees(eventId);
-      // Handle the response based on your API structure
-      // Assuming the API returns either an array directly or a data property with the array
-      const attendeeData = Array.isArray(response) ? response : response.data || [];
-      setAttendees(attendeeData);
-      setError(null);
-    } catch (err) {
+      setAttendees(response.data);
+    } catch (err: any) {
       console.error('Failed to fetch attendees:', err);
-      setError('Failed to load attendee data. Please try again later.');
+      setError(err.message || 'Failed to fetch attendees');
     } finally {
       setLoading(false);
     }
-  };
+  }, [eventId]);
 
   useEffect(() => {
     if (!isAdmin() && !isOrganizer()) {
@@ -269,7 +267,7 @@ const EventAttendees: React.FC = () => {
     }
 
     fetchAttendees();
-  }, [eventId, navigate, isAdmin, isOrganizer]);
+  }, [eventId, navigate, isAdmin, isOrganizer, fetchAttendees]);
 
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(event.target.value);
@@ -303,9 +301,7 @@ const EventAttendees: React.FC = () => {
   const handleSaveAttendee = async (attendeeId: number, updatedData: any) => {
     if (!eventId) return;
     
-    try {
-      const response = await eventsApi.updateAttendeeDetails(eventId, attendeeId.toString(), updatedData);
-      
+    try {      
       // Update the attendee in the local state
       setAttendees(prev => prev.map(a => 
         a.id === attendeeId 
@@ -341,11 +337,6 @@ const EventAttendees: React.FC = () => {
     attendee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     attendee.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const formatDate = (dateString?: string | null) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleString();
-  };
 
   if (loading) {
     return (

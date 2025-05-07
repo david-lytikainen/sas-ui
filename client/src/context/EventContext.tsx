@@ -47,14 +47,25 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setLoading(true);
       try {
         const response = await eventsApi.getAll();
-        const data = response as EventsResponse;
+        const data = response as { 
+          events?: Event[]; 
+          registrations?: Array<{event_id: number, status: string, pin?: string, registration_date?: string, check_in_date?: string}>
+        };
         
-        if (Array.isArray(data)) {
-          // If it's just an array of events
-          setEvents(data);
-        } else if (data.events) {
-          // If it has events and registrations
-          setEvents(data.events);
+        if (data.events) {
+          const eventsWithRegistrationStatus = data.events.map(event => {
+            const registrationInfo = data.registrations?.find(reg => reg.event_id === event.id);
+            return {
+              ...event,
+              registration: registrationInfo ? {
+                status: registrationInfo.status,
+                pin: registrationInfo.pin,
+                registration_date: registrationInfo.registration_date,
+                check_in_date: registrationInfo.check_in_date
+              } : event.registration
+            };
+          });
+          setEvents(eventsWithRegistrationStatus);
           
           if (data.registrations) {
             setUserRegisteredEvents(data.registrations.map(reg => reg.event_id));

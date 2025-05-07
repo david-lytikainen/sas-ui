@@ -17,7 +17,6 @@ import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { useAuth } from '../context/AuthContext';
 import { ColorModeContext } from '../context/ColorModeContext';
 import {
-  HowToReg as HowToRegIcon,
   ExitToApp as ExitIcon,
   Home as HomeIcon,
 } from '@mui/icons-material';
@@ -26,7 +25,7 @@ const AnimatedIconButton = animated(IconButton);
 const AnimatedBox = animated(Box);
 
 const Navigation = () => {
-  const { user, logout, isAdmin, isOrganizer } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -58,12 +57,6 @@ const Navigation = () => {
         to: '/events',
         show: true,
       },
-      {
-        label: 'Check-in',
-        icon: <HowToRegIcon />,
-        to: '/check-in',
-        show: isAdmin() || isOrganizer(),
-      },
     ];
 
     return items.filter(item => item.show);
@@ -80,10 +73,10 @@ const Navigation = () => {
 
   // Dark mode toggle button spring animation
   const toggleButtonProps = useSpring({
-    opacity: 1,
+    opacity: .5,
     transform: 'scale(1)',
     from: { opacity: 0, transform: 'scale(0.8)' },
-    config: { tension: 280, friction: 20 },
+    config: { tension: 280, friction:10 },
   });
 
   return (
@@ -110,15 +103,18 @@ const Navigation = () => {
                 component={RouterLink}
                 to="/"
                 sx={{
-                  fontWeight: 700,
+                  fontWeight: 1100,
                   color: theme.palette.primary.main,
                   textDecoration: 'none',
-                  letterSpacing: '.1rem',
+                  letterSpacing: '.05rem',
                   display: 'inline-block',
                   transition: 'color 0.2s ease-in-out',
                   '&:hover': {
-                    color: theme.palette.primary.light,
+                    color: theme.palette.primary.dark,
+                    transform: 'scale(1.05)',
+                    transition: 'color 0.2s ease-in-out, transform 0.2s ease-in-out',
                   },
+                
                 }}
               >
                 S&S

@@ -19,7 +19,6 @@ import {
   Collapse
 } from '@mui/material';
 import {
-  Event as EventIcon,
   LocationOn as LocationIcon,
   AccessTime as TimeIcon,
   People as PeopleIcon,
@@ -84,7 +83,12 @@ const EventDetail: React.FC = () => {
       try {
         setLoadingSchedule(true);
         const response = await eventsApi.getSchedule(event.id.toString());
-        setSchedule(response.schedule);
+        // Add partner_age if missing to prevent type error
+        const scheduleWithAge = response.schedule.map((item: any) => ({
+          ...item,
+          partner_age: item.partner_age ?? 'N/A'
+        }));
+        setSchedule(scheduleWithAge);
       } catch (err) {
         console.error('Failed to load schedule:', err);
       } finally {
