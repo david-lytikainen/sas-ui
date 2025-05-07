@@ -17,7 +17,6 @@ import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { useAuth } from '../context/AuthContext';
 import { ColorModeContext } from '../context/ColorModeContext';
 import {
-  HowToReg as HowToRegIcon,
   ExitToApp as ExitIcon,
   Home as HomeIcon,
 } from '@mui/icons-material';
@@ -26,7 +25,7 @@ const AnimatedIconButton = animated(IconButton);
 const AnimatedBox = animated(Box);
 
 const Navigation = () => {
-  const { user, logout, isAdmin, isOrganizer } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -57,12 +56,6 @@ const Navigation = () => {
         icon: <HomeIcon />,
         to: '/events',
         show: true,
-      },
-      {
-        label: 'Check-in',
-        icon: <HowToRegIcon />,
-        to: '/check-in',
-        show: isAdmin() || isOrganizer(),
       },
     ];
 
