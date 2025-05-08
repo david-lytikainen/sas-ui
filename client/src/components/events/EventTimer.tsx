@@ -96,7 +96,6 @@ const EventTimer = ({
   const [notifiedBreakEnd, setNotifiedBreakEnd] = useState<boolean>(false);
   const [showControls, setShowControls] = useState<boolean>(false);
   const [showTimerEndAlert, setShowTimerEndAlert] = useState<boolean>(false);
-  const [notificationPermission, setNotificationPermission] = useState<string>('default');
   // State to remember status before pausing
   const [statusBeforePause, setStatusBeforePause] = useState<'active' | 'between_rounds' | null>(null);
   
@@ -201,7 +200,8 @@ const EventTimer = ({
       }
     }
     
-    if ('Notification' in window && notificationPermission === 'granted') {
+    // Directly check Notification.permission here
+    if ('Notification' in window && Notification.permission === 'granted') { 
       try {
         const notification = new Notification(`Round ${roundNumber} Started!`, {
           body: `The timer for round ${roundNumber} is now active.`,
@@ -213,7 +213,7 @@ const EventTimer = ({
         console.error('Error creating new round start notification:', error);
       }
     }
-  }, [soundEnabled, notificationPermission]);
+  }, [soundEnabled]);
 
   // Extract the processing logic to a separate function to reuse with cached data
   const processTimerData = useCallback((data: any) => {
@@ -806,26 +806,7 @@ const EventTimer = ({
         // fetchTimerStatus(true);
     });
   }, [handleApiAction, timeRemaining, breakTimeRemaining, clearTimerInterval, setTimerStatus, timerStatus]); // Added breakTimeRemaining and timerStatus dependencies
-  const requestNotificationPermission = useCallback(async () => {
-    if (!('Notification' in window)) {
-      console.log('This browser does not support notifications');
-      return;
-    }
 
-    try {
-      if (Notification.permission !== 'denied') {
-        const permission = await Notification.requestPermission();
-        setNotificationPermission(permission);
-        return permission;
-      }
-      return Notification.permission;
-    } catch (error) {
-      console.error('Error requesting notification permission:', error);
-      return 'denied';
-    }
-  }, []);
-  
-  // Moved playRoundEndSound definition earlier
   const playRoundEndSound = useCallback(() => {
     if (soundEnabled && timerAudioRef.current) {
       try {
@@ -847,7 +828,8 @@ const EventTimer = ({
       }, 10000);
       
       if ('Notification' in window) {
-        if (notificationPermission === 'granted') {
+        // Directly check Notification.permission here
+        if (Notification.permission === 'granted') { 
           try {
             const notification = new Notification('Timer Complete', { 
               body: 'The current round has ended',
@@ -863,29 +845,10 @@ const EventTimer = ({
           } catch (error) {
             console.error('Error creating notification:', error);
           }
-        } else if (notificationPermission === 'default') {
-          requestNotificationPermission().then(permission => {
-            if (permission === 'granted') {
-              try {
-                const notification = new Notification('Timer Complete', { 
-                  body: 'The current round has ended',
-                  icon: '/logo192.png',
-                  tag: 'timer-end'
-                });
-                
-                notification.onclick = () => {
-                  window.focus();
-                  notification.close();
-                };
-              } catch (error) {
-                console.error('Error creating notification after permission:', error);
-              }
-            }
-          });
         }
       }
     }
-  }, [soundEnabled, notificationPermission, requestNotificationPermission]);
+  }, [soundEnabled]); // Removed notificationPermission and requestNotificationPermission from dependencies
 
   
   const handleResumeRound = useCallback(() => {
@@ -1040,12 +1003,6 @@ const EventTimer = ({
 
   
 
-  useEffect(() => {
-    if ('Notification' in window) {
-      setNotificationPermission(Notification.permission);
-    }
-  }, []);
-
   const playBreakEndSound = useCallback(() => {
     if (soundEnabled && breakAudioRef.current) {
       try {
@@ -1060,7 +1017,7 @@ const EventTimer = ({
       }
       
       setNotifiedBreakEnd(true);
-      if ('Notification' in window && notificationPermission === 'granted') {
+      if ('Notification' in window && Notification.permission === 'granted') {
         try {
           const notification = new Notification('Break Over Soon', { 
             body: `Get ready! Round ${nextRoundInfo || 'next'} is about to start.`,
@@ -1073,7 +1030,7 @@ const EventTimer = ({
         }
       }
     }
-  }, [soundEnabled, nextRoundInfo, notificationPermission]);
+  }, [soundEnabled, nextRoundInfo]); // Ensure notificationPermission is removed from dependencies
 
   // Replace the state transition effect with a simpler one
   useEffect(() => {
@@ -1424,13 +1381,6 @@ const EventTimer = ({
     setShowControls(!showControls);
   };
 
-  const handleEnableNotifications = () => {
-    requestNotificationPermission().then(permission => {
-      if (permission === 'granted') {
-        console.log('Notification permission granted');
-      }
-    });
-  };
 
   const getProgressPercentage = () => {
     if (roundDuration <= 0 || typeof timeRemaining !== 'number') return 0;
@@ -2017,27 +1967,10 @@ const EventTimer = ({
   }
 
   return (
-    <Box sx={{ my: 2 }}>
+    <Box sx={{ my: 2, transform: 'translateZ(-2500)' }}>
        {isAdmin ? renderAdminView() : renderAttendeeView()}
        {renderSettingsDialog()}
       
-       {notificationPermission === 'default' && (
-         <Snackbar
-           open={true}
-           anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-         >
-           <Alert 
-             severity="info" 
-             action={
-               <Button color="inherit" size="small" onClick={handleEnableNotifications}>
-                 Enable
-               </Button>
-             }
-           >
-             Enable browser notifications for timer alerts
-           </Alert>
-         </Snackbar>
-       )}
     </Box>
   );
 };

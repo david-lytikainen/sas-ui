@@ -32,13 +32,18 @@ import { eventsApi } from '../../services/api';
 import { Event as EventType } from '../../types/event';
 import EventTimer from './EventTimer';
 
-interface Schedule {
+interface ScheduleItem {
   round: number;
   table: number;
   partner_id: number;
   partner_name: string;
   partner_age: number;
+  event_speed_date_id: number;
 }
+
+type Selections = {
+  [key: number]: boolean | null;
+};
 
 const EventDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -46,10 +51,13 @@ const EventDetail: React.FC = () => {
   const { user, isAdmin, isOrganizer } = useAuth();
   const [event, setEvent] = useState<EventType | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [schedule, setSchedule] = useState<Schedule[]>([]);
+  const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
   const [loadingSchedule, setLoadingSchedule] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [controlsOpen, setControlsOpen] = useState<boolean>(false);
+
+  const [selections, setSelections] = useState<Selections>({});
+  const [loadingSubmit, setLoadingSubmit] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -83,12 +91,21 @@ const EventDetail: React.FC = () => {
       try {
         setLoadingSchedule(true);
         const response = await eventsApi.getSchedule(event.id.toString());
-        // Add partner_age if missing to prevent type error
-        const scheduleWithAge = response.schedule.map((item: any) => ({
+        const scheduleWithDetails: ScheduleItem[] = response.schedule.map((item: any) => ({
           ...item,
-          partner_age: item.partner_age ?? 'N/A'
+          partner_age: item.partner_age ?? 'N/A',
+          event_speed_date_id: item.event_speed_date_id
         }));
-        setSchedule(scheduleWithAge);
+        setSchedule(scheduleWithDetails);
+
+        const initialSelections: Selections = {};
+        scheduleWithDetails.forEach((dateItem) => {
+          if (dateItem.event_speed_date_id) {
+            initialSelections[dateItem.event_speed_date_id] = null;
+          }
+        });
+        setSelections(initialSelections);
+
       } catch (err) {
         console.error('Failed to load schedule:', err);
       } finally {
@@ -97,7 +114,7 @@ const EventDetail: React.FC = () => {
     };
 
     fetchSchedule();
-  }, [event]);
+  }, [event, user]);
 
   const formatDate = (dateString: string) => {
     const options: Intl.DateTimeFormatOptions = {
@@ -133,6 +150,47 @@ const EventDetail: React.FC = () => {
     if (isOrganizer() && user && eventItem.creator_id === Number(user.id)) return true;
     return false;
   };
+
+  const handleSelectionChange = (eventSpeedDateId: number, interested: boolean) => {
+    setSelections(prevSelections => ({
+      ...prevSelections,
+      [eventSpeedDateId]: interested,
+    }));
+  };
+
+  const handleSubmitSelections = async () => {
+    if (!event || !user) {
+        setError("Cannot submit selections: Event data or user data is missing.");
+        return;
+    }
+    setLoadingSubmit(true);
+    setError(null);
+
+    const payload = Object.entries(selections)
+      .filter(([, interested]) => interested !== null)
+      .map(([eventSpeedDateIdStr, interested]) => ({
+        event_speed_date_id: parseInt(eventSpeedDateIdStr),
+        interested: interested as boolean,
+      }));
+
+    if (payload.length === 0) {
+      setError("No selections made to submit.");
+      setLoadingSubmit(false);
+      return;
+    }
+
+    try {
+      await eventsApi.submitSpeedDateSelections(event.id.toString(), payload);
+      alert('Your choices have been submitted successfully!');
+    } catch (err: any) {
+      console.error('Failed to submit selections:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to submit your choices. Please try again.';
+      setError(errorMessage);
+    } finally {
+      setLoadingSubmit(false);
+    }
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
@@ -304,29 +362,16 @@ const EventDetail: React.FC = () => {
         </Paper>
       )}
 
-      {/* Show the timer for non-admin attendees */}
-      {!canManageEvent(event) && (event.status === 'In Progress' || event.status === 'Paused') && (
-        <Box mb={4}>
-          <Typography variant="h5" gutterBottom>
-            Round Timer
-          </Typography>
-          <EventTimer 
-            eventId={event.id} 
-            isAdmin={false}
-            key={`attendee-timer-${event.id}`}
-          />
-        </Box>
-      )}
-
       {/* Show the schedule if the event is in progress and the user has one */}
       {(event.status === 'In Progress' || event.status === 'Paused') && !loadingSchedule && schedule.length > 0 && (
         <Paper elevation={3} sx={{ p: 3 }}>
           <Typography variant="h5" gutterBottom>
             Your Schedule
           </Typography>
+          {error && <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>}
           <Grid container spacing={2}>
             {schedule.map((item) => (
-              <Grid item xs={12} sm={6} md={4} key={`round-${item.round}`}>
+              <Grid item xs={12} sm={6} md={4} key={item.event_speed_date_id || `round-${item.round}`}>
                 <Card variant="outlined">
                   <CardContent>
                     <Typography variant="h6" color="primary" gutterBottom>
@@ -341,11 +386,48 @@ const EventDetail: React.FC = () => {
                     <Typography variant="body1">
                       <strong>Partner Age:</strong> {item.partner_age}
                     </Typography>
+                    {item.event_speed_date_id && (
+                      <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-around' }}>
+                        <Button
+                          variant={selections[item.event_speed_date_id] === true ? "contained" : "outlined"}
+                          color="success"
+                          onClick={() => handleSelectionChange(item.event_speed_date_id, true)}
+                          disabled={loadingSubmit}
+                          size="small"
+                        >
+                          Yes
+                        </Button>
+                        <Button
+                          variant={selections[item.event_speed_date_id] === false ? "contained" : "outlined"}
+                          color="error"
+                          onClick={() => handleSelectionChange(item.event_speed_date_id, false)}
+                          disabled={loadingSubmit}
+                          size="small"
+                        >
+                          No
+                        </Button>
+                      </Box>
+                    )}
                   </CardContent>
                 </Card>
               </Grid>
             ))}
           </Grid>
+          {schedule.length > 0 && (
+            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleSubmitSelections}
+                disabled={
+                  loadingSubmit || 
+                  schedule.some(item => item.event_speed_date_id ? selections[item.event_speed_date_id] === null : false)
+                }
+              >
+                {loadingSubmit ? <CircularProgress size={24} color="inherit" /> : 'Submit My Choices'}
+              </Button>
+            </Box>
+          )}
         </Paper>
       )}
 
@@ -358,6 +440,21 @@ const EventDetail: React.FC = () => {
             No schedule available yet. Please check in with the event organizer.
           </Typography>
         </Paper>
+      )}
+
+      {!canManageEvent(event) && (event.status === 'In Progress' || event.status === 'Paused') && (
+        <Box mb={4} mt={3}> {/* Added mt={3} for some spacing above the timer */}
+          <Typography variant="h5" gutterBottom align="center"> {/* Optional: align center */}
+            Round Timer
+          </Typography>
+          <EventTimer 
+            eventId={event.id} 
+            isAdmin={false}
+            eventStatus={event.status} // Pass eventStatus to the timer
+            userSchedule={schedule} // Pass userSchedule to the timer
+            key={`attendee-timer-${event.id}`}
+          />
+        </Box>
       )}
 
       <Box display="flex" justifyContent="center" mt={4}>

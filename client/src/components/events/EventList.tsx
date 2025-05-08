@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container,
   Box,
@@ -36,6 +36,7 @@ import {
   FormControl,
   DialogContentText,
   Divider,
+  Snackbar,
 } from '@mui/material';
 import {
   Event as EventIcon,
@@ -131,10 +132,10 @@ const EventList = () => {
   const [editFormData, setEditFormData] = useState<any>(null);
 
   // Add state for schedules
-  const [viewScheduleDialogOpen, setViewScheduleDialogOpen] = useState(false);
-  const [selectedEventForSchedule, setSelectedEventForSchedule] = useState<Event | null>(null);
-  const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
-  const [loadingSchedule, setLoadingSchedule] = useState(false);
+  // const [viewScheduleDialogOpen, setViewScheduleDialogOpen] = useState(false); // REMOVED
+  // const [selectedEventForSchedule, setSelectedEventForSchedule] = useState<Event | null>(null); // REMOVED
+  // const [schedule, setSchedule] = useState<ScheduleItem[]>([]); // REMOVED
+  // const [loadingSchedule, setLoadingSchedule] = useState(false); // REMOVED
 
   // Add new state variables for all schedules functionality
   const [viewAllSchedulesDialogOpen, setViewAllSchedulesDialogOpen] = useState(false);
@@ -156,6 +157,22 @@ const EventList = () => {
 
   // State to hold fetched user schedules keyed by eventId
   const [userSchedules, setUserSchedules] = useState<Record<number, ScheduleItem[]>>({});
+
+  // ADD State for notification permission
+  const [showNotificationSnackbar, setShowNotificationSnackbar] = useState<boolean>(false);
+
+  // ADD State for speed date selections (organizer/admin making selections on behalf of users)
+  const [speedDateSelections, setSpeedDateSelections] = useState<Record<number, boolean>>({});
+  const [selectionErrorMessage, setSelectionErrorMessage] = useState<string | null>(null);
+
+  // ADD State for expanding user's own schedule inline
+  const [expandedUserSchedules, setExpandedUserSchedules] = useState<Record<number, boolean>>({});
+
+  // ADD State for attendee's own speed date selections
+  const [attendeeSpeedDateSelections, setAttendeeSpeedDateSelections] = useState<Record<number, { eventId: number, interested: boolean }>>({});
+  const [attendeeSelectionError, setAttendeeSelectionError] = useState<Record<number, string | null>>({});
+  // ADD State to track successful submissions by the attendee
+  const [submittedEventIds, setSubmittedEventIds] = useState<Set<number>>(new Set());
 
   const events: Event[] = contextEvents.map((contextEvent: any) => {
     // Find the corresponding registration if it exists
@@ -399,6 +416,65 @@ const EventList = () => {
     }
   };
 
+  // Function to toggle inline user schedule visibility
+  const toggleUserScheduleInline = (eventId: number) => {
+    setExpandedUserSchedules(prev => ({
+      ...prev,
+      [eventId]: !prev[eventId]
+    }));
+    // Clear previous error for this event when toggling
+    setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null }));
+  };
+
+  const handleAttendeeSelectionChange = (eventSpeedDateId: number, eventId: number, interested: boolean) => {
+    setAttendeeSpeedDateSelections(prev => ({
+      ...prev,
+      [eventSpeedDateId]: { eventId, interested }
+    }));
+    // Clear error for this event when a selection is made
+    setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null }));
+  };
+
+  const handleAttendeeSubmitSelections = async (eventId: number) => {
+    setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null })); // Clear previous error
+
+    const selectionsToSubmit = Object.entries(attendeeSpeedDateSelections)
+      .filter(([_, selection]) => selection.eventId === eventId)
+      .map(([id, selection]) => ({
+        event_speed_date_id: Number(id),
+        interested: selection.interested,
+      }));
+
+    if (selectionsToSubmit.length === 0) {
+      setAttendeeSelectionError(prev => ({ ...prev, [eventId]: 'No selections have been made for this event.' }));
+      return;
+    }
+
+    try {
+      await eventsApi.submitSpeedDateSelections(eventId.toString(), selectionsToSubmit);
+      // Basic success feedback. Consider a Snackbar for better UX.
+      // alert('Your selections have been submitted successfully!'); 
+      // Update state to mark as submitted
+      setSubmittedEventIds(prev => new Set(prev).add(eventId));
+      // Optionally clear selections for this event from local state after success?
+      // setAttendeeSpeedDateSelections(prev => {
+      //     const newState = {...prev};
+      //     Object.keys(newState).forEach(key => {
+      //         if (newState[Number(key)].eventId === eventId) {
+      //             delete newState[Number(key)];
+      //         }
+      //     });
+      //     return newState;
+      // });
+      setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null })); // Clear error on success
+    } catch (error: any) {
+      setAttendeeSelectionError(prev => ({
+        ...prev,
+        [eventId]: error.response?.data?.message || error.message || 'Failed to submit your selections.'
+      }));
+    }
+  };
+
   const renderActionButtons = (event: Event) => {
     // Check if the user is registered for this event
     const isRegistered = isRegisteredForEvent(event.id);
@@ -408,19 +484,105 @@ const EventList = () => {
     if (event.status === 'Completed') {
       if (isRegistered && registrationStatus === 'Checked In') {
         return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Chip
-              label="Checked In"
-              color="success"
-              icon={<CheckInIcon />}
-            />
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => handleViewSchedule(event.id)}
-            >
-              View Schedule
-            </Button>
+          // Ensure this outer Box uses column flex direction to stack elements vertically
+          // and alignItems controls horizontal alignment
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}> 
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start', mb: expandedUserSchedules[event.id] ? 1 : 0 }}> 
+              <Chip
+                label="Checked In"
+                color="success"
+                icon={<CheckInIcon />}
+                size="small"
+              />
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => toggleUserScheduleInline(event.id)} // MODIFIED
+                startIcon={expandedUserSchedules[event.id] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              >
+                My Schedule
+              </Button>
+            </Box>
+            <Collapse in={expandedUserSchedules[event.id]} timeout="auto" unmountOnExit sx={{ width: '100%'}}>
+              <Paper elevation={1} sx={{ p: 1.5, mt: 1, bgcolor: 'background.default' }}>
+                {userSchedules[event.id] && userSchedules[event.id].length > 0 ? (
+                  <>
+                    {userSchedules[event.id].map((item, index) => (
+                      <Box 
+                        key={item.event_speed_date_id || index} // Use event_speed_date_id if available
+                        sx={{ 
+                          mb: { xs: 0.5, sm: index === userSchedules[event.id].length - 1 ? 0 : 0.75 }, // Reduced margin
+                          p: { xs: 0.5, sm: 0.75 }, // Reduced padding
+                          borderLeft: '3px solid', 
+                          borderColor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
+                          borderRadius: '4px',
+                          backgroundColor: theme.palette.action.hover,
+                        }}
+                      >
+                        <Grid container spacing={1} alignItems="center">
+                          <Grid item xs={12} sm={item.event_speed_date_id ? 7 : 12}> {/* Adjusted grid for text */} 
+                            <Typography variant="subtitle2" component="div" gutterBottom={false} sx={{ fontWeight: 'bold', mb: 0.25 }}> {/* Reduced margin bottom */}
+                              Round {item.round}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.1 }}> {/* Reduced margin bottom */}
+                              Table: {item.table}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0 }}> {/* Reduced margin bottom */}
+                              Partner: {item.partner_name} (Age: {item.partner_age || 'N/A'})
+                            </Typography>
+                          </Grid>
+                          {item.event_speed_date_id && (
+                            <Grid item xs={12} sm={5}> {/* Adjusted grid for buttons */} 
+                              <Box sx={{ display: 'flex', gap: 0.5, justifyContent: { xs: 'flex-start', sm: 'flex-end' }, mt: { xs: 0.5, sm: 0 } }}> {/* Reduced gap and margin top */} 
+                                <Button
+                                  variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === true ? 'contained' : 'outlined'}
+                                  size="small"
+                                  color="success"
+                                  onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, true)}
+                                  sx={{ minWidth: '60px' }}
+                                >
+                                  Yes
+                                </Button>
+                                <Button
+                                  variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === false ? 'contained' : 'outlined'}
+                                  size="small"
+                                  color="error"
+                                  onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, false)}
+                                  sx={{ minWidth: '60px' }}
+                                >
+                                  No
+                                </Button>
+                              </Box>
+                            </Grid>
+                          )}
+                        </Grid>
+                      </Box>
+                    ))}
+                    {attendeeSelectionError[event.id] && (
+                      <Alert severity="error" sx={{ mt: 1.5 }} onClose={() => setAttendeeSelectionError(prev => ({...prev, [event.id]: null}))}>
+                        {attendeeSelectionError[event.id]}
+                      </Alert>
+                    )}
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      color="primary"
+                      size="small"
+                      onClick={() => handleAttendeeSubmitSelections(event.id)}
+                      sx={{ mt: 1.5 }}
+                      disabled={
+                        !Object.values(attendeeSpeedDateSelections).some(sel => sel.eventId === event.id) ||
+                        submittedEventIds.has(event.id) // Disable if already submitted
+                      }
+                    >
+                      {submittedEventIds.has(event.id) ? 'Selections Submitted' : 'Submit My Selections'} {/* Change text after submission */}
+                    </Button>
+                  </>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">Your schedule for this event is not yet available or you are not checked in.</Typography>
+                )}
+              </Paper>
+            </Collapse>
           </Box>
         );
       }
@@ -441,23 +603,106 @@ const EventList = () => {
         // User is checked in: Show Chip, View Schedule button, and potentially paused status.
         // Schedule for current round is shown inline via EventTimer.
         return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
-            <Chip
-              label="Checked In"
-              color="success"
-              icon={<CheckInIcon />}
-              size="small"
-            />
-            {/* Re-add View Schedule Button */}
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => handleViewSchedule(event.id)}
-              startIcon={<ViewIcon fontSize="small"/>}
-            >
-              View My Schedule
-            </Button>
-            {/* Optionally show paused status chip */}
+          // Ensure this outer Box uses column flex direction AND aligns itself to the start
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', alignSelf: 'flex-start', width: '100%' }}> 
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start', mb: expandedUserSchedules[event.id] ? 1 : 0 }}> 
+              <Chip
+                label="Checked In"
+                color="success"
+                icon={<CheckInIcon />}
+                size="small"
+              />
+              {/* Re-add View Schedule Button - NOW A TOGGLE FOR INLINE VIEW */}
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => toggleUserScheduleInline(event.id)} // MODIFIED
+                startIcon={expandedUserSchedules[event.id] ? <ExpandLessIcon fontSize="small"/> : <ExpandMoreIcon fontSize="small"/>}
+              >
+                My Schedule
+              </Button>
+            </Box>
+            <Collapse in={expandedUserSchedules[event.id]} timeout="auto" unmountOnExit sx={{ width: '100%'}}>
+              <Paper elevation={1} sx={{ p: 1.5, mt: 1, bgcolor: 'background.default' }}>
+                {userSchedules[event.id] && userSchedules[event.id].length > 0 ? (
+                  <>
+                    {userSchedules[event.id].map((item, index) => (
+                      <Box 
+                        key={item.event_speed_date_id || index} // Use event_speed_date_id if available
+                        sx={{ 
+                          mb: { xs: 0.5, sm: index === userSchedules[event.id].length - 1 ? 0 : 0.75 }, // Reduced margin
+                          p: { xs: 0.5, sm: 0.75 }, // Reduced padding
+                          borderLeft: '3px solid', 
+                          borderColor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
+                          borderRadius: '4px',
+                          backgroundColor: theme.palette.action.hover,
+                        }}
+                      >
+                        <Grid container spacing={1} alignItems="center">
+                          <Grid item xs={12} sm={item.event_speed_date_id ? 6 : 12}>
+                            <Typography variant="subtitle2" component="div" sx={{ fontWeight: 'bold' }}>
+                              Round {item.round}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Table: {item.table}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Partner: {item.partner_name} (Age: {item.partner_age || 'N/A'})
+                            </Typography>
+                          </Grid>
+                          {item.event_speed_date_id && (
+                            <Grid item xs={12} sm={6}>
+                              <Box sx={{ display: 'flex', gap: 1, justifyContent: { xs: 'flex-start', sm: 'flex-end' }, mt: { xs: 1, sm: 0 } }}>
+                                <Button
+                                  variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === true ? 'contained' : 'outlined'}
+                                  size="small"
+                                  color="success"
+                                  onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, true)}
+                                  sx={{ minWidth: '60px' }}
+                                >
+                                  Yes
+                                </Button>
+                                <Button
+                                  variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === false ? 'contained' : 'outlined'}
+                                  size="small"
+                                  color="error"
+                                  onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, false)}
+                                  sx={{ minWidth: '60px' }}
+                                >
+                                  No
+                                </Button>
+                              </Box>
+                            </Grid>
+                          )}
+                        </Grid>
+                      </Box>
+                    ))}
+                     {attendeeSelectionError[event.id] && (
+                      <Alert severity="error" sx={{ mt: 1.5 }} onClose={() => setAttendeeSelectionError(prev => ({...prev, [event.id]: null}))}>
+                        {attendeeSelectionError[event.id]}
+                      </Alert>
+                    )}
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      color="primary"
+                      size="small"
+                      onClick={() => handleAttendeeSubmitSelections(event.id)}
+                      sx={{ mt: 1.5 }}
+                      disabled={
+                        !Object.values(attendeeSpeedDateSelections).some(sel => sel.eventId === event.id) ||
+                        submittedEventIds.has(event.id) // Disable if already submitted
+                      }
+                    >
+                      {submittedEventIds.has(event.id) ? 'Selections Submitted' : 'Submit My Selections'} {/* Change text after submission */}
+                    </Button>
+                  </>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">Your schedule for this event is not yet available or you are not checked in.</Typography>
+                )}
+              </Paper>
+            </Collapse>
+            {/* Optionally show paused status chip - This should be outside the collapse triggering group if it also should not move */}
             {event.status === 'Paused' && (
               <Chip
                 label="Event Paused"
@@ -846,29 +1091,6 @@ const EventList = () => {
     });
   };
 
-  // Handle viewing schedule
-  const handleViewSchedule = async (eventId: number) => {
-    try {
-      setLoadingSchedule(true);
-      setSelectedEventForSchedule(events.find(e => e.id === eventId) || null);
-      
-      const response = await eventsApi.getSchedule(eventId.toString());
-      console.log("User schedule response:", response);
-      
-      if (response && response.schedule) {
-      setSchedule(response.schedule);
-      setViewScheduleDialogOpen(true);
-      } else {
-        setErrorMessage('No schedule data available');
-      }
-    } catch (error: any) {
-      console.error("Error fetching schedule:", error);
-      setErrorMessage(error.message || 'Failed to load schedule');
-    } finally {
-      setLoadingSchedule(false);
-    }
-  };
-
   // Function to handle viewing all schedules (for admin/organizer)
   const handleViewAllSchedules = async (eventId: number) => {
     try {
@@ -876,6 +1098,8 @@ const EventList = () => {
       setSelectedEventForAllSchedules(events.find(e => e.id === eventId) || null);
       setSearchTerm(''); // Reset search term when opening dialog
       setSortConfig(null); // Reset sort config when opening dialog
+      setSpeedDateSelections({}); // Initialize/reset selections
+      setSelectionErrorMessage(null); // Reset selection error message
       
       // Fetch all schedules
       const response = await eventsApi.getAllSchedules(eventId.toString());
@@ -1116,6 +1340,85 @@ const EventList = () => {
     }
   // Dependencies: events array changes, user registration status changes
   }, [events, isRegisteredForEvent, user, userSchedules]); // Added userSchedules to prevent re-fetching if already present
+
+  // ADD useEffect to check initial notification permission
+  useEffect(() => {
+    if ('Notification' in window) {
+      const currentPermission = Notification.permission;
+      // Show snackbar only if permission is default (not granted or denied)
+      setShowNotificationSnackbar(currentPermission === 'default');
+    } else {
+      setShowNotificationSnackbar(false); // Don't show if notifications not supported
+    }
+  }, []);
+
+  // ADD Functions to handle notification permission request
+  const requestNotificationPermission = useCallback(async () => {
+    if (!('Notification' in window)) {
+      console.log('This browser does not support notifications');
+      return 'unsupported'; // Indicate unsupported
+    }
+    try {
+      if (Notification.permission !== 'denied') {
+        const permission = await Notification.requestPermission();
+        setShowNotificationSnackbar(false); // Hide snackbar after interaction
+        return permission;
+      }
+      return Notification.permission;
+    } catch (error) {
+      console.error('Error requesting notification permission:', error);
+      setShowNotificationSnackbar(false); // Hide snackbar on error
+      return 'denied';
+    }
+  }, []);
+
+  const handleEnableNotifications = () => {
+    requestNotificationPermission().then(permission => {
+      if (permission === 'granted') {
+        console.log('Notification permission granted via EventList');
+      } else {
+        console.log(`Notification permission status: ${permission}`);
+      }
+    });
+  };
+
+  // Function to explicitly close the snackbar without enabling
+  const handleCloseNotificationSnackbar = (event?: React.SyntheticEvent | Event, reason?: string) => {
+    if (reason === 'clickaway') {
+      return; // Don't close on clickaway
+    }
+    setShowNotificationSnackbar(false);
+  };
+
+  // ADD Function to handle saving speed date selections
+  const handleSaveSpeedDateSelections = async () => {
+    if (!selectedEventForAllSchedules) {
+      setSelectionErrorMessage('No event selected for saving selections.');
+      return;
+    }
+
+    const selectionsToSubmit = Object.entries(speedDateSelections).map(([id, interested]) => ({
+      event_speed_date_id: Number(id),
+      interested: interested,
+    }));
+
+    if (selectionsToSubmit.length === 0) {
+      setSelectionErrorMessage('No selections have been made to save.');
+      return;
+    }
+
+    try {
+      setSelectionErrorMessage(null); // Clear previous errors
+      await eventsApi.submitSpeedDateSelections(selectedEventForAllSchedules.id.toString(), selectionsToSubmit);
+      // Show success feedback (e.g., a Snackbar or Alert)
+      // For now, using a simple alert. Consider replacing with a Snackbar.
+      alert('Speed date selections saved successfully!');
+      // Optionally, you might want to close the dialog or refresh data
+      // setViewAllSchedulesDialogOpen(false); 
+    } catch (error: any) {
+      setSelectionErrorMessage(error.response?.data?.message || error.message || 'Failed to save speed date selections.');
+    }
+  };
 
   return (
     <Container maxWidth="lg" sx={{ px: isMobile ? 2 : 3 }}>
@@ -1945,66 +2248,11 @@ const EventList = () => {
           </DialogActions>
         </Dialog>
         
-        {/* Schedule Dialog */}
-        <Dialog
-          open={viewScheduleDialogOpen}
-          onClose={() => setViewScheduleDialogOpen(false)}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle>
-            {selectedEventForSchedule?.name} - Your Schedule
-          </DialogTitle>
-          <DialogContent dividers sx={{ p: { xs: 1, sm: 2 } }}> {/* Add responsive padding */}
-            {loadingSchedule ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                {/* You can add a loading spinner here if you have one */}
-                <Typography>Loading schedule...</Typography>
-              </Box>
-            ) : schedule.length > 0 ? (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-                {schedule.map((item, index) => (
-                  <Paper key={index} elevation={3} sx={{ p: 2, position: 'relative', pl: 4 }}>
-                    <Box sx={{ 
-                      position: 'absolute', 
-                      left: 0, 
-                      top: 0, 
-                      bottom: 0, 
-                      width: '4px', 
-                      bgcolor: 'primary.main' 
-                    }} />
-                    <Typography variant="h6" component="div">
-                      Round {item.round}
-                    </Typography>
-                    <Typography variant="body1">
-                      <strong>Table:</strong> {item.table}
-                    </Typography>
-                    {/* Add Partner Info */}
-                    <Typography variant="body1">
-                      <strong>Partner:</strong> {item.partner_name}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      (Age: {item.partner_age || 'N/A'})
-                    </Typography>
-                  </Paper>
-                ))}
-              </Box>
-            ) : (
-              <DialogContentText sx={{ textAlign: 'center', py: 3 }}>
-                No schedule available. Please make sure you are checked in for the event.
-              </DialogContentText>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setViewScheduleDialogOpen(false)}>Close</Button>
-          </DialogActions>
-        </Dialog>
-        
         {/* All Schedules Dialog (for admins/organizers) */}
         <Dialog
           open={viewAllSchedulesDialogOpen}
           onClose={() => setViewAllSchedulesDialogOpen(false)}
-          maxWidth="md"
+          maxWidth="md" // Consider "lg" or "xl" if table becomes too wide
           fullWidth
         >
           <DialogTitle>
@@ -2017,7 +2265,7 @@ const EventList = () => {
               </Box>
             ) : Object.keys(allSchedules).length > 0 ? (
               <Box sx={{ mt: 2 }}>
-                <Box sx={{ mb: 2 }}>
+                <Box sx={{ mb: 2, px: 1 }}>
                   <TextField
                     label="Search"
                     placeholder="Search by name, round, table..."
@@ -2035,6 +2283,11 @@ const EventList = () => {
                     }}
                   />
                 </Box>
+                {selectionErrorMessage && (
+                  <Alert severity="error" sx={{ mb: 2, mx: 1 }} onClose={() => setSelectionErrorMessage(null)}>
+                    {selectionErrorMessage}
+                  </Alert>
+                )}
                 <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, px: 1 }}>
                   Showing schedules for {Object.keys(filteredSchedules).length} users
                 </Typography>
@@ -2127,6 +2380,8 @@ const EventList = () => {
                             )}
                           </Box>
                         </TableCell>
+                        {/* ADD New TableCell for Interest Selection */}
+                        <TableCell><strong>Interest</strong></TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -2146,6 +2401,33 @@ const EventList = () => {
                             <TableCell>{item.table}</TableCell>
                             <TableCell>{item.partner_name}</TableCell>
                             <TableCell>{item.partner_age || 'N/A'}</TableCell>
+                            {/* ADD Yes/No buttons for interest selection */}
+                            <TableCell>
+                              {item.event_speed_date_id ? ( // Ensure event_speed_date_id exists
+                                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                  <Button
+                                    variant={speedDateSelections[item.event_speed_date_id] === true ? 'contained' : 'outlined'}
+                                    size="small"
+                                    color="success"
+                                    onClick={() => setSpeedDateSelections(prev => ({ ...prev, [item.event_speed_date_id]: true }))}
+                                    sx={{ minWidth: '50px', p: '2px 6px', fontSize: '0.75rem' }}
+                                  >
+                                    Yes
+                                  </Button>
+                                  <Button
+                                    variant={speedDateSelections[item.event_speed_date_id] === false ? 'contained' : 'outlined'}
+                                    size="small"
+                                    color="error"
+                                    onClick={() => setSpeedDateSelections(prev => ({ ...prev, [item.event_speed_date_id]: false }))}
+                                    sx={{ minWidth: '50px', p: '2px 6px', fontSize: '0.75rem' }}
+                                  >
+                                    No
+                                  </Button>
+                                </Box>
+                              ) : (
+                                <Typography variant="caption" color="textSecondary">N/A</Typography>
+                              )}
+                            </TableCell>
                           </TableRow>
                         ));
                       })}
@@ -2165,6 +2447,15 @@ const EventList = () => {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setViewAllSchedulesDialogOpen(false)}>Close</Button>
+            {/* ADD Save Selections Button */}
+            <Button 
+              onClick={handleSaveSpeedDateSelections} 
+              color="primary" 
+              variant="contained"
+              disabled={Object.keys(speedDateSelections).length === 0 || loadingAllSchedules}
+            >
+              Save Selections
+            </Button>
           </DialogActions>
         </Dialog>
         
@@ -2192,6 +2483,27 @@ const EventList = () => {
           </Link>
         </Box>
       </Box>
+
+      {/* ADD Snackbar for Notification Permission Request */}
+      <Snackbar
+         open={showNotificationSnackbar} // Control visibility with state
+         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+         autoHideDuration={10000} // 10 seconds
+         sx={{ position: 'fixed', bottom: 12, zIndex: theme.zIndex.snackbar + 1}} // Ensure it's above other elements if needed
+       >
+         <Alert 
+           severity="info" 
+           action={ // Button to trigger the permission request
+             <Button color="inherit" size="medium" onClick={handleEnableNotifications}>
+               Enable
+             </Button>
+           }
+           onClose={handleCloseNotificationSnackbar} // Add explicit close 'X' button
+           sx={{ width: '100%' }} // Ensure alert takes full width of snackbar
+         >
+           Enable browser notifications for event timer alerts
+         </Alert>
+       </Snackbar>
     </Container>
   );
 };

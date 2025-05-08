@@ -267,7 +267,8 @@ interface EventsApi {
       table: number,
       partner_id: number,
       partner_name: string,
-      partner_age: number,
+      partner_age: number | null,
+      event_speed_date_id: number;
     }> 
   }>;
   getAllSchedules: (eventId: string) => Promise<{ 
@@ -276,11 +277,16 @@ interface EventsApi {
       table: number,
       partner_id: number,
       partner_name: string,
-      partner_age: number,
+      partner_age: number | null,
+      event_speed_date_id: number;
     }>> 
   }>;
   startEvent: (eventId: string) => Promise<{ message: string }>;
   resumeEvent: (eventId: string) => Promise<{ message: string }>;
+  submitSpeedDateSelections: (
+    eventId: string, 
+    selections: Array<{ event_speed_date_id: number; interested: boolean }>
+  ) => Promise<any>;
 }
 
 const realEventsApi: EventsApi = {
@@ -416,6 +422,14 @@ const realEventsApi: EventsApi = {
       }
       throw new Error('Failed to resume event');
     }
+  },
+  
+  submitSpeedDateSelections: async (
+    eventId: string, 
+    selections: Array<{ event_speed_date_id: number; interested: boolean }>
+  ) => {
+    const response = await api.post(`/events/${eventId}/speed-date-selections`, { selections });
+    return response.data;
   }
 };
 
