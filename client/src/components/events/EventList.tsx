@@ -1445,10 +1445,10 @@ const EventList = () => {
           flexDirection: { xs: 'row', sm: 'row' } 
         }}
       >
-        <Typography variant={isMobile ? "h5" : "h4"} component="h1" sx={{ fontWeight: 'bold' }}>
+        <Typography variant={isMobile ? "h5" : "h4"} component="h1" sx={{ fontWeight: 'bold', mr: 1 /* Add small right margin to title */ }}>
           Events
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}> {/* Grouping Box for buttons */}
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', ml: { xs: 2, sm: 0 } }}> {/* MODIFIED: Added left margin on xs screens */}
           {user && (
             <Button
               variant="outlined" // Or "contained" based on your design preference
@@ -1643,9 +1643,16 @@ const EventList = () => {
                 
                 {/* Add the Timer Component for Events in Progress or Paused */}
                 {(event.status === 'In Progress' || event.status === 'Paused') && (
-                  <Box sx={{ mb: { xs: 1.5, sm: 3 } }}> {/* Reduced bottom margin */}
-                    <Divider sx={{ mb: { xs: 1, sm: 2 } }} />
-                    <Typography variant="h6" gutterBottom sx={{ fontSize: isMobile ? '1rem' : '1.25rem' }}> {/* Reduced font size */}
+                  <Box sx={{ mb: { xs: 1, sm: 3 } }}> {/* MODIFIED: Reduced bottom margin on xs */}
+                    <Divider sx={{ mb: { xs: 0.5, sm: 2 } }} /> {/* MODIFIED: Reduced bottom margin on xs */}
+                    <Typography 
+                      variant="h6" 
+                      gutterBottom 
+                      sx={{ 
+                        fontSize: { xs: '0.875rem', sm: '1.25rem' }, // MODIFIED: Reduced font size on xs
+                        mb: { xs: 0.5, sm: 2} // MODIFIED: Explicitly control margin, gutterBottom might add more
+                      }}
+                    >
                       Round Timer
                     </Typography>
                     {(() => {
