@@ -141,11 +141,6 @@ const EventList = () => {
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [editFormData, setEditFormData] = useState<any>(null);
 
-  // Add state for schedules
-  // const [viewScheduleDialogOpen, setViewScheduleDialogOpen] = useState(false); // REMOVED
-  // const [selectedEventForSchedule, setSelectedEventForSchedule] = useState<Event | null>(null); // REMOVED
-  // const [schedule, setSchedule] = useState<ScheduleItem[]>([]); // REMOVED
-  // const [loadingSchedule, setLoadingSchedule] = useState(false); // REMOVED
 
   // Add new state variables for all schedules functionality
   const [viewAllSchedulesDialogOpen, setViewAllSchedulesDialogOpen] = useState(false);
@@ -784,11 +779,10 @@ const EventList = () => {
             )}
           </Box>
         );
-      } else {
-        return null;
       }
     }
     
+
     if (isRegistered && registrationStatus === 'Registered') {
       return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -812,7 +806,22 @@ const EventList = () => {
         />
         </Box>
       );
-    } else if (event.status === 'Registration Open') {
+    } 
+    else if (isRegistered) { 
+      return (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Button 
+              size="small" 
+              startIcon={<CancelIcon />} 
+              color="error"
+              onClick={() => handleCancelClick(event.id)}
+          >
+              Cancel Registration
+          </Button>
+          </Box>
+      );
+    }
+    else if (event.status === 'Registration Open') { 
       return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Button 
@@ -2014,22 +2023,22 @@ const EventList = () => {
         </DialogTitle>
         <DialogContent dividers sx={{ p: { xs: 0, sm: 1 } }}> {/* Remove padding on xs */}
           {registeredUsers.length > 0 ? (
-            <TableContainer component={Paper} sx={{ maxHeight: 500 }}>
+            <TableContainer component={Paper} sx={{ maxHeight: 500, overflowX: 'auto' }}>
               <Table stickyHeader size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell><strong>Name</strong></TableCell>
-                    <TableCell><strong>Email</strong></TableCell>
-                    <TableCell><strong>Phone</strong></TableCell>
-                    <TableCell><strong>Gender</strong></TableCell>
-                    <TableCell><strong>Age</strong></TableCell>
-                    <TableCell><strong>Birthday</strong></TableCell>
-                    <TableCell><strong>Registered</strong></TableCell>
-                    <TableCell><strong>Status</strong></TableCell>
-                    <TableCell><strong>Check-in Time</strong></TableCell>
-                    <TableCell><strong>PIN</strong></TableCell>
+                    <TableCell sx={{ width: '15%', minWidth: 150 }}><strong>Name</strong></TableCell>
+                    <TableCell sx={{ width: '20%', minWidth: 180 }}><strong>Email</strong></TableCell>
+                    <TableCell sx={{ width: 130, minWidth: 120 }}><strong>Phone</strong></TableCell>
+                    <TableCell sx={{ width: 80, minWidth: 70 }}><strong>Gender</strong></TableCell>
+                    <TableCell sx={{ width: 60, minWidth: 50, textAlign: 'center' }}><strong>Age</strong></TableCell>
+                    <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Birthday</strong></TableCell>
+                    <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Registered</strong></TableCell>
+                    <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Status</strong></TableCell>
+                    <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Check-in Time</strong></TableCell>
+                    <TableCell sx={{ width: 70, minWidth: 60, textAlign: 'center' }}><strong>PIN</strong></TableCell>
                     {(isAdmin() || isOrganizer()) && (
-                      <TableCell><strong>Actions</strong></TableCell>
+                      <TableCell sx={{ width: 100, minWidth: 90, textAlign: 'center' }}><strong>Actions</strong></TableCell>
                     )}
                   </TableRow>
                 </TableHead>
@@ -2042,32 +2051,32 @@ const EventList = () => {
                           <TableCell>
                             {/* Name Input */}
                             <Box sx={{ display: 'flex', gap: 1 }}>
-                              <TextField size="small" label="First Name" value={editFormData.first_name} onChange={(e) => handleEditFormChange(e.target.value, 'first_name')} sx={{ minWidth: 120 }} />
-                              <TextField size="small" label="Last Name" value={editFormData.last_name} onChange={(e) => handleEditFormChange(e.target.value, 'last_name')} sx={{ minWidth: 120 }} />
+                              <TextField size="small" label="First Name" value={editFormData.first_name} onChange={(e) => handleEditFormChange(e.target.value, 'first_name')} sx={{ width: 'calc(50% - 4px)' }} />
+                              <TextField size="small" label="Last Name" value={editFormData.last_name} onChange={(e) => handleEditFormChange(e.target.value, 'last_name')} sx={{ width: 'calc(50% - 4px)' }} />
                             </Box>
                           </TableCell>
                           <TableCell>
                             {/* Email Input */}
-                            <TextField size="small" label="Email" value={editFormData.email} onChange={(e) => handleEditFormChange(e.target.value, 'email')} sx={{ minWidth: 200 }} />
+                            <TextField size="small" label="Email" value={editFormData.email} onChange={(e) => handleEditFormChange(e.target.value, 'email')} fullWidth />
                           </TableCell>
                           <TableCell>
                             {/* Phone Input */}
-                            <TextField size="small" label="Phone" value={editFormData.phone} onChange={(e) => handleEditFormChange(e.target.value, 'phone')} sx={{ minWidth: 120 }} />
+                            <TextField size="small" label="Phone" value={editFormData.phone} onChange={(e) => handleEditFormChange(e.target.value, 'phone')} fullWidth />
                           </TableCell>
                           <TableCell>
                             {/* Gender Select */}
-                            <FormControl size="small" sx={{ minWidth: 100 }}>
+                            <FormControl size="small" fullWidth>
                               <InputLabel>Gender</InputLabel>
-                              <Select value={editFormData.gender} label="Gender" onChange={(e) => handleEditFormChange(e.target.value, 'gender')}> <MenuItem value="Male">Male</MenuItem> <MenuItem value="Female">Female</MenuItem> </Select>
+                              <Select value={editFormData.gender || ''} label="Gender" onChange={(e) => handleEditFormChange(e.target.value, 'gender')}> <MenuItem value="Male">Male</MenuItem> <MenuItem value="Female">Female</MenuItem> </Select>
                             </FormControl>
                           </TableCell>
-                          <TableCell>
+                          <TableCell sx={{ textAlign: 'center' }}>
                             {/* Age (Read-only) */}
                             {editFormData.birthday ? calculateAge(new Date(editFormData.birthday)) : ''}
                           </TableCell>
                           <TableCell>
                             {/* Birthday Input */}
-                            <TextField size="small" label="Birthday" type="date" value={editFormData.birthday || ''} onChange={(e) => handleEditFormChange(e.target.value, 'birthday')} InputLabelProps={{ shrink: true }} sx={{ minWidth: 120 }} />
+                            <TextField size="small" label="Birthday" type="date" value={editFormData.birthday || ''} onChange={(e) => handleEditFormChange(e.target.value, 'birthday')} InputLabelProps={{ shrink: true }} fullWidth />
                           </TableCell>
                           <TableCell>
                             {/* Registered (Read-only) */}
@@ -2081,14 +2090,14 @@ const EventList = () => {
                             {/* Check-in Time (Read-only) */}
                             {user.check_in_date ? new Date(user.check_in_date).toLocaleString() : 'Not checked in'}
                           </TableCell>
-                          <TableCell>
+                          <TableCell sx={{ textAlign: 'center' }}>
                             {/* PIN Input */}
                             <TextField size="small" label="PIN" value={editFormData.pin || ''} onChange={(e) => handleEditFormChange(e.target.value, 'pin')} inputProps={{ maxLength: 4, pattern: '[0-9]*' }} sx={{ width: 65 }} />
                           </TableCell>
                           {(isAdmin() || isOrganizer()) && ( // Call isAdmin and isOrganizer as functions
-                            <TableCell>
+                            <TableCell sx={{ textAlign: 'center' }}>
                               {/* Save/Cancel Actions */}
-                              <Box sx={{ display: 'flex', gap: 1 }}>
+                              <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
                                 <IconButton size="small" color="primary" onClick={() => handleSaveEdits(user.id)} title="Save"> <SaveIcon fontSize="small" /> </IconButton>
                                 <IconButton size="small" color="error" onClick={handleCancelEditing} title="Cancel"> <CancelEditIcon fontSize="small" /> </IconButton>
                               </Box>
@@ -2099,17 +2108,17 @@ const EventList = () => {
                         // View mode - Render all cells
                         <>
                           <TableCell>{user.name}</TableCell>
-                          <TableCell>{user.email}</TableCell>
+                          <TableCell sx={{ wordBreak: 'break-all' }}>{user.email}</TableCell> {/* Added wordBreak for email */}
                           <TableCell>{user.phone}</TableCell>
                           <TableCell>{user.gender}</TableCell>
-                          <TableCell>{user.age}</TableCell>
+                          <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
                           <TableCell> {user.birthday ? new Date(user.birthday).toLocaleDateString() : 'N/A'} </TableCell>
                           <TableCell> {user.registration_date ? new Date(user.registration_date).toLocaleString() : 'N/A'} </TableCell>
                           <TableCell> <Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /> </TableCell>
                           <TableCell> {user.check_in_date ? new Date(user.check_in_date).toLocaleString() : 'Not checked in'} </TableCell>
-                          <TableCell>{user.pin}</TableCell>
+                          <TableCell sx={{ textAlign: 'center' }}>{user.pin}</TableCell>
                           {(isAdmin() || isOrganizer()) && ( // Call isAdmin and isOrganizer as functions
-                            <TableCell>
+                            <TableCell sx={{ textAlign: 'center' }}>
                               {/* Edit Action */}
                               <IconButton size="small" color="primary" onClick={() => handleStartEditing(user)} title="Edit"> <EditIcon fontSize="small" /> </IconButton>
                             </TableCell>
