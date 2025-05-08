@@ -11,7 +11,10 @@ import {
   Alert,
   Paper,
   Fade,
+  InputAdornment,
+  IconButton,
 } from '@mui/material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -22,6 +25,7 @@ const Login = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -48,83 +52,108 @@ const Login = () => {
     }
   };
 
+  const handleTogglePassword = () => {
+    setShowPassword(!showPassword);
+  };
+
   return (
-    <Container component="main" maxWidth="sm">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
-        <Typography component="h1" variant="h4" gutterBottom>
-          Sign in
+    <Container component="main" maxWidth="xs" sx={{ mt: 15, mb: 15}}>
+      <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
+        <Typography 
+          variant="h4" 
+          component="h1" 
+          gutterBottom 
+          sx={{ 
+            textAlign: 'center', 
+            mb: 1, 
+            fontWeight: 'bold',
+            color: 'primary.main'
+          }}
+        >
+          Saved & Single
         </Typography>
+        <Typography variant="subtitle1" component="h2" sx={{ textAlign: 'center', mb: 1.5 , fontWeight: 'bold', fontSize: '1.2rem' }}>
+          Login
+        </Typography>
+        <Fade in={!!error}>
+          <Alert 
+            severity="error" 
+            sx={{ 
+              width: '100%', 
+              mb: 1,
+              fontSize: '0.8rem',
+              py: 0.5,
+              animation: 'shake 0.5s',
+              '@keyframes shake': {
+                '0%, 100%': { transform: 'translateX(0)' },
+                '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-5px)' },
+                '20%, 40%, 60%, 80%': { transform: 'translateX(5px)' },
+              }
+            }}
+          >
+            {error}
+          </Alert>
+        </Fade>
         
-        <Paper elevation={3} sx={{ p: 4, width: '100%', mt: 2 }}>
-          <Fade in={!!error}>
-            <Alert 
-              severity="error" 
-              sx={{ 
-                width: '100%', 
-                mb: 3,
-                animation: 'shake 0.5s',
-                '@keyframes shake': {
-                  '0%, 100%': { transform: 'translateX(0)' },
-                  '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-5px)' },
-                  '20%, 40%, 60%, 80%': { transform: 'translateX(5px)' },
-                }
-              }}
-            >
-              {error}
-            </Alert>
-          </Fade>
-          
-          <Box component="form" onSubmit={handleSubmit}>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="email"
-              label="Email Address"
-              name="email"
-              autoComplete="email"
-              autoFocus
-              value={formData.email}
-              onChange={handleChange}
-              error={!!error}
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="password"
-              label="Password"
-              type="password"
-              id="password"
-              autoComplete="current-password"
-              value={formData.password}
-              onChange={handleChange}
-              error={!!error}
-            />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2 }}
-              disabled={loading}
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
-            </Button>
-            <Box sx={{ textAlign: 'center' }}>
-              <Link component={RouterLink} to="/register" variant="body2">
-                {"Don't have an account? Sign Up"}
-              </Link>
-            </Box>
+        <Box component="form" onSubmit={handleSubmit}>
+          <TextField
+            margin="dense"
+            required
+            fullWidth
+            id="email"
+            label="Email Address"
+            name="email"
+            autoComplete="email"
+            autoFocus
+            size="small"
+            value={formData.email}
+            onChange={handleChange}
+            error={!!error}
+          />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            name="password"
+            label="Password"
+            type={showPassword ? 'text' : 'password'}
+            id="password"
+            autoComplete="current-password"
+            size="small"
+            value={formData.password}
+            onChange={handleChange}
+            error={!!error}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    size="small"
+                    onClick={handleTogglePassword}
+                    edge="end"
+                  >
+                    {showPassword ? <VisibilityOff fontSize="small"/> : <Visibility fontSize="small" />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            size="medium"
+            sx={{ mt: 1.5, mb: 1 }}
+            disabled={loading}
+          >
+            {loading ? 'Signing in...' : 'Sign In'}
+          </Button>
+          <Box sx={{ textAlign: 'center' }}>
+            <Link component={RouterLink} to="/register" variant="body2" sx={{ fontSize: '0.8rem'}}>
+              {"Don't have an account? Sign Up"}
+            </Link>
           </Box>
-        </Paper>
-      </Box>
+        </Box>
+      </Paper>
     </Container>
   );
 };

@@ -64,6 +64,17 @@ import { useAuth } from '../../context/AuthContext';
 import { eventsApi } from '../../services/api';
 import { Event, EventStatus, ScheduleItem } from '../../types/event';
 import EventTimer from './EventTimer';
+import MatchesDialog from './MatchesDialog';
+
+
+interface Match {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  age: number;
+  gender: string;
+}
 
 const EventList = () => {
   const { events: contextEvents, createEvent, refreshEvents, isRegisteredForEvent, userRegisteredEvents } = useEvents();
@@ -172,6 +183,37 @@ const EventList = () => {
   const [attendeeSelectionError, setAttendeeSelectionError] = useState<Record<number, string | null>>({});
   // ADD State to track successful submissions by the attendee
   const [submittedEventIds, setSubmittedEventIds] = useState<Set<number>>(new Set());
+  // ADD State to track if the selection window is confirmed closed for an event
+  const [selectionWindowClosedError, setSelectionWindowClosedError] = useState<Record<number, boolean>>({});
+
+  const [viewMatchesDialogOpen, setViewMatchesDialogOpen] = useState<boolean>(false);
+  const [selectedEventIdForMatches, setSelectedEventIdForMatches] = useState<string | null>(null);
+  // Assuming Match interface is imported or defined above this component
+  const [currentMatches, setCurrentMatches] = useState<Match[]>([]);
+  const [matchesLoading, setMatchesLoading] = useState<boolean>(false);
+  const [matchesError, setMatchesError] = useState<string | null>(null);
+
+  const fetchMatchesForEvent = async (eventId: string) => {
+    setMatchesLoading(true);
+    setMatchesError(null);
+    setCurrentMatches([]);
+    try {
+      const response = await eventsApi.getMyMatches(eventId);
+      setCurrentMatches(response.matches); 
+    } catch (err: any) {
+      setMatchesError(err.message || 'Failed to load matches.');
+    }
+    setMatchesLoading(false);
+  };
+
+  // ADDED: Handler for clicking the "View My Matches" button
+  const handleViewMatchesClick = (event: Event) => {
+    setSelectedEventIdForMatches(event.id.toString());
+    // It's better to store the whole event or just its name for the dialog title
+    // For simplicity, I'll assume we can find the event again from 'events' array or pass name
+    setViewMatchesDialogOpen(true);
+    fetchMatchesForEvent(event.id.toString());
+  };
 
   const events: Event[] = contextEvents.map((contextEvent: any) => {
     // Find the corresponding registration if it exists
@@ -211,12 +253,24 @@ const EventList = () => {
     if (signUpEventId) {
       try {
         await eventsApi.registerForEvent(signUpEventId);
+        
         setSignUpDialogOpen(false);
+        const successfullyRegisteredEventId = signUpEventId; // Keep track for logging or potential optimistic UI
         setSignUpEventId(null);
-        // Refresh events to update registration status
-        await refreshEvents();
-      } catch (error: any) {
-        setErrorMessage(error.message || 'Failed to sign up for the event');
+        
+        try {
+          await refreshEvents();
+        } catch (refreshError: any) {
+          console.error(`Registration for event ${successfullyRegisteredEventId} was successful, but failed to refresh the events list:`, refreshError);
+          const backendMessage = refreshError.response?.data?.message || refreshError.response?.data?.error;
+          setErrorMessage(
+            `You've been registered for the event, but we couldn't update the list automatically. Error: ${backendMessage || refreshError.message}. Please try refreshing the page.`
+          );
+        }
+      } catch (registrationError: any) {
+        console.error('Failed to register for event:', registrationError);
+        const backendMessage = registrationError.response?.data?.message || registrationError.response?.data?.error;
+        setErrorMessage(backendMessage || registrationError.message || 'An error occurred while trying to register for the event.');
       }
     }
   };
@@ -451,26 +505,25 @@ const EventList = () => {
 
     try {
       await eventsApi.submitSpeedDateSelections(eventId.toString(), selectionsToSubmit);
-      // Basic success feedback. Consider a Snackbar for better UX.
-      // alert('Your selections have been submitted successfully!'); 
-      // Update state to mark as submitted
       setSubmittedEventIds(prev => new Set(prev).add(eventId));
-      // Optionally clear selections for this event from local state after success?
-      // setAttendeeSpeedDateSelections(prev => {
-      //     const newState = {...prev};
-      //     Object.keys(newState).forEach(key => {
-      //         if (newState[Number(key)].eventId === eventId) {
-      //             delete newState[Number(key)];
-      //         }
-      //     });
-      //     return newState;
-      // });
-      setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null })); // Clear error on success
+      setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null }));
+      setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: false })); // Clear specific error on success too
     } catch (error: any) {
-      setAttendeeSelectionError(prev => ({
-        ...prev,
-        [eventId]: error.response?.data?.message || error.message || 'Failed to submit your selections.'
-      }));
+      const specificErrorMessage = 'Speed date selections window closed 24 hours after event completion.';
+      const backendErrorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
+      
+      // Check for the specific error message from the backend
+      if (backendErrorMessage === specificErrorMessage) {
+        setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: true }));
+        setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null })); // Clear generic error if specific one is set
+      } else {
+        // Handle other generic errors
+        setAttendeeSelectionError(prev => ({
+          ...prev,
+          [eventId]: backendErrorMessage || 'Failed to submit your selections.'
+        }));
+        setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: false })); // Clear specific error if a different error occurs
+      }
     }
   };
 
@@ -482,10 +535,10 @@ const EventList = () => {
     // Don't show any action buttons for completed events
     if (event.status === 'Completed') {
       if (isRegistered && registrationStatus === 'Checked In') {
+        const isCurrentUserAttendee = user && !isAdmin() && !isOrganizer();
+
         return (
-          // Ensure this outer Box uses column flex direction to stack elements vertically
-          // and alignItems controls horizontal alignment
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}> 
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%', alignSelf: 'flex-start' }}> 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start', mb: expandedUserSchedules[event.id] ? 1 : 0 }}> 
               <Chip
                 label="Checked In"
@@ -496,22 +549,35 @@ const EventList = () => {
               <Button
                 size="small"
                 variant="outlined"
-                onClick={() => toggleUserScheduleInline(event.id)} // MODIFIED
+                onClick={() => toggleUserScheduleInline(event.id)} // Keep this toggle
                 startIcon={expandedUserSchedules[event.id] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
               >
                 My Schedule
               </Button>
+              {isCurrentUserAttendee && (
+                <Button
+                  size="small"
+                  variant="contained" // Or outlined, depending on preference
+                  color="primary"
+                  onClick={() => handleViewMatchesClick(event)} // Keep this handler
+                  sx={{ mt: 0.5 }} // Add a little margin top
+                >
+                  View My Matches
+                </Button>
+              )}
             </Box>
+            {/* This Collapse should show schedule and selection UI for Completed events too */}
             <Collapse in={expandedUserSchedules[event.id]} timeout="auto" unmountOnExit sx={{ width: '100%'}}>
               <Paper elevation={1} sx={{ p: 1.5, mt: 1, bgcolor: 'background.default' }}>
                 {userSchedules[event.id] && userSchedules[event.id].length > 0 ? (
                   <>
+                    {/* Map through schedule items - existing code */}
                     {userSchedules[event.id].map((item, index) => (
                       <Box 
-                        key={item.event_speed_date_id || index} // Use event_speed_date_id if available
+                        key={item.event_speed_date_id || index} 
                         sx={{ 
-                          mb: { xs: 0.5, sm: index === userSchedules[event.id].length - 1 ? 0 : 0.75 }, // Reduced margin
-                          p: { xs: 0.5, sm: 0.75 }, // Reduced padding
+                          mb: { xs: 0.5, sm: index === userSchedules[event.id].length - 1 ? 0 : 0.75 },
+                          p: { xs: 0.5, sm: 0.75 }, 
                           borderLeft: '3px solid', 
                           borderColor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
                           borderRadius: '4px',
@@ -519,20 +585,20 @@ const EventList = () => {
                         }}
                       >
                         <Grid container spacing={1} alignItems="center">
-                          <Grid item xs={12} sm={item.event_speed_date_id ? 7 : 12}> {/* Adjusted grid for text */} 
-                            <Typography variant="subtitle2" component="div" gutterBottom={false} sx={{ fontWeight: 'bold', mb: 0.25 }}> {/* Reduced margin bottom */}
+                          <Grid item xs={12} sm={item.event_speed_date_id ? 7 : 12}> 
+                            <Typography variant="subtitle2" component="div" gutterBottom={false} sx={{ fontWeight: 'bold', mb: 0.25 }}>
                               Round {item.round}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.1 }}> {/* Reduced margin bottom */}
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.1 }}>
                               Table: {item.table}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0 }}> {/* Reduced margin bottom */}
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0 }}>
                               Partner: {item.partner_name} (Age: {item.partner_age || 'N/A'})
                             </Typography>
                           </Grid>
                           {item.event_speed_date_id && (
-                            <Grid item xs={12} sm={5}> {/* Adjusted grid for buttons */} 
-                              <Box sx={{ display: 'flex', gap: 0.5, justifyContent: { xs: 'flex-start', sm: 'flex-end' }, mt: { xs: 0.5, sm: 0 } }}> {/* Reduced gap and margin top */} 
+                            <Grid item xs={12} sm={5}> 
+                              <Box sx={{ display: 'flex', gap: 0.5, justifyContent: { xs: 'flex-start', sm: 'flex-end' }, mt: { xs: 0.5, sm: 0 } }}> 
                                 <Button
                                   variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === true ? 'contained' : 'outlined'}
                                   size="small"
@@ -562,6 +628,7 @@ const EventList = () => {
                         {attendeeSelectionError[event.id]}
                       </Alert>
                     )}
+                    {/* Submit button logic adjusted */}
                     <Button
                       fullWidth
                       variant="contained"
@@ -570,39 +637,46 @@ const EventList = () => {
                       onClick={() => handleAttendeeSubmitSelections(event.id)}
                       sx={{ mt: 1.5 }}
                       disabled={
+                        // Disable if no selections made OR if already submitted OR if window is known closed
                         !Object.values(attendeeSpeedDateSelections).some(sel => sel.eventId === event.id) ||
-                        submittedEventIds.has(event.id) // Disable if already submitted
+                        submittedEventIds.has(event.id) ||
+                        selectionWindowClosedError[event.id] // Added check here
                       }
                     >
-                      {submittedEventIds.has(event.id) ? 'Selections Submitted' : 'Submit My Selections'} {/* Change text after submission */}
+                      {submittedEventIds.has(event.id) ? 'Selections Submitted' : 'Submit My Selections'}
                     </Button>
+                    {/* ADDED: Display specific message if window is closed */}
+                    {selectionWindowClosedError[event.id] && (
+                      <Typography variant="caption" color="error" sx={{ display: 'block', textAlign: 'center', mt: 0.5 }}>
+                        Selection window closed (24 hours after event end).
+                      </Typography>
+                    )}
                   </>
                 ) : (
-                  <Typography variant="body2" color="text.secondary">Your schedule for this event is not yet available or you are not checked in.</Typography>
+                  <Typography variant="body2" color="text.secondary">Your schedule for this event is not yet available or you were not checked in.</Typography> // Adjusted text slightly
                 )}
               </Paper>
             </Collapse>
           </Box>
         );
       }
-      return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        <Chip
-          label="Event Completed"
-          color="info"
-          size="small"
-        />
-        </Box>
-      );
+      if (!canManageEvent(event)) {
+        return (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
+            <Chip
+              label="Event Completed"
+              color="info"
+              size="small"
+            />
+          </Box>
+        );
+      }
+      return null;
     }
     
-    // Events in progress or paused
     if ((event.status === 'In Progress' || event.status === 'Paused') && isRegistered) {
       if (registrationStatus === 'Checked In') {
-        // User is checked in: Show Chip, View Schedule button, and potentially paused status.
-        // Schedule for current round is shown inline via EventTimer.
         return (
-          // Ensure this outer Box uses column flex direction AND aligns itself to the start
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', alignSelf: 'flex-start', width: '100%' }}> 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start', mb: expandedUserSchedules[event.id] ? 1 : 0 }}> 
               <Chip
@@ -611,11 +685,10 @@ const EventList = () => {
                 icon={<CheckInIcon />}
                 size="small"
               />
-              {/* Re-add View Schedule Button - NOW A TOGGLE FOR INLINE VIEW */}
               <Button
                 size="small"
                 variant="outlined"
-                onClick={() => toggleUserScheduleInline(event.id)} // MODIFIED
+                onClick={() => toggleUserScheduleInline(event.id)}
                 startIcon={expandedUserSchedules[event.id] ? <ExpandLessIcon fontSize="small"/> : <ExpandMoreIcon fontSize="small"/>}
               >
                 My Schedule
@@ -627,10 +700,10 @@ const EventList = () => {
                   <>
                     {userSchedules[event.id].map((item, index) => (
                       <Box 
-                        key={item.event_speed_date_id || index} // Use event_speed_date_id if available
+                        key={item.event_speed_date_id || index}
                         sx={{ 
-                          mb: { xs: 0.5, sm: index === userSchedules[event.id].length - 1 ? 0 : 0.75 }, // Reduced margin
-                          p: { xs: 0.5, sm: 0.75 }, // Reduced padding
+                          mb: { xs: 0.5, sm: index === userSchedules[event.id].length - 1 ? 0 : 0.75 },
+                          p: { xs: 0.5, sm: 0.75 },
                           borderLeft: '3px solid', 
                           borderColor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
                           borderRadius: '4px',
@@ -690,10 +763,10 @@ const EventList = () => {
                       sx={{ mt: 1.5 }}
                       disabled={
                         !Object.values(attendeeSpeedDateSelections).some(sel => sel.eventId === event.id) ||
-                        submittedEventIds.has(event.id) // Disable if already submitted
+                        submittedEventIds.has(event.id)
                       }
                     >
-                      {submittedEventIds.has(event.id) ? 'Selections Submitted' : 'Submit My Selections'} {/* Change text after submission */}
+                      {submittedEventIds.has(event.id) ? 'Selections Submitted' : 'Submit My Selections'}
                     </Button>
                   </>
                 ) : (
@@ -701,7 +774,6 @@ const EventList = () => {
                 )}
               </Paper>
             </Collapse>
-            {/* Optionally show paused status chip - This should be outside the collapse triggering group if it also should not move */}
             {event.status === 'Paused' && (
               <Chip
                 label="Event Paused"
@@ -1304,7 +1376,10 @@ const EventList = () => {
         // ---------------
 
         // Now check conditions to fetch
-        if ((event.status === 'In Progress' || event.status === 'Paused') && isRegistered && registrationStatus === 'Checked In') {
+        if ((event.status === 'In Progress' || event.status === 'Paused' || event.status === 'Completed') && 
+            isRegistered && 
+            registrationStatus === 'Checked In') 
+        {
           // Only fetch if we don\'t already have it
           if (!userSchedules.hasOwnProperty(event.id)) { 
             try {
@@ -2375,6 +2450,23 @@ const EventList = () => {
            Enable browser notifications for event timer alerts
          </Alert>
        </Snackbar>
+
+      {/* ADDED: Matches Dialog */}
+      {selectedEventIdForMatches && (
+        <MatchesDialog
+          open={viewMatchesDialogOpen}
+          onClose={() => {
+            setViewMatchesDialogOpen(false);
+            setSelectedEventIdForMatches(null); // Reset when closing
+            setCurrentMatches([]);
+            setMatchesError(null);
+          }}
+          eventName={events.find(e => e.id.toString() === selectedEventIdForMatches)?.name}
+          matches={currentMatches}
+          loading={matchesLoading}
+          error={matchesError}
+        />
+      )}
     </Container>
   );
 };
