@@ -267,7 +267,8 @@ interface EventsApi {
       table: number,
       partner_id: number,
       partner_name: string,
-      partner_age: number,
+      partner_age: number | null,
+      event_speed_date_id: number;
     }> 
   }>;
   getAllSchedules: (eventId: string) => Promise<{ 
@@ -276,11 +277,26 @@ interface EventsApi {
       table: number,
       partner_id: number,
       partner_name: string,
-      partner_age: number,
+      partner_age: number | null,
+      event_speed_date_id: number;
     }>> 
   }>;
   startEvent: (eventId: string) => Promise<{ message: string }>;
   resumeEvent: (eventId: string) => Promise<{ message: string }>;
+  submitSpeedDateSelections: (
+    eventId: string, 
+    selections: Array<{ event_speed_date_id: number; interested: boolean }>
+  ) => Promise<any>;
+  getMyMatches: (eventId: string) => Promise<{ matches: Match[] }>;
+}
+
+interface Match {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  age: number;
+  gender: string;
 }
 
 const realEventsApi: EventsApi = {
@@ -415,6 +431,26 @@ const realEventsApi: EventsApi = {
         throw new Error(error.response.data.error);
       }
       throw new Error('Failed to resume event');
+    }
+  },
+  
+  submitSpeedDateSelections: async (
+    eventId: string, 
+    selections: Array<{ event_speed_date_id: number; interested: boolean }>
+  ) => {
+    const response = await api.post(`/events/${eventId}/speed-date-selections`, { selections });
+    return response.data;
+  },
+  getMyMatches: async (eventId: string) => {
+    try {
+      const response = await api.get(`/events/${eventId}/my-matches`);
+      return response.data; 
+    } catch (error: any) {
+      console.error(`Error fetching matches for event ${eventId}:`, error);
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error('Failed to fetch your matches for this event.');
     }
   }
 };

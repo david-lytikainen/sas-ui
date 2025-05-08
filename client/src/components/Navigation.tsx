@@ -191,7 +191,7 @@ const Navigation = () => {
               {theme.palette.mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
             </AnimatedIconButton>
             {user && (
-              <Box sx={{ display: 'flex', gap: 2, ml: 'auto' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 1 : 2, ml: 'auto' }}>
                 <Button
                   sx={{
                     color: theme.palette.mode === 'light' 
@@ -199,10 +199,12 @@ const Navigation = () => {
                       : 'inherit',
                     '&:hover': {
                       color: theme.palette.primary.main,
-                    }
+                    },
+                    pl: isMobile ? 1.5 : undefined,
+                    pr: isMobile ? 1.5 : undefined,
                   }}
                   onClick={logout}
-                  startIcon={<ExitIcon />}
+                  startIcon={isMobile ? undefined : <ExitIcon />}
                 >
                   Logout
                 </Button>

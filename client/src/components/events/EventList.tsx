@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container,
   Box,
@@ -36,6 +36,7 @@ import {
   FormControl,
   DialogContentText,
   Divider,
+  Snackbar,
 } from '@mui/material';
 import {
   Event as EventIcon,
@@ -44,7 +45,6 @@ import {
   Person as PersonIcon, 
   LocationOn as LocationOnIcon,
   AttachMoney as AttachMoneyIcon,
-  EventAvailable as EventAvailableIcon,
   CheckCircle as CheckInIcon,
   Email as EmailIcon,
   ExpandMore as ExpandMoreIcon,
@@ -64,6 +64,17 @@ import { useAuth } from '../../context/AuthContext';
 import { eventsApi } from '../../services/api';
 import { Event, EventStatus, ScheduleItem } from '../../types/event';
 import EventTimer from './EventTimer';
+import MatchesDialog from './MatchesDialog';
+
+
+interface Match {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  age: number;
+  gender: string;
+}
 
 const EventList = () => {
   const { events: contextEvents, createEvent, refreshEvents, isRegisteredForEvent, userRegisteredEvents } = useEvents();
@@ -130,11 +141,6 @@ const EventList = () => {
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [editFormData, setEditFormData] = useState<any>(null);
 
-  // Add state for schedules
-  const [viewScheduleDialogOpen, setViewScheduleDialogOpen] = useState(false);
-  const [selectedEventForSchedule, setSelectedEventForSchedule] = useState<Event | null>(null);
-  const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
-  const [loadingSchedule, setLoadingSchedule] = useState(false);
 
   // Add new state variables for all schedules functionality
   const [viewAllSchedulesDialogOpen, setViewAllSchedulesDialogOpen] = useState(false);
@@ -156,6 +162,53 @@ const EventList = () => {
 
   // State to hold fetched user schedules keyed by eventId
   const [userSchedules, setUserSchedules] = useState<Record<number, ScheduleItem[]>>({});
+
+  // ADD State for notification permission
+  const [showNotificationSnackbar, setShowNotificationSnackbar] = useState<boolean>(false);
+
+  // ADD State for speed date selections (organizer/admin making selections on behalf of users)
+  const [speedDateSelections, setSpeedDateSelections] = useState<Record<number, boolean>>({});
+  const [selectionErrorMessage, setSelectionErrorMessage] = useState<string | null>(null);
+
+  // ADD State for expanding user's own schedule inline
+  const [expandedUserSchedules, setExpandedUserSchedules] = useState<Record<number, boolean>>({});
+
+  // ADD State for attendee's own speed date selections
+  const [attendeeSpeedDateSelections, setAttendeeSpeedDateSelections] = useState<Record<number, { eventId: number, interested: boolean }>>({});
+  const [attendeeSelectionError, setAttendeeSelectionError] = useState<Record<number, string | null>>({});
+  // ADD State to track successful submissions by the attendee
+  const [submittedEventIds, setSubmittedEventIds] = useState<Set<number>>(new Set());
+  // ADD State to track if the selection window is confirmed closed for an event
+  const [selectionWindowClosedError, setSelectionWindowClosedError] = useState<Record<number, boolean>>({});
+
+  const [viewMatchesDialogOpen, setViewMatchesDialogOpen] = useState<boolean>(false);
+  const [selectedEventIdForMatches, setSelectedEventIdForMatches] = useState<string | null>(null);
+  // Assuming Match interface is imported or defined above this component
+  const [currentMatches, setCurrentMatches] = useState<Match[]>([]);
+  const [matchesLoading, setMatchesLoading] = useState<boolean>(false);
+  const [matchesError, setMatchesError] = useState<string | null>(null);
+
+  const fetchMatchesForEvent = async (eventId: string) => {
+    setMatchesLoading(true);
+    setMatchesError(null);
+    setCurrentMatches([]);
+    try {
+      const response = await eventsApi.getMyMatches(eventId);
+      setCurrentMatches(response.matches); 
+    } catch (err: any) {
+      setMatchesError(err.message || 'Failed to load matches.');
+    }
+    setMatchesLoading(false);
+  };
+
+  // ADDED: Handler for clicking the "View My Matches" button
+  const handleViewMatchesClick = (event: Event) => {
+    setSelectedEventIdForMatches(event.id.toString());
+    // It's better to store the whole event or just its name for the dialog title
+    // For simplicity, I'll assume we can find the event again from 'events' array or pass name
+    setViewMatchesDialogOpen(true);
+    fetchMatchesForEvent(event.id.toString());
+  };
 
   const events: Event[] = contextEvents.map((contextEvent: any) => {
     // Find the corresponding registration if it exists
@@ -195,12 +248,24 @@ const EventList = () => {
     if (signUpEventId) {
       try {
         await eventsApi.registerForEvent(signUpEventId);
+        
         setSignUpDialogOpen(false);
+        const successfullyRegisteredEventId = signUpEventId; // Keep track for logging or potential optimistic UI
         setSignUpEventId(null);
-        // Refresh events to update registration status
-        await refreshEvents();
-      } catch (error: any) {
-        setErrorMessage(error.message || 'Failed to sign up for the event');
+        
+        try {
+          await refreshEvents();
+        } catch (refreshError: any) {
+          console.error(`Registration for event ${successfullyRegisteredEventId} was successful, but failed to refresh the events list:`, refreshError);
+          const backendMessage = refreshError.response?.data?.message || refreshError.response?.data?.error;
+          setErrorMessage(
+            `You've been registered for the event, but we couldn't update the list automatically. Error: ${backendMessage || refreshError.message}. Please try refreshing the page.`
+          );
+        }
+      } catch (registrationError: any) {
+        console.error('Failed to register for event:', registrationError);
+        const backendMessage = registrationError.response?.data?.message || registrationError.response?.data?.error;
+        setErrorMessage(backendMessage || registrationError.message || 'An error occurred while trying to register for the event.');
       }
     }
   };
@@ -399,6 +464,64 @@ const EventList = () => {
     }
   };
 
+  // Function to toggle inline user schedule visibility
+  const toggleUserScheduleInline = (eventId: number) => {
+    setExpandedUserSchedules(prev => ({
+      ...prev,
+      [eventId]: !prev[eventId]
+    }));
+    // Clear previous error for this event when toggling
+    setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null }));
+  };
+
+  const handleAttendeeSelectionChange = (eventSpeedDateId: number, eventId: number, interested: boolean) => {
+    setAttendeeSpeedDateSelections(prev => ({
+      ...prev,
+      [eventSpeedDateId]: { eventId, interested }
+    }));
+    // Clear error for this event when a selection is made
+    setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null }));
+  };
+
+  const handleAttendeeSubmitSelections = async (eventId: number) => {
+    setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null })); // Clear previous error
+
+    const selectionsToSubmit = Object.entries(attendeeSpeedDateSelections)
+      .filter(([_, selection]) => selection.eventId === eventId)
+      .map(([id, selection]) => ({
+        event_speed_date_id: Number(id),
+        interested: selection.interested,
+      }));
+
+    if (selectionsToSubmit.length === 0) {
+      setAttendeeSelectionError(prev => ({ ...prev, [eventId]: 'No selections have been made for this event.' }));
+      return;
+    }
+
+    try {
+      await eventsApi.submitSpeedDateSelections(eventId.toString(), selectionsToSubmit);
+      setSubmittedEventIds(prev => new Set(prev).add(eventId));
+      setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null }));
+      setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: false })); // Clear specific error on success too
+    } catch (error: any) {
+      const specificErrorMessage = 'Speed date selections window closed 24 hours after event completion.';
+      const backendErrorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
+      
+      // Check for the specific error message from the backend
+      if (backendErrorMessage === specificErrorMessage) {
+        setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: true }));
+        setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null })); // Clear generic error if specific one is set
+      } else {
+        // Handle other generic errors
+        setAttendeeSelectionError(prev => ({
+          ...prev,
+          [eventId]: backendErrorMessage || 'Failed to submit your selections.'
+        }));
+        setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: false })); // Clear specific error if a different error occurs
+      }
+    }
+  };
+
   const renderActionButtons = (event: Event) => {
     // Check if the user is registered for this event
     const isRegistered = isRegisteredForEvent(event.id);
@@ -407,57 +530,245 @@ const EventList = () => {
     // Don't show any action buttons for completed events
     if (event.status === 'Completed') {
       if (isRegistered && registrationStatus === 'Checked In') {
+        const isCurrentUserAttendee = user && !isAdmin() && !isOrganizer();
+
         return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Chip
-              label="Checked In"
-              color="success"
-              icon={<CheckInIcon />}
-            />
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => handleViewSchedule(event.id)}
-            >
-              View Schedule
-            </Button>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%', alignSelf: 'flex-start' }}> 
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start', mb: expandedUserSchedules[event.id] ? 1 : 0 }}> 
+              <Chip
+                label="Checked In"
+                color="success"
+                icon={<CheckInIcon />}
+                size="small"
+              />
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => toggleUserScheduleInline(event.id)} // Keep this toggle
+                startIcon={expandedUserSchedules[event.id] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              >
+                My Schedule
+              </Button>
+              {isCurrentUserAttendee && (
+                <Button
+                  size="small"
+                  variant="contained" // Or outlined, depending on preference
+                  color="primary"
+                  onClick={() => handleViewMatchesClick(event)} // Keep this handler
+                  sx={{ mt: 0.5 }} // Add a little margin top
+                >
+                  View My Matches
+                </Button>
+              )}
+            </Box>
+            {/* This Collapse should show schedule and selection UI for Completed events too */}
+            <Collapse in={expandedUserSchedules[event.id]} timeout="auto" unmountOnExit sx={{ width: '100%'}}>
+              <Paper elevation={1} sx={{ p: 1.5, mt: 1, bgcolor: 'background.default' }}>
+                {userSchedules[event.id] && userSchedules[event.id].length > 0 ? (
+                  <>
+                    {/* Map through schedule items - existing code */}
+                    {userSchedules[event.id].map((item, index) => (
+                      <Box 
+                        key={item.event_speed_date_id || index} 
+                        sx={{ 
+                          mb: { xs: 0.5, sm: index === userSchedules[event.id].length - 1 ? 0 : 0.75 },
+                          p: { xs: 0.5, sm: 0.75 }, 
+                          borderLeft: '3px solid', 
+                          borderColor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
+                          borderRadius: '4px',
+                          backgroundColor: theme.palette.action.hover,
+                        }}
+                      >
+                        <Grid container spacing={1} alignItems="center">
+                          <Grid item xs={12} sm={item.event_speed_date_id ? 7 : 12}> 
+                            <Typography variant="subtitle2" component="div" gutterBottom={false} sx={{ fontWeight: 'bold', mb: 0.25 }}>
+                              Round {item.round}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.1 }}>
+                              Table: {item.table}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0 }}>
+                              Partner: {item.partner_name} (Age: {item.partner_age || 'N/A'})
+                            </Typography>
+                          </Grid>
+                          {item.event_speed_date_id && (
+                            <Grid item xs={12} sm={5}> 
+                              <Box sx={{ display: 'flex', gap: 0.5, justifyContent: { xs: 'flex-start', sm: 'flex-end' }, mt: { xs: 0.5, sm: 0 } }}> 
+                                <Button
+                                  variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === true ? 'contained' : 'outlined'}
+                                  size="small"
+                                  color="success"
+                                  onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, true)}
+                                  sx={{ minWidth: '60px' }}
+                                >
+                                  Yes
+                                </Button>
+                                <Button
+                                  variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === false ? 'contained' : 'outlined'}
+                                  size="small"
+                                  color="error"
+                                  onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, false)}
+                                  sx={{ minWidth: '60px' }}
+                                >
+                                  No
+                                </Button>
+                              </Box>
+                            </Grid>
+                          )}
+                        </Grid>
+                      </Box>
+                    ))}
+                    {attendeeSelectionError[event.id] && (
+                      <Alert severity="error" sx={{ mt: 1.5 }} onClose={() => setAttendeeSelectionError(prev => ({...prev, [event.id]: null}))}>
+                        {attendeeSelectionError[event.id]}
+                      </Alert>
+                    )}
+                    {/* Submit button logic adjusted */}
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      color="primary"
+                      size="small"
+                      onClick={() => handleAttendeeSubmitSelections(event.id)}
+                      sx={{ mt: 1.5 }}
+                      disabled={
+                        // Disable if no selections made OR if already submitted OR if window is known closed
+                        !Object.values(attendeeSpeedDateSelections).some(sel => sel.eventId === event.id) ||
+                        submittedEventIds.has(event.id) ||
+                        selectionWindowClosedError[event.id] // Added check here
+                      }
+                    >
+                      {submittedEventIds.has(event.id) ? 'Selections Submitted' : 'Submit My Selections'}
+                    </Button>
+                    {/* ADDED: Display specific message if window is closed */}
+                    {selectionWindowClosedError[event.id] && (
+                      <Typography variant="caption" color="error" sx={{ display: 'block', textAlign: 'center', mt: 0.5 }}>
+                        Selection window closed (24 hours after event end).
+                      </Typography>
+                    )}
+                  </>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">Your schedule for this event is not yet available or you were not checked in.</Typography> // Adjusted text slightly
+                )}
+              </Paper>
+            </Collapse>
           </Box>
         );
       }
-      return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        <Chip
-          label="Event Completed"
-          color="info"
-          size="small"
-        />
-        </Box>
-      );
-    }
-    
-    // Events in progress or paused
-    if ((event.status === 'In Progress' || event.status === 'Paused') && isRegistered) {
-      if (registrationStatus === 'Checked In') {
-        // User is checked in: Show Chip, View Schedule button, and potentially paused status.
-        // Schedule for current round is shown inline via EventTimer.
+      if (!canManageEvent(event)) {
         return (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
             <Chip
-              label="Checked In"
-              color="success"
-              icon={<CheckInIcon />}
+              label="Event Completed"
+              color="info"
               size="small"
             />
-            {/* Re-add View Schedule Button */}
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => handleViewSchedule(event.id)}
-              startIcon={<ViewIcon fontSize="small"/>}
-            >
-              View My Schedule
-            </Button>
-            {/* Optionally show paused status chip */}
+          </Box>
+        );
+      }
+      return null;
+    }
+    
+    if ((event.status === 'In Progress' || event.status === 'Paused') && isRegistered) {
+      if (registrationStatus === 'Checked In') {
+        return (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', alignSelf: 'flex-start', width: '100%' }}> 
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start', mb: expandedUserSchedules[event.id] ? 1 : 0 }}> 
+              <Chip
+                label="Checked In"
+                color="success"
+                icon={<CheckInIcon />}
+                size="small"
+              />
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => toggleUserScheduleInline(event.id)}
+                startIcon={expandedUserSchedules[event.id] ? <ExpandLessIcon fontSize="small"/> : <ExpandMoreIcon fontSize="small"/>}
+              >
+                My Schedule
+              </Button>
+            </Box>
+            <Collapse in={expandedUserSchedules[event.id]} timeout="auto" unmountOnExit sx={{ width: '100%'}}>
+              <Paper elevation={1} sx={{ p: 1.5, mt: 1, bgcolor: 'background.default' }}>
+                {userSchedules[event.id] && userSchedules[event.id].length > 0 ? (
+                  <>
+                    {userSchedules[event.id].map((item, index) => (
+                      <Box 
+                        key={item.event_speed_date_id || index}
+                        sx={{ 
+                          mb: { xs: 0.5, sm: index === userSchedules[event.id].length - 1 ? 0 : 0.75 },
+                          p: { xs: 0.5, sm: 0.75 },
+                          borderLeft: '3px solid', 
+                          borderColor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
+                          borderRadius: '4px',
+                          backgroundColor: theme.palette.action.hover,
+                        }}
+                      >
+                        <Grid container spacing={1} alignItems="center">
+                          <Grid item xs={12} sm={item.event_speed_date_id ? 6 : 12}>
+                            <Typography variant="subtitle2" component="div" sx={{ fontWeight: 'bold' }}>
+                              Round {item.round}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Table: {item.table}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Partner: {item.partner_name} (Age: {item.partner_age || 'N/A'})
+                            </Typography>
+                          </Grid>
+                          {item.event_speed_date_id && (
+                            <Grid item xs={12} sm={6}>
+                              <Box sx={{ display: 'flex', gap: 1, justifyContent: { xs: 'flex-start', sm: 'flex-end' }, mt: { xs: 1, sm: 0 } }}>
+                                <Button
+                                  variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === true ? 'contained' : 'outlined'}
+                                  size="small"
+                                  color="success"
+                                  onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, true)}
+                                  sx={{ minWidth: '60px' }}
+                                >
+                                  Yes
+                                </Button>
+                                <Button
+                                  variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === false ? 'contained' : 'outlined'}
+                                  size="small"
+                                  color="error"
+                                  onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, false)}
+                                  sx={{ minWidth: '60px' }}
+                                >
+                                  No
+                                </Button>
+                              </Box>
+                            </Grid>
+                          )}
+                        </Grid>
+                      </Box>
+                    ))}
+                     {attendeeSelectionError[event.id] && (
+                      <Alert severity="error" sx={{ mt: 1.5 }} onClose={() => setAttendeeSelectionError(prev => ({...prev, [event.id]: null}))}>
+                        {attendeeSelectionError[event.id]}
+                      </Alert>
+                    )}
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      color="primary"
+                      size="small"
+                      onClick={() => handleAttendeeSubmitSelections(event.id)}
+                      sx={{ mt: 1.5 }}
+                      disabled={
+                        !Object.values(attendeeSpeedDateSelections).some(sel => sel.eventId === event.id) ||
+                        submittedEventIds.has(event.id)
+                      }
+                    >
+                      {submittedEventIds.has(event.id) ? 'Selections Submitted' : 'Submit My Selections'}
+                    </Button>
+                  </>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">Your schedule for this event is not yet available or you are not checked in.</Typography>
+                )}
+              </Paper>
+            </Collapse>
             {event.status === 'Paused' && (
               <Chip
                 label="Event Paused"
@@ -468,11 +779,10 @@ const EventList = () => {
             )}
           </Box>
         );
-      } else {
-        return null;
       }
     }
     
+
     if (isRegistered && registrationStatus === 'Registered') {
       return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -496,7 +806,22 @@ const EventList = () => {
         />
         </Box>
       );
-    } else if (event.status === 'Registration Open') {
+    } 
+    else if (isRegistered) { 
+      return (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Button 
+              size="small" 
+              startIcon={<CancelIcon />} 
+              color="error"
+              onClick={() => handleCancelClick(event.id)}
+          >
+              Cancel Registration
+          </Button>
+          </Box>
+      );
+    }
+    else if (event.status === 'Registration Open') { 
       return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Button 
@@ -846,29 +1171,6 @@ const EventList = () => {
     });
   };
 
-  // Handle viewing schedule
-  const handleViewSchedule = async (eventId: number) => {
-    try {
-      setLoadingSchedule(true);
-      setSelectedEventForSchedule(events.find(e => e.id === eventId) || null);
-      
-      const response = await eventsApi.getSchedule(eventId.toString());
-      console.log("User schedule response:", response);
-      
-      if (response && response.schedule) {
-      setSchedule(response.schedule);
-      setViewScheduleDialogOpen(true);
-      } else {
-        setErrorMessage('No schedule data available');
-      }
-    } catch (error: any) {
-      console.error("Error fetching schedule:", error);
-      setErrorMessage(error.message || 'Failed to load schedule');
-    } finally {
-      setLoadingSchedule(false);
-    }
-  };
-
   // Function to handle viewing all schedules (for admin/organizer)
   const handleViewAllSchedules = async (eventId: number) => {
     try {
@@ -876,6 +1178,8 @@ const EventList = () => {
       setSelectedEventForAllSchedules(events.find(e => e.id === eventId) || null);
       setSearchTerm(''); // Reset search term when opening dialog
       setSortConfig(null); // Reset sort config when opening dialog
+      setSpeedDateSelections({}); // Initialize/reset selections
+      setSelectionErrorMessage(null); // Reset selection error message
       
       // Fetch all schedules
       const response = await eventsApi.getAllSchedules(eventId.toString());
@@ -1081,7 +1385,10 @@ const EventList = () => {
         // ---------------
 
         // Now check conditions to fetch
-        if ((event.status === 'In Progress' || event.status === 'Paused') && isRegistered && registrationStatus === 'Checked In') {
+        if ((event.status === 'In Progress' || event.status === 'Paused' || event.status === 'Completed') && 
+            isRegistered && 
+            registrationStatus === 'Checked In') 
+        {
           // Only fetch if we don\'t already have it
           if (!userSchedules.hasOwnProperty(event.id)) { 
             try {
@@ -1117,1081 +1424,1058 @@ const EventList = () => {
   // Dependencies: events array changes, user registration status changes
   }, [events, isRegisteredForEvent, user, userSchedules]); // Added userSchedules to prevent re-fetching if already present
 
+  // ADD useEffect to check initial notification permission
+  useEffect(() => {
+    if ('Notification' in window) {
+      const currentPermission = Notification.permission;
+      // Show snackbar only if permission is default (not granted or denied)
+      setShowNotificationSnackbar(currentPermission === 'default');
+    } else {
+      setShowNotificationSnackbar(false); // Don't show if notifications not supported
+    }
+  }, []);
+
+  // ADD Functions to handle notification permission request
+  const requestNotificationPermission = useCallback(async () => {
+    if (!('Notification' in window)) {
+      console.log('This browser does not support notifications');
+      return 'unsupported'; // Indicate unsupported
+    }
+    try {
+      if (Notification.permission !== 'denied') {
+        const permission = await Notification.requestPermission();
+        setShowNotificationSnackbar(false); // Hide snackbar after interaction
+        return permission;
+      }
+      return Notification.permission;
+    } catch (error) {
+      console.error('Error requesting notification permission:', error);
+      setShowNotificationSnackbar(false); // Hide snackbar on error
+      return 'denied';
+    }
+  }, []);
+
+  const handleEnableNotifications = () => {
+    requestNotificationPermission().then(permission => {
+      if (permission === 'granted') {
+        console.log('Notification permission granted via EventList');
+      } else {
+        console.log(`Notification permission status: ${permission}`);
+      }
+    });
+  };
+
+  // Function to explicitly close the snackbar without enabling
+  const handleCloseNotificationSnackbar = (event?: React.SyntheticEvent | Event, reason?: string) => {
+    if (reason === 'clickaway') {
+      return; // Don't close on clickaway
+    }
+    setShowNotificationSnackbar(false);
+  };
+
+  // ADD Function to handle saving speed date selections
+  const handleSaveSpeedDateSelections = async () => {
+    if (!selectedEventForAllSchedules) {
+      setSelectionErrorMessage('No event selected for saving selections.');
+      return;
+    }
+
+    const selectionsToSubmit = Object.entries(speedDateSelections).map(([id, interested]) => ({
+      event_speed_date_id: Number(id),
+      interested: interested,
+    }));
+
+    if (selectionsToSubmit.length === 0) {
+      setSelectionErrorMessage('No selections have been made to save.');
+      return;
+    }
+
+    try {
+      setSelectionErrorMessage(null); // Clear previous errors
+      await eventsApi.submitSpeedDateSelections(selectedEventForAllSchedules.id.toString(), selectionsToSubmit);
+      // Show success feedback (e.g., a Snackbar or Alert)
+      // For now, using a simple alert. Consider replacing with a Snackbar.
+      alert('Speed date selections saved successfully!');
+      // Optionally, you might want to close the dialog or refresh data
+      // setViewAllSchedulesDialogOpen(false); 
+    } catch (error: any) {
+      setSelectionErrorMessage(error.response?.data?.message || error.message || 'Failed to save speed date selections.');
+    }
+  };
+
+  // ADD THIS GENERIC HANDLER
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setCreateForm(prevForm => ({
+      ...prevForm,
+      [name]: value,
+    }));
+  };
+
   return (
-    <Container maxWidth="lg" sx={{ px: isMobile ? 2 : 3 }}>
-      <Box sx={{ mt: 3, mb: 3 }}>
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 3, gap: 2 }}>
-          <Typography variant="h5" component="h1" sx={{ fontWeight: 600 }}>
-            Events
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1, alignSelf: { xs: 'flex-end', sm: 'center' } }}>
-            {/* Only admins and organizers can create events */}
-            {(isAdmin() || isOrganizer()) && (
-              <Button
-                variant="contained"
-                startIcon={isMobile ? undefined : (showCreateCard ? <CancelIcon /> : <EventIcon />)}
-                onClick={handleToggleCreateCard}
-                size={isMobile ? 'small' : 'medium'}
-              >
-                {showCreateCard ? 'Cancel' : 'Create Event'}
-              </Button>
-            )}
-            
-            {/* All users including attendees can check in */}
-            {eventOptions.length > 0 && (
-              <Button
-                variant="contained"
-                color="secondary"
-                startIcon={<CheckInIcon />}
-                onClick={handleGlobalCheckInClick}
-                size={isMobile ? 'small' : 'medium'}
-              >
-                Check In
-              </Button>
-            )}
-          </Box>
-        </Box>
+    <Container maxWidth="lg" sx={{ pt: 4, pb: 4 }}>
+      {errorMessage && (
+        <Alert severity="error" onClose={() => setErrorMessage(null)} sx={{ mb: 2 }}>
+          {errorMessage}
+        </Alert>
+      )}
 
-        {/* Create Event Card */}
-        <Box sx={{
-          maxHeight: showCreateCard ? '1000px' : '0px',
-          transition: showCreateCard 
-            ? 'max-height 2.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease-in-out, transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-            : 'max-height 0s, opacity 0s, transform 0s',
-          opacity: showCreateCard ? 1 : 0,
-          transform: showCreateCard ? 'scale(1)' : 'scale(0.95)',
-          transformOrigin: 'top center',
-          mb: showCreateCard ? 2 : 0,
-          overflow: 'hidden',
-          visibility: showCreateCard ? 'visible' : 'hidden',
-          pointerEvents: showCreateCard ? 'auto' : 'none',
-          display: showCreateCard ? 'block' : 'none'
-        }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <Card sx={{
-                borderRadius: 2,
-                boxShadow: theme.shadows[2],
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: theme.shadows[4],
-                }
-              }}>
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  handleCreateEvent();
-                }}>
-                  <CardContent sx={{ p: 2 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                      <Typography variant="h6" component="h2" sx={{
-                        fontWeight: 600,
-                        fontSize: isMobile ? '1rem' : '1.25rem',
-                        lineHeight: 1.2,
-                        flex: 1
-                      }}>
-                        <input
-                          type="text"
-                          placeholder="Event Name"
-                          value={createForm.name}
-                          onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))}
-                          style={{
-                            fontWeight: 600,
-                            fontSize: isMobile ? '1rem' : '1.25rem',
-                            border: 'none',
-                            outline: 'none',
-                            background: 'transparent',
-                            width: '100%',
-                            cursor: 'text',
-                            caretColor: theme.palette.primary.main,
-                            padding: '2px',
-                            color: theme.palette.text.primary
-                          }}
-                          required
-                          autoFocus
-                        />
-                      </Typography>
-                      <Chip
-                        label="Registration Open"
-                        color="success"
-                        size="small"
-                        sx={{ fontWeight: 600, fontSize: '0.75rem' }}
-                      />
-                    </Box>
-                    <input
-                      type="text"
-                      maxLength={400}
-                      placeholder="Description"
-                      value={createForm.description}
-                      onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))}
-                      style={{
-                        marginBottom: 8,
-                        fontSize: isMobile ? '0.875rem' : '1rem',
-                        color: theme.palette.text.primary,
-                        border: 'none',
-                        outline: 'none',
-                        background: 'transparent',
-                        width: '100%',
-                        cursor: 'text',
-                        caretColor: theme.palette.primary.main,
-                        padding: '2px'
-                      }}
-                    />
-                    <Box sx={{ display: 'flex', gap: 2, mb: 1, flexWrap: 'wrap' }}>
-                      <Box sx={{ 
-                        flex: 1, 
-                        minWidth: 180, 
-                        display: 'flex', 
-                        alignItems: 'center',
-                        border: `1px solid ${theme.palette.divider}`,
-                        borderRadius: 1,
-                        overflow: 'hidden',
-                        '&:focus-within': {
-                          borderColor: theme.palette.primary.main,
-                        }
-                      }}>
-                        <Box sx={{ 
-                          display: isMobile ? 'none' : 'flex', 
-                          alignItems: 'center', 
-                          p: 1,
-                          color: theme.palette.text.secondary
-                        }}>
-                          <EventIcon fontSize="small" />
-                        </Box>
-                        <input
-                          type="datetime-local"
-                          value={createForm.starts_at}
-                          onChange={handleDateChange}
-                          max="9999-12-31T23:59"
-                          style={{ 
-                            flex: 1,
-                            border: 'none',
-                            outline: 'none',
-                            background: 'transparent',
-                            color: theme.palette.text.primary,
-                            padding: isMobile ? '8px 12px 8px 12px' : '8px 12px 8px 0',
-                            fontSize: '0.9rem',
-                            colorScheme: theme.palette.mode
-                          }}
-                          required
-                        />
-                      </Box>
-                    </Box>
-                    <Box sx={{ display: 'flex', gap: 2, mb: 1, flexWrap: 'wrap' }}>
-                      <Box sx={{ 
-                        flex: 2,
-                        minWidth: 180,
-                        display: 'flex', 
-                        alignItems: 'center',
-                        border: `1px solid ${theme.palette.divider}`,
-                        borderRadius: 1,
-                        overflow: 'hidden',
-                        '&:focus-within': {
-                          borderColor: theme.palette.primary.main,
-                        },
-                        ...(isMobile && {
-                          minWidth: '100%'
-                        })
-                      }}>
-                        <Box sx={{ 
-                          display: isMobile ? 'none' : 'flex', 
-                          alignItems: 'center', 
-                          p: 1,
-                          color: theme.palette.text.secondary
-                        }}>
-                          <LocationOnIcon fontSize="small" />
-                        </Box>
-                        <input
-                          type="text"
-                          placeholder="Address"
-                          value={createForm.address}
-                          onChange={e => setCreateForm(f => ({ ...f, address: e.target.value }))}
-                          style={{ 
-                            flex: 1,
-                            border: 'none',
-                            outline: 'none',
-                            background: 'transparent',
-                            color: theme.palette.text.primary,
-                            padding: isMobile ? '8px 12px' : '8px 0',
-                            fontSize: '0.9rem'
-                          }}
-                          required
-                        />
-                      </Box>
-                      <Box sx={{ 
-                        flex: 1, 
-                        minWidth: 120, 
-                        display: 'flex', 
-                        alignItems: 'center',
-                        border: `1px solid ${theme.palette.divider}`,
-                        borderRadius: 1,
-                        overflow: 'hidden',
-                        '&:focus-within': {
-                          borderColor: theme.palette.primary.main,
-                        }
-                      }}>
-                        <Box sx={{ 
-                          display: isMobile ? 'none' : 'flex', 
-                          alignItems: 'center', 
-                          p: 1,
-                          color: theme.palette.text.secondary
-                        }}>
-                          <PersonIcon fontSize="small" />
-                        </Box>
-                        <input
-                          type="number"
-                          placeholder="Max Capacity"
-                          value={createForm.max_capacity}
-                          onChange={e => setCreateForm(f => ({ ...f, max_capacity: e.target.value }))}
-                          style={{ 
-                            flex: 1,
-                            border: 'none',
-                            outline: 'none',
-                            background: 'transparent',
-                            color: theme.palette.text.primary,
-                            padding: isMobile ? '8px 12px' : '8px 12px 8px 0',
-                            fontSize: '0.9rem',
-                            colorScheme: theme.palette.mode
-                          }}
-                          required
-                        />
-                      </Box>
-                      <Box sx={{ 
-                        flex: 1, 
-                        minWidth: 120, 
-                        display: 'flex', 
-                        alignItems: 'center',
-                        border: `1px solid ${theme.palette.divider}`,
-                        borderRadius: 1,
-                        overflow: 'hidden',
-                        '&:focus-within': {
-                          borderColor: theme.palette.primary.main,
-                        }
-                      }}>
-                        <Box sx={{ 
-                          display: isMobile ? 'none' : 'flex', 
-                          alignItems: 'center', 
-                          p: 1,
-                          color: theme.palette.text.secondary
-                        }}>
-                          <AttachMoneyIcon fontSize="small" />
-                        </Box>
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="Price Per Person"
-                          value={createForm.price_per_person}
-                          onChange={handlePriceChange}
-                          style={{ 
-                            flex: 1,
-                            border: 'none',
-                            outline: 'none',
-                            background: 'transparent',
-                            color: theme.palette.text.primary,
-                            padding: isMobile ? '8px 12px' : '8px 12px 8px 0',
-                            fontSize: '0.9rem',
-                            colorScheme: theme.palette.mode
-                          }}
-                        />
-                      </Box>
-                    </Box>
-                  </CardContent>
-                  <CardActions sx={{ 
-                    p: 2,
-                    pt: 1,
-                    display: 'flex',
-                    flexDirection: isMobile ? 'column' : 'row',
-                    gap: 1,
-                    justifyContent: 'flex-start' // Align buttons to the start
-                  }}>
-                    <Button 
-                      variant="contained" 
-                      color="primary" 
-                      fullWidth={isMobile}
-                      type="submit"
-                      size={isMobile ? 'small' : 'medium'}
-                      startIcon={<EventAvailableIcon />}
-                      sx={{
-                        transition: 'transform 0.2s, box-shadow 0.2s',
-                        '&:hover': {
-                          transform: 'translateY(-1px)',
-                          boxShadow: theme.shadows[4],
-                        }
-                      }}
-                    >
-                      Create Event
-                    </Button>
-                  </CardActions>
-                </form>
-              </Card>
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          justifyContent: { xs: 'flex-start', sm: 'space-between' }, // This will push title to left and button group to right
+          alignItems: 'center', 
+          mb: 4,
+          flexDirection: { xs: 'row', sm: 'row' } 
+        }}
+      >
+        <Typography variant={isMobile ? "h5" : "h4"} component="h1" sx={{ fontWeight: 'bold', mr: 1 /* Add small right margin to title */ }}>
+          Events
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', ml: { xs: 2, sm: 0 } }}> {/* MODIFIED: Added left margin on xs screens */}
+          {user && (
+            <Button
+              variant="outlined" // Or "contained" based on your design preference
+              color="secondary" // Or "primary"
+              onClick={handleGlobalCheckInClick}
+              startIcon={<CheckInIcon />}
+              sx={{
+                minWidth: { xs: 'auto', sm: 'inherit' }, 
+                p: { xs: '6px 10px', sm: '6px 16px' },  // Reduced padding for xs
+                fontSize: { xs: '0.75rem', sm: '0.875rem' } // Reduced font size for xs
+              }}
+            >
+              {/* <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}> */}
+                Check-In
+              {/* </Box> */}
+            </Button>
+          )}
+          {(isAdmin() || isOrganizer()) && !showCreateCard && (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleToggleCreateCard}
+              startIcon={<EventIcon />}
+              sx={{
+                minWidth: { xs: 'auto', sm: 'inherit' }, 
+                p: { xs: '6px 10px', sm: '6px 16px' },  // Reduced padding for xs
+                fontSize: { xs: '0.75rem', sm: '0.875rem' } // Reduced font size for xs
+              }}
+            >
+              {/* <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}> */}
+                Create Event
+              {/* </Box> */}
+            </Button>
+          )}
+        </Box>
+      </Box>
+
+      {showCreateCard && (isAdmin() || isOrganizer()) && (
+        <Card sx={{ mb: 4, mt: isMobile ? 2 : 0 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Create New Event
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Event Name"
+                  name="name" // Ensure 'name' prop matches the state key
+                  value={createForm.name}
+                  onChange={handleChange} // This should now work
+                  fullWidth
+                  required
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Description"
+                  name="description" // Ensure 'name' prop matches the state key
+                  value={createForm.description}
+                  onChange={handleChange} // This should now work
+                  fullWidth
+                  multiline
+                  rows={4}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Start Date and Time"
+                  name="starts_at" // Ensure 'name' prop matches the state key
+                  type="datetime-local"
+                  value={createForm.starts_at}
+                  onChange={handleDateChange}
+                  fullWidth
+                  InputLabelProps={{
+                    shrink: true,
+                  }}
+                  required
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Address"
+                  name="address" // Ensure 'name' prop matches the state key
+                  value={createForm.address}
+                  onChange={handleChange} // This should now work
+                  fullWidth
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Max Capacity"
+                  name="max_capacity" // Ensure 'name' prop matches the state key
+                  type="number"
+                  value={createForm.max_capacity}
+                  onChange={handleChange} // This should now work
+                  fullWidth
+                  InputProps={{ inputProps: { min: 0 } }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Price Per Person"
+                  name="price_per_person" // Ensure 'name' prop matches the state key
+                  type="number"
+                  value={createForm.price_per_person}
+                  onChange={handlePriceChange} // Use specific handlePriceChange for its validation
+                  fullWidth
+                  InputProps={{ inputProps: { min: 0, step: "0.01" } }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel id="event-status-label">Status</InputLabel>
+                  <Select
+                    labelId="event-status-label"
+                    name="status"
+                    value={createForm.status}
+                    label="Status"
+                    onChange={(e) => setCreateForm(prev => ({ ...prev, status: e.target.value as EventStatus }))} // Select might need specific handling or adapt handleChange
+                  >
+                    <MenuItem value="Registration Open">Registration Open</MenuItem>
+                    <MenuItem value="Registration Closed">Registration Closed</MenuItem>
+                    <MenuItem value="Upcoming">Upcoming</MenuItem>
+                    <MenuItem value="In Progress">In Progress</MenuItem>
+                    <MenuItem value="Paused">Paused</MenuItem>
+                    <MenuItem value="Completed">Completed</MenuItem>
+                    <MenuItem value="Cancelled">Cancelled</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
             </Grid>
-          </Grid>
-        </Box>
+          </CardContent>
+          <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
+            <Button onClick={handleToggleCreateCard} color="inherit">
+              Cancel
+            </Button>
+            <Button onClick={handleCreateEvent} variant="contained" color="primary">
+              Create Event
+            </Button>
+          </CardActions>
+        </Card>
+      )}
+      
+      {/* Grid for displaying event cards */}
+      {/* ... existing event cards grid ... */}
 
-        {errorMessage && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErrorMessage(null)}>
-            {errorMessage}
-          </Alert>
-        )}
-
-        {/* actual event cards */}
-        <Grid container spacing={3}>
-          {sortedEvents.map(event => (
-            <Grid item xs={12} key={event.id}>
-              <Card sx={{ 
-                borderRadius: 2,
-                boxShadow: theme.shadows[2],
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: theme.shadows[4],
-                }
-              }}>
-                <CardContent sx={{ p: 3 }}>
-                  {/* Align items center for better vertical alignment on wrap */}
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 /* Add gap for wrapping */ }}>
-                    <Typography 
-                      variant="h5" 
-                      component="h2" 
-                      sx={{ 
+      {/* actual event cards */}
+      <Grid container spacing={3}>
+        {sortedEvents.map(event => (
+          <Grid item xs={12} key={event.id}>
+            <Card sx={{ 
+              borderRadius: 2,
+              boxShadow: theme.shadows[2],
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              '&:hover': {
+                transform: 'translateY(-2px)',
+                boxShadow: theme.shadows[4],
+              }
+            }}>
+              <CardContent sx={{ p: { xs: 1.5, sm: 3 } }}> {/* Reduced padding on xs */}
+                {/* Align items center for better vertical alignment on wrap */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 1, sm: 2 }, flexWrap: 'wrap', gap: 1 /* Add gap for wrapping */ }}>
+                  <Typography 
+                    variant="h5" 
+                    component="h2" 
+                    sx={{ 
                       fontWeight: 600,
-                        fontSize: isMobile ? '1.25rem' : '1.5rem',
+                      fontSize: isMobile ? '1.1rem' : '1.5rem', // Reduced font size on mobile
                       lineHeight: 1.2
-                      }}
-                    >
-                      {event.name}
-                    </Typography>
-                      <Chip
-                        label={event.status}
-                        color={getStatusColor(event.status)}
-                      sx={{ fontWeight: 600 }} 
-                      />
-                    </Box>
-                  <Box sx={{ mb: 2 }}>
-                    <Typography 
-                      variant="body1" 
-                      color="text.secondary"
-                      sx={{ mb: 2 }}
-                    >
-                    {event.description}
+                    }}
+                  >
+                    {event.name}
                   </Typography>
+                    <Chip
+                      label={event.status}
+                      color={getStatusColor(event.status)}
+                    sx={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }} // Slightly smaller chip text on mobile
+                    />
                   </Box>
-                  
-                  {/* Add the Timer Component for Events in Progress or Paused */}
-                  {(event.status === 'In Progress' || event.status === 'Paused') && (
-                    <Box sx={{ mb: 3 }}>
-                      <Divider sx={{ mb: 2 }} />
-                      <Typography variant="h6" gutterBottom>
-                        Round Timer
-                      </Typography>
-                      {(() => {
-                        // Moved logging logic outside the direct JSX return
-                        const scheduleForTimer = isRegisteredForEvent(event.id) && event.registration?.status === 'Checked In' ? userSchedules[event.id] : undefined;
-                        console.log(`Passing userSchedule to EventTimer for event ${event.id}:`, scheduleForTimer);
-                        return (
-                          <EventTimer 
-                            eventId={event.id} 
-                            isAdmin={canManageEvent(event)} 
-                            eventStatus={event.status} // Pass status down
-                            userSchedule={scheduleForTimer} // Pass the determined schedule
-                          />
-                        );
-                      })()}
-                    </Box>
-                  )}
-                  
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                <Box sx={{ mb: { xs: 1.5, sm: 2 } }}>
+                  <Typography 
+                    variant="body1" 
+                    color="text.secondary"
+                    sx={{ 
+                        mb: { xs: 1, sm: 2 }, 
+                        fontSize: isMobile ? '0.875rem' : '1rem' // Reduced font size for description
+                    }}
+                  >
+                  {event.description}
+                </Typography>
+                </Box>
+                
+                {/* Add the Timer Component for Events in Progress or Paused */}
+                {(event.status === 'In Progress' || event.status === 'Paused') && (
+                  <Box sx={{ mb: { xs: 1, sm: 3 } }}> {/* MODIFIED: Reduced bottom margin on xs */}
+                    <Divider sx={{ mb: { xs: 0.5, sm: 2 } }} /> {/* MODIFIED: Reduced bottom margin on xs */}
                     <Typography 
-                      variant="body2" 
-                      color="text.secondary" 
+                      variant="h6" 
+                      gutterBottom 
                       sx={{ 
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.5
+                        fontSize: { xs: '0.875rem', sm: '1.25rem' }, // MODIFIED: Reduced font size on xs
+                        mb: { xs: 0.5, sm: 2} // MODIFIED: Explicitly control margin, gutterBottom might add more
                       }}
                     >
-                    <EventIcon fontSize="small" />
+                      Round Timer
+                    </Typography>
+                    {(() => {
+                      // Moved logging logic outside the direct JSX return
+                      const scheduleForTimer = isRegisteredForEvent(event.id) && event.registration?.status === 'Checked In' ? userSchedules[event.id] : undefined;
+                      console.log(`Passing userSchedule to EventTimer for event ${event.id}:`, scheduleForTimer);
+                      return (
+                        <EventTimer 
+                          eventId={event.id} 
+                          isAdmin={canManageEvent(event)} 
+                          eventStatus={event.status} // Pass status down
+                          userSchedule={scheduleForTimer} // Pass the determined schedule
+                        />
+                      );
+                    })()}
+                  </Box>
+                )}
+                
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1, sm: 2 } }}> {/* Reduced gap on xs */}
+                  <Typography 
+                    variant="body2" 
+                    color="text.secondary" 
+                    sx={{ 
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      fontSize: isMobile ? '0.75rem' : '0.875rem' // Reduced font size for details
+                    }}
+                  >
+                  <EventIcon fontSize="small" />
+                  {formatDate(event.starts_at)}
+                </Typography>
+                  <Typography 
+                    variant="body2" 
+                    color="text.secondary" 
+                    sx={{ 
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      fontSize: isMobile ? '0.75rem' : '0.875rem' // Reduced font size for details
+                    }}
+                  >
+                    <PersonIcon fontSize="small" />
+                    {event.max_capacity} attendees max
+                  </Typography>
+                  <Typography 
+                    variant="body2" 
+                    color="text.secondary" 
+                    sx={{ 
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      fontSize: isMobile ? '0.75rem' : '0.875rem' // Reduced font size for details
+                    }}
+                  >
+                    <AttachMoneyIcon fontSize="small" />
+                    ${parseFloat(event.price_per_person).toFixed(2)} per person
+                  </Typography>
+                  <Typography 
+                    variant="body2" 
+                    color="text.secondary" 
+                    sx={{ 
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 0.5,
+                      fontSize: isMobile ? '0.75rem' : '0.875rem' // Reduced font size for details
+                    }}
+                  >
+                  <LocationOnIcon fontSize="small" />
+                  {event.address}
+                </Typography>
+                </Box>
+                
+                {/* Event admin controls */}
+                {renderEventControls(event)}
+              </CardContent>
+              <CardActions sx={{ 
+                p: { xs: 1, sm: 2 }, // Reduced padding on xs
+                pt: 1,
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                gap: 1,
+                justifyContent: 'flex-start' // Align buttons to the start
+              }}>
+                {renderActionButtons(event)}
+              </CardActions>
+            </Card>
+          </Grid>
+        ))}
+        {sortedEvents.length === 0 && (
+          <Grid item xs={12}>
+            <Alert severity="info">
+              No events available at this time.
+            </Alert>
+          </Grid>
+        )}
+      </Grid>
+
+      <Dialog
+        open={signUpDialogOpen}
+        onClose={() => setSignUpDialogOpen(false)}
+      >
+        <DialogTitle>Sign Up for Event</DialogTitle>
+        <DialogContent>
+          Are you sure you want to sign up for this event?
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSignUpDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleSignUpConfirm} color="primary" variant="contained">
+            Sign Up
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={cancelDialogOpen}
+        onClose={() => setCancelDialogOpen(false)}
+      >
+        <DialogTitle>Cancel Event Registration</DialogTitle>
+        <DialogContent>
+          Are you sure you want to cancel your registration for this event?
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCancelDialogOpen(false)}>No</Button>
+          <Button onClick={handleCancelConfirm} color="error" variant="contained">
+            Yes, Cancel Registration
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Global Check-in Dialog */}
+      <Dialog open={globalCheckInDialogOpen} onClose={() => setGlobalCheckInDialogOpen(false)}>
+        <DialogTitle>Event Check-In</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 2 }}>
+            Select the event you're attending and enter your 4-digit PIN to check in.
+          </Typography>
+          
+          {/* Event selection */}
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Select Event
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {eventOptions.map((event: Event) => (
+                <Paper 
+                  key={event.id}
+                  variant="outlined"
+                  sx={{ 
+                    p: 1, 
+                    cursor: 'pointer',
+                    bgcolor: selectedEventForCheckIn?.id === event.id ? 'action.selected' : 'background.paper',
+                    '&:hover': { bgcolor: 'action.hover' }
+                  }}
+                  onClick={() => handleEventSelection(event.id)}
+                >
+                  <Typography variant="body1" fontWeight={500}>{event.name}</Typography>
+                  <Typography variant="body2" color="text.secondary">
                     {formatDate(event.starts_at)}
                   </Typography>
-                    <Typography 
-                      variant="body2" 
-                      color="text.secondary" 
-                      sx={{ 
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.5
-                      }}
-                    >
-                      <PersonIcon fontSize="small" />
-                      {event.max_capacity} attendees max
-                    </Typography>
-                    <Typography 
-                      variant="body2" 
-                      color="text.secondary" 
-                      sx={{ 
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5
-                      }}
-                    >
-                      <AttachMoneyIcon fontSize="small" />
-                      ${parseFloat(event.price_per_person).toFixed(2)} per person
-                    </Typography>
-                    <Typography 
-                      variant="body2" 
-                      color="text.secondary" 
-                      sx={{ 
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5
-                      }}
-                    >
-                    <LocationOnIcon fontSize="small" />
-                    {event.address}
-                  </Typography>
-                  </Box>
-                  
-                  {/* Event admin controls */}
-                  {renderEventControls(event)}
-                </CardContent>
-                <CardActions sx={{ 
-                  p: 2,
-                  pt: 1,
-                  display: 'flex',
-                  flexDirection: isMobile ? 'column' : 'row',
-                  gap: 1,
-                  justifyContent: 'flex-start' // Align buttons to the start
-                }}>
-                  {renderActionButtons(event)}
-                </CardActions>
-              </Card>
-            </Grid>
-          ))}
-          {sortedEvents.length === 0 && (
-            <Grid item xs={12}>
-              <Alert severity="info">
-                No events available at this time.
-              </Alert>
-            </Grid>
-          )}
-        </Grid>
-
-        <Dialog
-          open={signUpDialogOpen}
-          onClose={() => setSignUpDialogOpen(false)}
-        >
-          <DialogTitle>Sign Up for Event</DialogTitle>
-          <DialogContent>
-            Are you sure you want to sign up for this event?
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setSignUpDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSignUpConfirm} color="primary" variant="contained">
-              Sign Up
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        <Dialog
-          open={cancelDialogOpen}
-          onClose={() => setCancelDialogOpen(false)}
-        >
-          <DialogTitle>Cancel Event Registration</DialogTitle>
-          <DialogContent>
-            Are you sure you want to cancel your registration for this event?
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setCancelDialogOpen(false)}>No</Button>
-            <Button onClick={handleCancelConfirm} color="error" variant="contained">
-              Yes, Cancel Registration
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Global Check-in Dialog */}
-        <Dialog open={globalCheckInDialogOpen} onClose={() => setGlobalCheckInDialogOpen(false)}>
-          <DialogTitle>Event Check-In</DialogTitle>
-          <DialogContent>
-            <Typography sx={{ mb: 2 }}>
-              Select the event you're attending and enter your 4-digit PIN to check in.
-            </Typography>
-            
-            {/* Event selection */}
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                Select Event
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {eventOptions.map((event: Event) => (
-                  <Paper 
-                    key={event.id}
-                    variant="outlined"
-                    sx={{ 
-                      p: 1, 
-                      cursor: 'pointer',
-                      bgcolor: selectedEventForCheckIn?.id === event.id ? 'action.selected' : 'background.paper',
-                      '&:hover': { bgcolor: 'action.hover' }
-                    }}
-                    onClick={() => handleEventSelection(event.id)}
-                  >
-                    <Typography variant="body1" fontWeight={500}>{event.name}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {formatDate(event.starts_at)}
-                    </Typography>
-                  </Paper>
-                ))}
-                
-                {eventOptions.length === 0 && (
-                  <Typography color="text.secondary" sx={{ py: 1 }}>
-                    You don't have any events to check in to.
-                  </Typography>
-                )}
-              </Box>
-            </Box>
-            
-            {checkInError && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {checkInError}
-              </Alert>
-            )}
-            
-            <TextField
-              label="PIN"
-              type="password"
-              value={checkInPin}
-              onChange={(e) => setCheckInPin(e.target.value)}
-              inputProps={{ maxLength: 4, pattern: '[0-9]*' }}
-              fullWidth
-              margin="dense"
-              disabled={!selectedEventForCheckIn}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setGlobalCheckInDialogOpen(false)}>Cancel</Button>
-            <Button 
-              onClick={handleGlobalCheckInConfirm} 
-              color="primary" 
-              variant="contained"
-              disabled={!selectedEventForCheckIn || !checkInPin || checkInPin.length !== 4}
-            >
-              Check In
-            </Button>
-          </DialogActions>
-        </Dialog>
-        
-        {/* View Pins Dialog */}
-        <Dialog 
-          open={viewPinsDialogOpen} 
-          onClose={() => setViewPinsDialogOpen(false)}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle>
-            {selectedEventForPins?.name} - Attendee PINs
-          </DialogTitle>
-          <DialogContent dividers sx={{ p: { xs: 1, sm: 2 } }}> {/* Add responsive padding */}
-            {attendeePins.length > 0 ? (
-              <>
-                <Box sx={{ mb: 2 }}>
-                  <TextField
-                    label="Search"
-                    placeholder="Search by name, email, or PIN..."
-                    variant="outlined"
-                    size="small"
-                    fullWidth
-                    value={pinSearchTerm}
-                    onChange={handlePinSearchChange}
-                    InputProps={{
-                      startAdornment: (
-                        <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>
-                          🔍
-                        </Box>
-                      ),
-                    }}
-                  />
-                </Box>
-                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                  Showing {filteredPins.length} of {attendeePins.length} attendees
+                </Paper>
+              ))}
+              
+              {eventOptions.length === 0 && (
+                <Typography color="text.secondary" sx={{ py: 1 }}>
+                  You don't have any events to check in to.
                 </Typography>
-              <List>
-                  {filteredPins.map((attendee, index) => (
-                    <ListItem key={index} divider={index < filteredPins.length - 1}>
-                    <ListItemText
-                      primary={attendee.name}
-                      secondary={
-                        <>
-                          <Typography component="span" variant="body2">
-                            {attendee.email}
-                          </Typography>
-                          <Typography 
-                            component="span" 
-                            variant="body2" 
-                            sx={{ 
-                              display: 'block', 
-                              fontWeight: 'bold',
-                              color: theme.palette.primary.main 
-                            }}
-                          >
-                            PIN: {attendee.pin}
-                          </Typography>
-                        </>
-                      }
-                    />
-                  </ListItem>
-                ))}
-              </List>
-              </>
-            ) : (
-              <Typography variant="body1" sx={{ p: 2, textAlign: 'center' }}>
-                No registered attendees with PINs found.
+              )}
+            </Box>
+          </Box>
+          
+          {checkInError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {checkInError}
+            </Alert>
+          )}
+          
+          <TextField
+            label="PIN"
+            type="password"
+            value={checkInPin}
+            onChange={(e) => setCheckInPin(e.target.value)}
+            inputProps={{ maxLength: 4, pattern: '[0-9]*' }}
+            fullWidth
+            margin="dense"
+            disabled={!selectedEventForCheckIn}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setGlobalCheckInDialogOpen(false)}>Cancel</Button>
+          <Button 
+            onClick={handleGlobalCheckInConfirm} 
+            color="primary" 
+            variant="contained"
+            disabled={!selectedEventForCheckIn || !checkInPin || checkInPin.length !== 4}
+          >
+            Check In
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* View Pins Dialog */}
+      <Dialog 
+        open={viewPinsDialogOpen} 
+        onClose={() => setViewPinsDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {selectedEventForPins?.name} - Attendee PINs
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: { xs: 1, sm: 2 } }}> {/* Add responsive padding */}
+          {attendeePins.length > 0 ? (
+            <>
+              <Box sx={{ mb: 2 }}>
+                <TextField
+                  label="Search"
+                  placeholder="Search by name, email, or PIN..."
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  value={pinSearchTerm}
+                  onChange={handlePinSearchChange}
+                  InputProps={{
+                    startAdornment: (
+                      <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>
+                        🔍
+                      </Box>
+                    ),
+                  }}
+                />
+              </Box>
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+                Showing {filteredPins.length} of {attendeePins.length} attendees
               </Typography>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setViewPinsDialogOpen(false)}>Close</Button>
-          </DialogActions>
-        </Dialog>
-        
-        {/* Registered Users Dialog */}
-        <Dialog 
-          open={viewRegisteredUsersDialogOpen} 
-          onClose={() => setViewRegisteredUsersDialogOpen(false)}
-          maxWidth="lg"
-          fullWidth
-        >
-          <DialogTitle>
-            {selectedEventForRegisteredUsers?.name} - Registered Users
-          </DialogTitle>
-          <DialogContent dividers sx={{ p: { xs: 0, sm: 1 } }}> {/* Remove padding on xs */}
-            {registeredUsers.length > 0 ? (
-              <TableContainer component={Paper} sx={{ maxHeight: 500 }}>
-                <Table stickyHeader size="small">
+            <List>
+                {filteredPins.map((attendee, index) => (
+                  <ListItem key={index} divider={index < filteredPins.length - 1}>
+                  <ListItemText
+                    primary={attendee.name}
+                    secondary={
+                      <>
+                        <Typography component="span" variant="body2">
+                          {attendee.email}
+                        </Typography>
+                        <Typography 
+                          component="span" 
+                          variant="body2" 
+                          sx={{ 
+                            display: 'block', 
+                            fontWeight: 'bold',
+                            color: theme.palette.primary.main 
+                          }}
+                        >
+                          PIN: {attendee.pin}
+                        </Typography>
+                      </>
+                    }
+                  />
+                </ListItem>
+              ))}
+            </List>
+            </>
+          ) : (
+            <Typography variant="body1" sx={{ p: 2, textAlign: 'center' }}>
+              No registered attendees with PINs found.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewPinsDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Registered Users Dialog */}
+      <Dialog 
+        open={viewRegisteredUsersDialogOpen} 
+        onClose={() => setViewRegisteredUsersDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>
+          {selectedEventForRegisteredUsers?.name} - Registered Users
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: { xs: 0, sm: 1 } }}> {/* Remove padding on xs */}
+          {registeredUsers.length > 0 ? (
+            <TableContainer component={Paper} sx={{ maxHeight: 500, overflowX: 'auto' }}>
+              <Table stickyHeader size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ width: '15%', minWidth: 150 }}><strong>Name</strong></TableCell>
+                    <TableCell sx={{ width: '20%', minWidth: 180 }}><strong>Email</strong></TableCell>
+                    <TableCell sx={{ width: 130, minWidth: 120 }}><strong>Phone</strong></TableCell>
+                    <TableCell sx={{ width: 80, minWidth: 70 }}><strong>Gender</strong></TableCell>
+                    <TableCell sx={{ width: 60, minWidth: 50, textAlign: 'center' }}><strong>Age</strong></TableCell>
+                    <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Birthday</strong></TableCell>
+                    <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Registered</strong></TableCell>
+                    <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Status</strong></TableCell>
+                    <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Check-in Time</strong></TableCell>
+                    <TableCell sx={{ width: 70, minWidth: 60, textAlign: 'center' }}><strong>PIN</strong></TableCell>
+                    {(isAdmin() || isOrganizer()) && (
+                      <TableCell sx={{ width: 100, minWidth: 90, textAlign: 'center' }}><strong>Actions</strong></TableCell>
+                    )}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {registeredUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      {editingUserId === user.id ? (
+                        // Edit mode - Render all cells, including placeholders/read-only for non-editable data
+                        <>
+                          <TableCell>
+                            {/* Name Input */}
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <TextField size="small" label="First Name" value={editFormData.first_name} onChange={(e) => handleEditFormChange(e.target.value, 'first_name')} sx={{ width: 'calc(50% - 4px)' }} />
+                              <TextField size="small" label="Last Name" value={editFormData.last_name} onChange={(e) => handleEditFormChange(e.target.value, 'last_name')} sx={{ width: 'calc(50% - 4px)' }} />
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            {/* Email Input */}
+                            <TextField size="small" label="Email" value={editFormData.email} onChange={(e) => handleEditFormChange(e.target.value, 'email')} fullWidth />
+                          </TableCell>
+                          <TableCell>
+                            {/* Phone Input */}
+                            <TextField size="small" label="Phone" value={editFormData.phone} onChange={(e) => handleEditFormChange(e.target.value, 'phone')} fullWidth />
+                          </TableCell>
+                          <TableCell>
+                            {/* Gender Select */}
+                            <FormControl size="small" fullWidth>
+                              <InputLabel>Gender</InputLabel>
+                              <Select value={editFormData.gender || ''} label="Gender" onChange={(e) => handleEditFormChange(e.target.value, 'gender')}> <MenuItem value="Male">Male</MenuItem> <MenuItem value="Female">Female</MenuItem> </Select>
+                            </FormControl>
+                          </TableCell>
+                          <TableCell sx={{ textAlign: 'center' }}>
+                            {/* Age (Read-only) */}
+                            {editFormData.birthday ? calculateAge(new Date(editFormData.birthday)) : ''}
+                          </TableCell>
+                          <TableCell>
+                            {/* Birthday Input */}
+                            <TextField size="small" label="Birthday" type="date" value={editFormData.birthday || ''} onChange={(e) => handleEditFormChange(e.target.value, 'birthday')} InputLabelProps={{ shrink: true }} fullWidth />
+                          </TableCell>
+                          <TableCell>
+                            {/* Registered (Read-only) */}
+                            {user.registration_date ? new Date(user.registration_date).toLocaleString() : 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            {/* Status (Read-only Chip) */}
+                            <Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" />
+                          </TableCell>
+                          <TableCell>
+                            {/* Check-in Time (Read-only) */}
+                            {user.check_in_date ? new Date(user.check_in_date).toLocaleString() : 'Not checked in'}
+                          </TableCell>
+                          <TableCell sx={{ textAlign: 'center' }}>
+                            {/* PIN Input */}
+                            <TextField size="small" label="PIN" value={editFormData.pin || ''} onChange={(e) => handleEditFormChange(e.target.value, 'pin')} inputProps={{ maxLength: 4, pattern: '[0-9]*' }} sx={{ width: 65 }} />
+                          </TableCell>
+                          {(isAdmin() || isOrganizer()) && ( // Call isAdmin and isOrganizer as functions
+                            <TableCell sx={{ textAlign: 'center' }}>
+                              {/* Save/Cancel Actions */}
+                              <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                                <IconButton size="small" color="primary" onClick={() => handleSaveEdits(user.id)} title="Save"> <SaveIcon fontSize="small" /> </IconButton>
+                                <IconButton size="small" color="error" onClick={handleCancelEditing} title="Cancel"> <CancelEditIcon fontSize="small" /> </IconButton>
+                              </Box>
+                            </TableCell>
+                          )}
+                        </>
+                      ) : (
+                        // View mode - Render all cells
+                        <>
+                          <TableCell>{user.name}</TableCell>
+                          <TableCell sx={{ wordBreak: 'break-all' }}>{user.email}</TableCell> {/* Added wordBreak for email */}
+                          <TableCell>{user.phone}</TableCell>
+                          <TableCell>{user.gender}</TableCell>
+                          <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
+                          <TableCell> {user.birthday ? new Date(user.birthday).toLocaleDateString() : 'N/A'} </TableCell>
+                          <TableCell> {user.registration_date ? new Date(user.registration_date).toLocaleString() : 'N/A'} </TableCell>
+                          <TableCell> <Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /> </TableCell>
+                          <TableCell> {user.check_in_date ? new Date(user.check_in_date).toLocaleString() : 'Not checked in'} </TableCell>
+                          <TableCell sx={{ textAlign: 'center' }}>{user.pin}</TableCell>
+                          {(isAdmin() || isOrganizer()) && ( // Call isAdmin and isOrganizer as functions
+                            <TableCell sx={{ textAlign: 'center' }}>
+                              {/* Edit Action */}
+                              <IconButton size="small" color="primary" onClick={() => handleStartEditing(user)} title="Edit"> <EditIcon fontSize="small" /> </IconButton>
+                            </TableCell>
+                          )}
+                        </>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Typography variant="body1" sx={{ p: 2, textAlign: 'center' }}>
+              No registered users found for this event.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewRegisteredUsersDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Start Event Confirmation Dialog */}
+      <Dialog
+        open={startEventDialogOpen}
+        onClose={() => setStartEventDialogOpen(false)}
+      >
+        <DialogTitle>Start Event</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to start "{selectedEventForStarting?.name}"? 
+            This will change the event status to "In Progress".
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setStartEventDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleStartEvent} color="success" variant="contained">
+            Yes, Start Event
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Pause Event Confirmation Dialog */}
+      <Dialog
+        open={pauseEventDialogOpen}
+        onClose={() => setPauseEventDialogOpen(false)}
+      >
+        <DialogTitle>Pause Event</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to pause the timer for "{selectedEventForPausing?.name}"?
+            This will pause the event timer but keep the event status as "In Progress".
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPauseEventDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handlePauseEvent} color="primary" variant="contained">
+            Yes, Pause Timer
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* End Event Confirmation Dialog */}
+      <Dialog
+        open={endEventDialogOpen}
+        onClose={() => setEndEventDialogOpen(false)}
+      >
+        <DialogTitle>End Event</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to end "{selectedEventForEnding?.name}"? 
+            This will mark the event as completed and cannot be undone.
+          </DialogContentText>
+          <DialogContentText variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Note: Only events that are currently in progress can be ended.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEndEventDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleEndEvent} color="error" variant="contained">
+            Yes, End Event
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* All Schedules Dialog (for admins/organizers) */}
+      <Dialog
+        open={viewAllSchedulesDialogOpen}
+        onClose={() => setViewAllSchedulesDialogOpen(false)}
+        maxWidth="md" // Consider "lg" or "xl" if table becomes too wide
+        fullWidth
+      >
+        <DialogTitle>
+          {selectedEventForAllSchedules?.name} - All Schedules
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: { xs: 0, sm: 1 } }}> {/* Remove padding on xs */}
+          {loadingAllSchedules ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <Typography>Loading all schedules...</Typography>
+            </Box>
+          ) : Object.keys(allSchedules).length > 0 ? (
+            <Box sx={{ mt: 2 }}>
+              <Box sx={{ mb: 2, px: 1 }}>
+                <TextField
+                  label="Search"
+                  placeholder="Search by name, round, table..."
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  InputProps={{
+                    startAdornment: (
+                      <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>
+                        🔍
+                      </Box>
+                    ),
+                  }}
+                />
+              </Box>
+              {selectionErrorMessage && (
+                <Alert severity="error" sx={{ mb: 2, mx: 1 }} onClose={() => setSelectionErrorMessage(null)}>
+                  {selectionErrorMessage}
+                </Alert>
+              )}
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, px: 1 }}>
+                Showing schedules for {Object.keys(filteredSchedules).length} users
+              </Typography>
+              <TableContainer component={Paper}>
+                <Table size="small">
                   <TableHead>
                     <TableRow>
-                      <TableCell><strong>Name</strong></TableCell>
-                      <TableCell><strong>Email</strong></TableCell>
-                      <TableCell><strong>Phone</strong></TableCell>
-                      <TableCell><strong>Gender</strong></TableCell>
-                      <TableCell><strong>Age</strong></TableCell>
-                      <TableCell><strong>Birthday</strong></TableCell>
-                      <TableCell><strong>Registered</strong></TableCell>
-                      <TableCell><strong>Status</strong></TableCell>
-                      <TableCell><strong>Check-in Time</strong></TableCell>
-                      <TableCell><strong>PIN</strong></TableCell>
-                      {(isAdmin() || isOrganizer()) && (
-                        <TableCell><strong>Actions</strong></TableCell>
-                      )}
+                      <TableCell 
+                        onClick={() => handleSort('user')}
+                        sx={{ 
+                          cursor: 'pointer',
+                          backgroundColor: sortConfig?.key === 'user' ? 'rgba(0, 0, 0, 0.04)' : 'inherit',
+                          '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' }
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <strong>User</strong>
+                          {sortConfig?.key === 'user' && (
+                            <span style={{ marginLeft: '4px' }}>
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </Box>
+                      </TableCell>
+                      <TableCell 
+                        onClick={() => handleSort('round')}
+                        sx={{ 
+                          cursor: 'pointer',
+                          backgroundColor: sortConfig?.key === 'round' ? 'rgba(0, 0, 0, 0.04)' : 'inherit',
+                          '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' }
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <strong>Round</strong>
+                          {sortConfig?.key === 'round' && (
+                            <span style={{ marginLeft: '4px' }}>
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </Box>
+                      </TableCell>
+                      <TableCell 
+                        onClick={() => handleSort('table')}
+                        sx={{ 
+                          cursor: 'pointer',
+                          backgroundColor: sortConfig?.key === 'table' ? 'rgba(0, 0, 0, 0.04)' : 'inherit',
+                          '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' }
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <strong>Table</strong>
+                          {sortConfig?.key === 'table' && (
+                            <span style={{ marginLeft: '4px' }}>
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </Box>
+                      </TableCell>
+                      <TableCell 
+                        onClick={() => handleSort('partner')}
+                        sx={{ 
+                          cursor: 'pointer',
+                          backgroundColor: sortConfig?.key === 'partner' ? 'rgba(0, 0, 0, 0.04)' : 'inherit',
+                          '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' }
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <strong>Partner</strong>
+                          {sortConfig?.key === 'partner' && (
+                            <span style={{ marginLeft: '4px' }}>
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </Box>
+                      </TableCell>
+                      <TableCell 
+                        onClick={() => handleSort('partnerAge')}
+                        sx={{ 
+                          cursor: 'pointer',
+                          backgroundColor: sortConfig?.key === 'partnerAge' ? 'rgba(0, 0, 0, 0.04)' : 'inherit',
+                          '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' }
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <strong>Partner Age</strong>
+                          {sortConfig?.key === 'partnerAge' && (
+                            <span style={{ marginLeft: '4px' }}>
+                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </Box>
+                      </TableCell>
+                      {/* ADD New TableCell for Interest Selection */}
+                      <TableCell><strong>Interest</strong></TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {registeredUsers.map((user) => (
-                      <TableRow key={user.id}>
-                        {editingUserId === user.id ? (
-                          // Edit mode - Render all cells, including placeholders/read-only for non-editable data
-                          <>
-                            <TableCell>
-                              {/* Name Input */}
-                              <Box sx={{ display: 'flex', gap: 1 }}>
-                                <TextField size="small" label="First Name" value={editFormData.first_name} onChange={(e) => handleEditFormChange(e.target.value, 'first_name')} sx={{ minWidth: 120 }} />
-                                <TextField size="small" label="Last Name" value={editFormData.last_name} onChange={(e) => handleEditFormChange(e.target.value, 'last_name')} sx={{ minWidth: 120 }} />
+                    {Object.entries(filteredSchedules).flatMap(([userId, userSchedule]) => {
+                      // Skip if userSchedule is not an array or empty
+                      if (!Array.isArray(userSchedule) || userSchedule.length === 0) {
+                        return [];
+                      }
+                      
+                      const user = Object.values(usersMap).find(u => u.id === Number(userId));
+                      const userName = user ? `${user.first_name} ${user.last_name}` : `User ${userId}`;
+                      
+                      return userSchedule.map((item: any, index: number) => (
+                        <TableRow key={`${userId}-${index}`}>
+                          <TableCell>{userName}</TableCell>
+                          <TableCell>{item.round}</TableCell>
+                          <TableCell>{item.table}</TableCell>
+                          <TableCell>{item.partner_name}</TableCell>
+                          <TableCell>{item.partner_age || 'N/A'}</TableCell>
+                          {/* ADD Yes/No buttons for interest selection */}
+                          <TableCell>
+                            {item.event_speed_date_id ? ( // Ensure event_speed_date_id exists
+                              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                <Button
+                                  variant={speedDateSelections[item.event_speed_date_id] === true ? 'contained' : 'outlined'}
+                                  size="small"
+                                  color="success"
+                                  onClick={() => setSpeedDateSelections(prev => ({ ...prev, [item.event_speed_date_id]: true }))}
+                                  sx={{ minWidth: '50px', p: '2px 6px', fontSize: '0.75rem' }}
+                                >
+                                  Yes
+                                </Button>
+                                <Button
+                                  variant={speedDateSelections[item.event_speed_date_id] === false ? 'contained' : 'outlined'}
+                                  size="small"
+                                  color="error"
+                                  onClick={() => setSpeedDateSelections(prev => ({ ...prev, [item.event_speed_date_id]: false }))}
+                                  sx={{ minWidth: '50px', p: '2px 6px', fontSize: '0.75rem' }}
+                                >
+                                  No
+                                </Button>
                               </Box>
-                            </TableCell>
-                            <TableCell>
-                              {/* Email Input */}
-                              <TextField size="small" label="Email" value={editFormData.email} onChange={(e) => handleEditFormChange(e.target.value, 'email')} sx={{ minWidth: 200 }} />
-                            </TableCell>
-                            <TableCell>
-                              {/* Phone Input */}
-                              <TextField size="small" label="Phone" value={editFormData.phone} onChange={(e) => handleEditFormChange(e.target.value, 'phone')} sx={{ minWidth: 120 }} />
-                            </TableCell>
-                            <TableCell>
-                              {/* Gender Select */}
-                              <FormControl size="small" sx={{ minWidth: 100 }}>
-                                <InputLabel>Gender</InputLabel>
-                                <Select value={editFormData.gender} label="Gender" onChange={(e) => handleEditFormChange(e.target.value, 'gender')}> <MenuItem value="Male">Male</MenuItem> <MenuItem value="Female">Female</MenuItem> </Select>
-                              </FormControl>
-                            </TableCell>
-                            <TableCell>
-                              {/* Age (Read-only) */}
-                              {editFormData.birthday ? calculateAge(new Date(editFormData.birthday)) : ''}
-                            </TableCell>
-                            <TableCell>
-                              {/* Birthday Input */}
-                              <TextField size="small" label="Birthday" type="date" value={editFormData.birthday || ''} onChange={(e) => handleEditFormChange(e.target.value, 'birthday')} InputLabelProps={{ shrink: true }} sx={{ minWidth: 120 }} />
-                            </TableCell>
-                            <TableCell>
-                              {/* Registered (Read-only) */}
-                              {user.registration_date ? new Date(user.registration_date).toLocaleString() : 'N/A'}
-                            </TableCell>
-                            <TableCell>
-                              {/* Status (Read-only Chip) */}
-                              <Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" />
-                            </TableCell>
-                            <TableCell>
-                              {/* Check-in Time (Read-only) */}
-                              {user.check_in_date ? new Date(user.check_in_date).toLocaleString() : 'Not checked in'}
-                            </TableCell>
-                            <TableCell>
-                              {/* PIN Input */}
-                              <TextField size="small" label="PIN" value={editFormData.pin || ''} onChange={(e) => handleEditFormChange(e.target.value, 'pin')} inputProps={{ maxLength: 4, pattern: '[0-9]*' }} sx={{ width: 65 }} />
-                            </TableCell>
-                            {(isAdmin() || isOrganizer()) && (
-                              <TableCell>
-                                {/* Save/Cancel Actions */}
-                                <Box sx={{ display: 'flex', gap: 1 }}>
-                                  <IconButton size="small" color="primary" onClick={() => handleSaveEdits(user.id)} title="Save"> <SaveIcon fontSize="small" /> </IconButton>
-                                  <IconButton size="small" color="error" onClick={handleCancelEditing} title="Cancel"> <CancelEditIcon fontSize="small" /> </IconButton>
-                                </Box>
-                              </TableCell>
+                            ) : (
+                              <Typography variant="caption" color="textSecondary">N/A</Typography>
                             )}
-                          </>
-                        ) : (
-                          // View mode - Render all cells
-                          <>
-                            <TableCell>{user.name}</TableCell>
-                            <TableCell>{user.email}</TableCell>
-                            <TableCell>{user.phone}</TableCell>
-                            <TableCell>{user.gender}</TableCell>
-                            <TableCell>{user.age}</TableCell>
-                            <TableCell> {user.birthday ? new Date(user.birthday).toLocaleDateString() : 'N/A'} </TableCell>
-                            <TableCell> {user.registration_date ? new Date(user.registration_date).toLocaleString() : 'N/A'} </TableCell>
-                            <TableCell> <Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /> </TableCell>
-                            <TableCell> {user.check_in_date ? new Date(user.check_in_date).toLocaleString() : 'Not checked in'} </TableCell>
-                            <TableCell>{user.pin}</TableCell>
-                            {(isAdmin() || isOrganizer()) && (
-                              <TableCell>
-                                {/* Edit Action */}
-                                <IconButton size="small" color="primary" onClick={() => handleStartEditing(user)} title="Edit"> <EditIcon fontSize="small" /> </IconButton>
-                              </TableCell>
-                            )}
-                          </>
-                        )}
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                        </TableRow>
+                      ));
+                    })}
                   </TableBody>
                 </Table>
               </TableContainer>
-            ) : (
-              <Typography variant="body1" sx={{ p: 2, textAlign: 'center' }}>
-                No registered users found for this event.
-              </Typography>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setViewRegisteredUsersDialogOpen(false)}>Close</Button>
-          </DialogActions>
-        </Dialog>
-        
-        {/* Start Event Confirmation Dialog */}
-        <Dialog
-          open={startEventDialogOpen}
-          onClose={() => setStartEventDialogOpen(false)}
-        >
-          <DialogTitle>Start Event</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              Are you sure you want to start "{selectedEventForStarting?.name}"? 
-              This will change the event status to "In Progress".
+            </Box>
+          ) : !loadingAllSchedules ? ( // Show text only if not loading
+            <DialogContentText sx={{ textAlign: 'center', py: 3 }}>
+              No schedules available. The event might not have started yet, or there may not be enough attendees checked in.
             </DialogContentText>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setStartEventDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleStartEvent} color="success" variant="contained">
-              Yes, Start Event
-            </Button>
-          </DialogActions>
-        </Dialog>
-        
-        {/* Pause Event Confirmation Dialog */}
-        <Dialog
-          open={pauseEventDialogOpen}
-          onClose={() => setPauseEventDialogOpen(false)}
-        >
-          <DialogTitle>Pause Event</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              Are you sure you want to pause the timer for "{selectedEventForPausing?.name}"?
-              This will pause the event timer but keep the event status as "In Progress".
-            </DialogContentText>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setPauseEventDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handlePauseEvent} color="primary" variant="contained">
-              Yes, Pause Timer
-            </Button>
-          </DialogActions>
-        </Dialog>
-        
-        {/* End Event Confirmation Dialog */}
-        <Dialog
-          open={endEventDialogOpen}
-          onClose={() => setEndEventDialogOpen(false)}
-        >
-          <DialogTitle>End Event</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              Are you sure you want to end "{selectedEventForEnding?.name}"? 
-              This will mark the event as completed and cannot be undone.
-            </DialogContentText>
-            <DialogContentText variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Note: Only events that are currently in progress can be ended.
-            </DialogContentText>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setEndEventDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleEndEvent} color="error" variant="contained">
-              Yes, End Event
-            </Button>
-          </DialogActions>
-        </Dialog>
-        
-        {/* Schedule Dialog */}
-        <Dialog
-          open={viewScheduleDialogOpen}
-          onClose={() => setViewScheduleDialogOpen(false)}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle>
-            {selectedEventForSchedule?.name} - Your Schedule
-          </DialogTitle>
-          <DialogContent dividers sx={{ p: { xs: 1, sm: 2 } }}> {/* Add responsive padding */}
-            {loadingSchedule ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                {/* You can add a loading spinner here if you have one */}
-                <Typography>Loading schedule...</Typography>
-              </Box>
-            ) : schedule.length > 0 ? (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-                {schedule.map((item, index) => (
-                  <Paper key={index} elevation={3} sx={{ p: 2, position: 'relative', pl: 4 }}>
-                    <Box sx={{ 
-                      position: 'absolute', 
-                      left: 0, 
-                      top: 0, 
-                      bottom: 0, 
-                      width: '4px', 
-                      bgcolor: 'primary.main' 
-                    }} />
-                    <Typography variant="h6" component="div">
-                      Round {item.round}
-                    </Typography>
-                    <Typography variant="body1">
-                      <strong>Table:</strong> {item.table}
-                    </Typography>
-                    {/* Add Partner Info */}
-                    <Typography variant="body1">
-                      <strong>Partner:</strong> {item.partner_name}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      (Age: {item.partner_age || 'N/A'})
-                    </Typography>
-                  </Paper>
-                ))}
-              </Box>
-            ) : (
-              <DialogContentText sx={{ textAlign: 'center', py: 3 }}>
-                No schedule available. Please make sure you are checked in for the event.
-              </DialogContentText>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setViewScheduleDialogOpen(false)}>Close</Button>
-          </DialogActions>
-        </Dialog>
-        
-        {/* All Schedules Dialog (for admins/organizers) */}
-        <Dialog
-          open={viewAllSchedulesDialogOpen}
-          onClose={() => setViewAllSchedulesDialogOpen(false)}
-          maxWidth="md"
-          fullWidth
-        >
-          <DialogTitle>
-            {selectedEventForAllSchedules?.name} - All Schedules
-          </DialogTitle>
-          <DialogContent dividers sx={{ p: { xs: 0, sm: 1 } }}> {/* Remove padding on xs */}
-            {loadingAllSchedules ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                <Typography>Loading all schedules...</Typography>
-              </Box>
-            ) : Object.keys(allSchedules).length > 0 ? (
-              <Box sx={{ mt: 2 }}>
-                <Box sx={{ mb: 2 }}>
-                  <TextField
-                    label="Search"
-                    placeholder="Search by name, round, table..."
-                    variant="outlined"
-                    size="small"
-                    fullWidth
-                    value={searchTerm}
-                    onChange={handleSearchChange}
-                    InputProps={{
-                      startAdornment: (
-                        <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>
-                          🔍
-                        </Box>
-                      ),
-                    }}
-                  />
-                </Box>
-                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, px: 1 }}>
-                  Showing schedules for {Object.keys(filteredSchedules).length} users
-                </Typography>
-                <TableContainer component={Paper}>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell 
-                          onClick={() => handleSort('user')}
-                          sx={{ 
-                            cursor: 'pointer',
-                            backgroundColor: sortConfig?.key === 'user' ? 'rgba(0, 0, 0, 0.04)' : 'inherit',
-                            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' }
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <strong>User</strong>
-                            {sortConfig?.key === 'user' && (
-                              <span style={{ marginLeft: '4px' }}>
-                                {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                              </span>
-                            )}
-                          </Box>
-                        </TableCell>
-                        <TableCell 
-                          onClick={() => handleSort('round')}
-                          sx={{ 
-                            cursor: 'pointer',
-                            backgroundColor: sortConfig?.key === 'round' ? 'rgba(0, 0, 0, 0.04)' : 'inherit',
-                            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' }
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <strong>Round</strong>
-                            {sortConfig?.key === 'round' && (
-                              <span style={{ marginLeft: '4px' }}>
-                                {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                              </span>
-                            )}
-                          </Box>
-                        </TableCell>
-                        <TableCell 
-                          onClick={() => handleSort('table')}
-                          sx={{ 
-                            cursor: 'pointer',
-                            backgroundColor: sortConfig?.key === 'table' ? 'rgba(0, 0, 0, 0.04)' : 'inherit',
-                            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' }
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <strong>Table</strong>
-                            {sortConfig?.key === 'table' && (
-                              <span style={{ marginLeft: '4px' }}>
-                                {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                              </span>
-                            )}
-                          </Box>
-                        </TableCell>
-                        <TableCell 
-                          onClick={() => handleSort('partner')}
-                          sx={{ 
-                            cursor: 'pointer',
-                            backgroundColor: sortConfig?.key === 'partner' ? 'rgba(0, 0, 0, 0.04)' : 'inherit',
-                            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' }
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <strong>Partner</strong>
-                            {sortConfig?.key === 'partner' && (
-                              <span style={{ marginLeft: '4px' }}>
-                                {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                              </span>
-                            )}
-                          </Box>
-                        </TableCell>
-                        <TableCell 
-                          onClick={() => handleSort('partnerAge')}
-                          sx={{ 
-                            cursor: 'pointer',
-                            backgroundColor: sortConfig?.key === 'partnerAge' ? 'rgba(0, 0, 0, 0.04)' : 'inherit',
-                            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' }
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <strong>Partner Age</strong>
-                            {sortConfig?.key === 'partnerAge' && (
-                              <span style={{ marginLeft: '4px' }}>
-                                {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                              </span>
-                            )}
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {Object.entries(filteredSchedules).flatMap(([userId, userSchedule]) => {
-                        // Skip if userSchedule is not an array or empty
-                        if (!Array.isArray(userSchedule) || userSchedule.length === 0) {
-                          return [];
-                        }
-                        
-                        const user = Object.values(usersMap).find(u => u.id === Number(userId));
-                        const userName = user ? `${user.first_name} ${user.last_name}` : `User ${userId}`;
-                        
-                        return userSchedule.map((item: any, index: number) => (
-                          <TableRow key={`${userId}-${index}`}>
-                            <TableCell>{userName}</TableCell>
-                            <TableCell>{item.round}</TableCell>
-                            <TableCell>{item.table}</TableCell>
-                            <TableCell>{item.partner_name}</TableCell>
-                            <TableCell>{item.partner_age || 'N/A'}</TableCell>
-                          </TableRow>
-                        ));
-                      })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Box>
-            ) : !loadingAllSchedules ? ( // Show text only if not loading
-              <DialogContentText sx={{ textAlign: 'center', py: 3 }}>
-                No schedules available. The event might not have started yet, or there may not be enough attendees checked in.
-              </DialogContentText>
-            ) : (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                <Typography>Loading all schedules...</Typography>
-              </Box>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setViewAllSchedulesDialogOpen(false)}>Close</Button>
-          </DialogActions>
-        </Dialog>
-        
-        {/* Support email footer */}
-        <Box sx={{ mt: 4, pt: 2, display: 'flex', justifyContent: 'center', borderTop: `1px solid ${theme.palette.divider}` }}>
-          <Link 
-            component="a"
-            href="mailto:savedandsingle.events@gmail.com" 
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 0.5,
-              color: theme.palette.text.secondary,
-              textDecoration: 'none',
-              '&:hover': {
-                color: theme.palette.primary.main,
-                textDecoration: 'underline'
-              }
-            }}
+          ) : (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <Typography>Loading all schedules...</Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewAllSchedulesDialogOpen(false)}>Close</Button>
+          {/* ADD Save Selections Button */}
+          <Button 
+            onClick={handleSaveSpeedDateSelections} 
+            color="primary" 
+            variant="contained"
+            disabled={Object.keys(speedDateSelections).length === 0 || loadingAllSchedules}
           >
-            <EmailIcon fontSize="small" />
-            <Typography variant="body2">
-              Need help? Contact Us
-            </Typography>
-          </Link>
-        </Box>
+            Save Selections
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Support email footer */}
+      <Box sx={{ mt: 4, pt: 2, display: 'flex', justifyContent: 'center', borderTop: `1px solid ${theme.palette.divider}` }}>
+        <Link 
+          component="a"
+          href="mailto:savedandsingle.events@gmail.com" 
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 0.5,
+            color: theme.palette.text.secondary,
+            textDecoration: 'none',
+            '&:hover': {
+              color: theme.palette.primary.main,
+              textDecoration: 'underline'
+            }
+          }}
+        >
+          <EmailIcon fontSize="small" />
+          <Typography variant="body2">
+            Need help? Contact Us
+          </Typography>
+        </Link>
       </Box>
+
+      {/* ADD Snackbar for Notification Permission Request */}
+      <Snackbar
+         open={showNotificationSnackbar} // Control visibility with state
+         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+         autoHideDuration={10000} // 10 seconds
+         sx={{ position: 'fixed', bottom: 12, zIndex: theme.zIndex.snackbar + 1}} // Ensure it's above other elements if needed
+       >
+         <Alert 
+           severity="info" 
+           action={ // Button to trigger the permission request
+             <Button color="inherit" size="medium" onClick={handleEnableNotifications}>
+               Enable
+             </Button>
+           }
+           onClose={handleCloseNotificationSnackbar} // Add explicit close 'X' button
+           sx={{ width: '100%' }} // Ensure alert takes full width of snackbar
+         >
+           Enable browser notifications for event timer alerts
+         </Alert>
+       </Snackbar>
+
+      {/* ADDED: Matches Dialog */}
+      {selectedEventIdForMatches && (
+        <MatchesDialog
+          open={viewMatchesDialogOpen}
+          onClose={() => {
+            setViewMatchesDialogOpen(false);
+            setSelectedEventIdForMatches(null); // Reset when closing
+            setCurrentMatches([]);
+            setMatchesError(null);
+          }}
+          eventName={events.find(e => e.id.toString() === selectedEventIdForMatches)?.name}
+          matches={currentMatches}
+          loading={matchesLoading}
+          error={matchesError}
+        />
+      )}
     </Container>
   );
 };

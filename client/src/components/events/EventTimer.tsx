@@ -96,7 +96,6 @@ const EventTimer = ({
   const [notifiedBreakEnd, setNotifiedBreakEnd] = useState<boolean>(false);
   const [showControls, setShowControls] = useState<boolean>(false);
   const [showTimerEndAlert, setShowTimerEndAlert] = useState<boolean>(false);
-  const [notificationPermission, setNotificationPermission] = useState<string>('default');
   // State to remember status before pausing
   const [statusBeforePause, setStatusBeforePause] = useState<'active' | 'between_rounds' | null>(null);
   
@@ -201,7 +200,8 @@ const EventTimer = ({
       }
     }
     
-    if ('Notification' in window && notificationPermission === 'granted') {
+    // Directly check Notification.permission here
+    if ('Notification' in window && Notification.permission === 'granted') { 
       try {
         const notification = new Notification(`Round ${roundNumber} Started!`, {
           body: `The timer for round ${roundNumber} is now active.`,
@@ -213,7 +213,7 @@ const EventTimer = ({
         console.error('Error creating new round start notification:', error);
       }
     }
-  }, [soundEnabled, notificationPermission]);
+  }, [soundEnabled]);
 
   // Extract the processing logic to a separate function to reuse with cached data
   const processTimerData = useCallback((data: any) => {
@@ -806,26 +806,7 @@ const EventTimer = ({
         // fetchTimerStatus(true);
     });
   }, [handleApiAction, timeRemaining, breakTimeRemaining, clearTimerInterval, setTimerStatus, timerStatus]); // Added breakTimeRemaining and timerStatus dependencies
-  const requestNotificationPermission = useCallback(async () => {
-    if (!('Notification' in window)) {
-      console.log('This browser does not support notifications');
-      return;
-    }
 
-    try {
-      if (Notification.permission !== 'denied') {
-        const permission = await Notification.requestPermission();
-        setNotificationPermission(permission);
-        return permission;
-      }
-      return Notification.permission;
-    } catch (error) {
-      console.error('Error requesting notification permission:', error);
-      return 'denied';
-    }
-  }, []);
-  
-  // Moved playRoundEndSound definition earlier
   const playRoundEndSound = useCallback(() => {
     if (soundEnabled && timerAudioRef.current) {
       try {
@@ -847,7 +828,8 @@ const EventTimer = ({
       }, 10000);
       
       if ('Notification' in window) {
-        if (notificationPermission === 'granted') {
+        // Directly check Notification.permission here
+        if (Notification.permission === 'granted') { 
           try {
             const notification = new Notification('Timer Complete', { 
               body: 'The current round has ended',
@@ -863,29 +845,10 @@ const EventTimer = ({
           } catch (error) {
             console.error('Error creating notification:', error);
           }
-        } else if (notificationPermission === 'default') {
-          requestNotificationPermission().then(permission => {
-            if (permission === 'granted') {
-              try {
-                const notification = new Notification('Timer Complete', { 
-                  body: 'The current round has ended',
-                  icon: '/logo192.png',
-                  tag: 'timer-end'
-                });
-                
-                notification.onclick = () => {
-                  window.focus();
-                  notification.close();
-                };
-              } catch (error) {
-                console.error('Error creating notification after permission:', error);
-              }
-            }
-          });
         }
       }
     }
-  }, [soundEnabled, notificationPermission, requestNotificationPermission]);
+  }, [soundEnabled]); // Removed notificationPermission and requestNotificationPermission from dependencies
 
   
   const handleResumeRound = useCallback(() => {
@@ -1040,12 +1003,6 @@ const EventTimer = ({
 
   
 
-  useEffect(() => {
-    if ('Notification' in window) {
-      setNotificationPermission(Notification.permission);
-    }
-  }, []);
-
   const playBreakEndSound = useCallback(() => {
     if (soundEnabled && breakAudioRef.current) {
       try {
@@ -1060,7 +1017,7 @@ const EventTimer = ({
       }
       
       setNotifiedBreakEnd(true);
-      if ('Notification' in window && notificationPermission === 'granted') {
+      if ('Notification' in window && Notification.permission === 'granted') {
         try {
           const notification = new Notification('Break Over Soon', { 
             body: `Get ready! Round ${nextRoundInfo || 'next'} is about to start.`,
@@ -1073,7 +1030,7 @@ const EventTimer = ({
         }
       }
     }
-  }, [soundEnabled, nextRoundInfo, notificationPermission]);
+  }, [soundEnabled, nextRoundInfo]); // Ensure notificationPermission is removed from dependencies
 
   // Replace the state transition effect with a simpler one
   useEffect(() => {
@@ -1424,18 +1381,15 @@ const EventTimer = ({
     setShowControls(!showControls);
   };
 
-  const handleEnableNotifications = () => {
-    requestNotificationPermission().then(permission => {
-      if (permission === 'granted') {
-        console.log('Notification permission granted');
-      }
-    });
-  };
 
   const getProgressPercentage = () => {
-    if (roundDuration <= 0 || typeof timeRemaining !== 'number') return 0;
-    const progress = ((roundDuration - timeRemaining) / roundDuration) * 100;
-    return Math.min(100, Math.max(0, progress)); // Clamp value between 0-100
+    if (timerStatus === 'between_rounds' && timerState?.break_duration) {
+      return (breakTimeRemaining / timerState.break_duration) * 100;
+    }
+    if (roundDuration > 0 && timeRemaining > 0) {
+      return (timeRemaining / roundDuration) * 100;
+    }
+    return 0;
   };
 
   const renderAttendeeView = () => {
@@ -1445,8 +1399,8 @@ const EventTimer = ({
     
     if (isLoading) {
       return (
-        <Box display="flex" justifyContent="center" p={1}>
-          <CircularProgress size={24} />
+        <Box display="flex" justifyContent="center" p={{ xs: 0.25, sm: 0.5 }}> {/* MODIFIED */}
+          <CircularProgress size={16} /> {/* MODIFIED */}
         </Box>
       );
     }
@@ -1464,12 +1418,13 @@ const EventTimer = ({
             autoHideDuration={6000}
             onClose={() => setShowTimerEndAlert(false)}
             anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+            sx={{top: {xs: '8px', sm: '24px'} }} // Adjust position slightly for smaller view
           >
             <Alert 
               onClose={() => setShowTimerEndAlert(false)} 
               severity="info"
-              icon={<NotificationImportant />}
-              sx={{ width: '100%', fontWeight: 500 }}
+              icon={<NotificationImportant sx={{ fontSize: { xs: '0.9rem', sm: '1.1rem'}}} />} // MODIFIED
+              sx={{ width: '100%', fontWeight: 500, fontSize: { xs: '0.7rem', sm: '0.8rem' }, py: {xs: 0.25, sm: 0.5} }} // MODIFIED
             >
               Time's up! This round has ended.
             </Alert>
@@ -1480,49 +1435,50 @@ const EventTimer = ({
           sx={{ 
             display: 'flex',
             alignItems: 'center',
-            minHeight: '50px',
-            p: 1.5,
-            ml: 1, mr: 1,
-            borderRadius: '6px',
+            minHeight: { xs: '30px', sm: '36px'}, // MODIFIED
+            p: { xs: 0.5, sm: 1 }, // MODIFIED
+            ml: { xs: 0, sm: 0.5 }, // MODIFIED
+            mr: { xs: 0, sm: 0.5 }, // MODIFIED
+            borderRadius: '4px', // MODIFIED sleeker border
             bgcolor: theme.palette.background.paper,
             border: `1px solid ${ isBetweenRounds ? theme.palette.info.light : theme.palette.divider }`,
-            boxShadow: 1,
+            boxShadow: '0px 1px 2px rgba(0,0,0,0.1)', // MODIFIED softer shadow
             maxWidth: '100%',
           }}
         >
           <TimerIcon 
             sx={{ 
-              mr: 1.5, 
+              mr: { xs: 0.5, sm: 1 }, // MODIFIED
               color: isActive ? theme.palette.primary.main : isBetweenRounds ? theme.palette.info.main : theme.palette.text.secondary,
-              fontSize: '1.2rem',
+              fontSize: { xs: '0.9rem', sm: '1.1rem' }, // MODIFIED
               flexShrink: 0,
             }} 
           />
-          <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: 'center' }}>
             {isBetweenRounds ? (
               <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.4 }}>
+                <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2, fontSize: { xs: '0.65rem', sm: '0.8rem' } }}> {/* MODIFIED */}
                   Break Time
                 </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.4, display: 'block' }}>
+                <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: 'block', fontSize: { xs: '0.55rem', sm: '0.7rem' } }}> {/* MODIFIED */}
                   Next: Round {nextRoundInfo || '-'} starting soon.
                 </Typography>
                 <Typography 
                   color="info.main"
                   variant="body2" 
-                  sx={{ fontWeight: 700, mt: 0.25 }}
+                  sx={{ fontWeight: 600, mt: 0, fontSize: { xs: '0.7rem', sm: '0.8rem' } }} // MODIFIED
                 >
                   {formatTime(breakTimeRemaining)}
                 </Typography>
               </Box>
             ) : isActive && currentRoundSchedule ? (
               <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.4 }}>
+                <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2, fontSize: { xs: '0.65rem', sm: '0.8rem' } }}> {/* MODIFIED */}
                   Round {currentRound}
                 </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.4, display: 'block' }}>
+                <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: 'block', fontSize: { xs: '0.55rem', sm: '0.7rem' } }}> {/* MODIFIED */}
                   {currentRoundSchedule ? 
-                    `Table ${currentRoundSchedule.table} with ${currentRoundSchedule.partner_name} (Age: ${currentRoundSchedule.partner_age || 'N/A'})` :
+                    `Table ${currentRoundSchedule.table} with ${currentRoundSchedule.partner_name}` : // Removed age for brevity
                     'Loading schedule...'
                   }
                 </Typography>
@@ -1530,21 +1486,21 @@ const EventTimer = ({
                   <Typography 
                     color="primary"
                     variant="body2" 
-                    sx={{ fontWeight: 700, mt: 0.25 }}
+                    sx={{ fontWeight: 600, mt: 0, fontSize: { xs: '0.7rem', sm: '0.8rem' } }} // MODIFIED
                   >
                     {formatTime(timeRemaining)}
                   </Typography>
                 )}
               </Box>
             ) : currentRound > 0 ? (
-              <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.4 }}>
+              <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2, fontSize: { xs: '0.65rem', sm: '0.8rem' } }}> {/* MODIFIED */}
                 Round {currentRound} 
                 {isActive ? formatTime(timeRemaining) : (timerStatus === 'paused' ? ' (Paused)' : ' (Waiting...)')}
               </Typography>
             ) : timerStatus === 'inactive' ? (
-              <Typography variant="body2" color="text.secondary">Waiting for event to start...</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.8rem' } }}>Waiting for event to start...</Typography>
             ) : (
-              <Typography variant="body2" color="text.secondary">Waiting for round...</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.8rem' } }}>Waiting for round...</Typography>
             )}
           </Box>
         </Box>
@@ -1559,8 +1515,8 @@ const EventTimer = ({
     
     if (isLoading) {
       return (
-        <Box display="flex" justifyContent="center" p={1}>
-          <CircularProgress size={24} />
+        <Box display="flex" justifyContent="center" p={{ xs: 0.25, sm: 0.5 }}> {/* MODIFIED */}
+          <CircularProgress size={16} /> {/* MODIFIED */}
         </Box>
       );
     }
@@ -1578,28 +1534,30 @@ const EventTimer = ({
         <Box 
           sx={{ 
             width: '100%',
-            my: 2
+            my: { xs: 0.5, sm: 1} // MODIFIED
           }}
         >
           {/* Only show the alert if the timer ended BUT the event isn't fully finished */}
           {timeRemaining === 0 && showTimerEndAlert && timerStatus !== 'ended' && (
             <Alert 
               severity="info" 
-              icon={<NotificationImportant />}
+              icon={<NotificationImportant sx={{ fontSize: { xs: '0.9rem', sm: '1.1rem'}}} />} // MODIFIED
               variant="filled"
               sx={{ 
-                mb: 2, 
+                mb: { xs: 0.5, sm: 1 }, // MODIFIED
                 fontWeight: 500,
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between'
+                justifyContent: 'space-between',
+                fontSize: { xs: '0.7rem', sm: '0.8rem' }, // MODIFIED
+                py: {xs: 0.25, sm: 0.5} // MODIFIED
               }}
               action={
                 <Button 
                   color="inherit" 
                   size="small" 
                   onClick={() => setShowTimerEndAlert(false)}
-                  sx={{ ml: 2 }}
+                  sx={{ ml: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.65rem', sm: '0.7rem'} }} // MODIFIED
                 >
                   Dismiss
                 </Button>
@@ -1610,16 +1568,16 @@ const EventTimer = ({
           )}
 
           <Paper
-            elevation={2}
+            elevation={1} // MODIFIED: Softer elevation
             sx={{
               display: 'flex',
               width: '100%',
-              py: 2,
-              borderRadius: '8px',
-              bgcolor: isAlmostDone ? theme.palette.error.light + '33' :
-                      isActive ? theme.palette.primary.light + '33' :
-                      isPaused ? theme.palette.warning.light + '33' :
-                      isBetweenRounds ? theme.palette.info.light + '33' :
+              py: { xs: 0.5, sm: 1 }, // MODIFIED
+              borderRadius: '6px', // MODIFIED
+              bgcolor: isAlmostDone ? theme.palette.error.light + '22' : // MODIFIED: Lighter alpha
+                      isActive ? theme.palette.primary.light + '22' :
+                      isPaused ? theme.palette.warning.light + '22' :
+                      isBetweenRounds ? theme.palette.info.light + '22' :
                       theme.palette.background.default,
               border: `1px solid ${ 
                         isAlmostDone ? theme.palette.error.light :
@@ -1631,13 +1589,15 @@ const EventTimer = ({
               position: 'relative',
               overflow: 'hidden',
               transition: 'background-color 0.3s ease, border-color 0.3s ease',
-              px: { xs: 1, sm: 2, md: 3 },
-              flexDirection: { xs: 'column', sm: 'row' },
-              alignItems: { xs: 'center', sm: 'center' },
-              gap: { xs: 3, sm: 0 },
-              justifyContent: { xs: 'center', sm: 'space-between' }
+              px: { xs: 0.75, sm: 1 }, // MODIFIED
+              // flexDirection: { xs: 'column', sm: 'row' }, // REMOVED - Default to row now
+              flexDirection: 'row', // MODIFIED - Always row
+              alignItems: 'center', // Keep items vertically centered
+              // gap: { xs: 1, sm: 0 }, // REMOVED - Use space-between/margins
+              justifyContent: 'space-between' // MODIFIED - Distribute items
             }}
           >
+            {/* Optional Progress Bar - Remains the same */}
             {isActive && (
               <Box
                 sx={{
@@ -1647,46 +1607,52 @@ const EventTimer = ({
                   height: '100%',
                   width: `${progressPercentage}%`,
                   bgcolor: isAlmostDone ?
-                    theme.palette.error.light + '4D' :
-                    theme.palette.primary.light + '4D',
+                    theme.palette.error.light + '33' : // MODIFIED: Lighter alpha
+                    theme.palette.primary.light + '33',
                   transition: 'width 1s linear, background-color 0.3s ease',
                   zIndex: 1
                 }}
               />
             )}
             
+            {/* Box 1: TimerIcon + Round Info + Chip (LEFT) */}
             <Box
               sx={{
                 display: 'flex',
                 alignItems: 'center',
-                zIndex: 2
+                zIndex: 2,
+                // flexGrow: { xs: 1, sm: 0 }, // Let it take natural width
+                // mr: { xs: 0, sm: 'auto'} // Add right margin to push others away on sm+
+                flex: '0 1 auto', // Don't grow, shrink if needed, basis is auto
+                mr: { xs: 1, sm: 2 } // Add margin to separate from center time
               }}
             >
               <TimerIcon
                 sx={{
-                  mr: { xs: 0, sm: 2 },
-                  mb: { xs: 2, sm: 0 },
+                  mr: { xs: 0.5, sm: 1 }, // MODIFIED
+                  // mb: { xs: 0.5, sm: 0 }, // REMOVED mb - align in row now
                   color: isAlmostDone ? theme.palette.error.main :
                         isActive ? theme.palette.primary.main :
                         isPaused ? theme.palette.warning.main :
                         isBetweenRounds ? theme.palette.info.main :
                         theme.palette.text.secondary,
-                  fontSize: '1.5rem'
+                  fontSize: { xs: '1rem', sm: '1.2rem' } // MODIFIED
                 }}
               />
               <Box>
                 {isEnded ? (
-                  <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1.2, color: theme.palette.text.primary }}>
-                    Event Finished
+                  <Typography variant="h6" sx={{ fontWeight: 500, lineHeight: 1.2, color: theme.palette.text.primary, fontSize: { xs: '0.7rem', sm: '0.9rem'} }}> {/* MODIFIED */}
+                    Finished
                   </Typography>
                 ) : (
                   <Typography 
                     variant="h6" 
                     sx={{ 
-                      fontWeight: 600,
+                      fontWeight: 500, // MODIFIED
                       lineHeight: 1.2,
                       color: theme.palette.text.primary,
-                      textAlign: { xs: 'center', sm: 'left' }
+                      textAlign: 'left', // MODIFIED: Align left
+                      fontSize: { xs: '0.75rem', sm: '0.9rem'} // MODIFIED
                     }}
                   >
                     Round {currentRound || '-'}
@@ -1698,10 +1664,11 @@ const EventTimer = ({
                   size="small"
                   sx={{ 
                     fontWeight: 500, 
-                    height: '24px',
-                    mt: 0.5,
+                    height: { xs: '16px', sm: '18px' }, // MODIFIED
+                    mt: 0, // MODIFIED
+                    fontSize: { xs: '0.55rem', sm: '0.6rem' }, // MODIFIED
                     '& .MuiChip-label': {
-                      px: 0.75,
+                      px: { xs: 0.4, sm: 0.6 }, // MODIFIED
                       py: 0
                     }
                   }}
@@ -1709,6 +1676,7 @@ const EventTimer = ({
               </Box>
             </Box>
             
+            {/* Box 2 (effectively): Main Time Typography (CENTER) */}
             <Typography
               variant="h3"
               component="div"
@@ -1718,29 +1686,37 @@ const EventTimer = ({
                      isBetweenRounds ? theme.palette.info.main :
                      theme.palette.text.secondary}
               sx={{
-                fontWeight: 700,
+                fontWeight: 600, // MODIFIED
                 animation: isAlmostDone ? 'pulse 1s infinite' : 'none',
                 '@keyframes pulse': {
                   '0%': { opacity: 1 },
                   '50%': { opacity: 0.7 },
                   '100%': { opacity: 1 },
                 },
-                fontSize: { xs: '2.5rem', sm: '2.75rem', md: '3rem' },
-                mb: { xs: 2, sm: 0 },
+                fontSize: { xs: '1.5rem', sm: '2rem', md: '2.2rem' }, // MODIFIED
+                my: 0, // MODIFIED: Remove vertical margin
+                mx: 'auto', // MODIFIED: Center horizontally
+                flex: '0 0 auto', // MODIFIED: Don't grow or shrink
+                zIndex: 2,
+                textAlign: 'center',
+                minWidth: '50px', // Ensure some minimum width for time
                 color: isEnded ? theme.palette.text.secondary : 'inherit'
               }}
             >
               {isEnded ? '--:--' : (isActive || isPaused ? formatTime(timeRemaining) : formatTime(breakTimeRemaining))}
             </Typography>
             
+            {/* Box 3: Controls (Switch, Icons) (RIGHT) */}
             <Box sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
-                flexWrap: 'wrap', 
-                justifyContent: { xs: 'center', sm: 'flex-end' },
-                gap: { xs: 1, sm: 0 },
-                width: { xs: '100%', sm: 'auto' },
-                mt: { xs: 2, sm: 0 }
+                flexWrap: 'nowrap', // MODIFIED: Prevent wrapping of icon buttons
+                justifyContent: 'flex-end', // Align controls to the end
+                gap: { xs: 0, sm: 0 }, // MODIFIED: Reduced gap, use padding on items
+                width: 'auto', // Take necessary width
+                // mt: { xs: 0.5, sm: 0 }, // REMOVED - aligned in row
+                zIndex: 2,
+                flex: '0 1 auto' // Don't grow, shrink if needed, basis is auto
             }}>
               <FormControlLabel
                 control={
@@ -1754,22 +1730,23 @@ const EventTimer = ({
                 label={
                   <Box display="flex" alignItems="center">
                     {soundEnabled ? 
-                      <VolumeUp fontSize="small" color="primary" /> : 
-                      <VolumeOff fontSize="small" color="disabled" />
+                      <VolumeUp sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }} color="primary" /> : // MODIFIED
+                      <VolumeOff sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }} color="disabled" /> // MODIFIED
                     }
                     <Typography 
-                      variant="body2" 
+                      variant="caption" // MODIFIED
                       sx={{ 
-                        ml: 0.5, 
+                        ml: 0.1, // MODIFIED
                         display: { xs: 'none', sm: 'block' },
-                        color: theme.palette.text.primary
+                        color: theme.palette.text.primary,
+                        fontSize: { xs: '0.65rem', sm: '0.7rem'} // MODIFIED
                       }}
                     >
-                      {soundEnabled ? "Sound On" : "Sound Off"}
+                      {soundEnabled ? "On" : "Off"} {/* MODIFIED: Shorter text */}
                     </Typography>
                   </Box>
                 }
-                sx={{ mr: 1 }}
+                sx={{ mr: { xs: 0, sm: 0.25 }, ml: {xs: -1, sm: 0} }} // MODIFIED: Adjust spacing, slight negative margin on xs for switch
               />
               
               <Tooltip title="Settings">
@@ -1781,26 +1758,29 @@ const EventTimer = ({
                     '&:hover': {
                       color: theme.palette.primary.main
                     },
-                    mr: 1
+                    p: {xs: 0.25, sm: 0.5}, // MODIFIED
+                    mr: { xs: 0, sm: 0.25 } // MODIFIED
                   }}
                 >
-                  <Settings fontSize="small" />
+                  <Settings sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}/> {/* MODIFIED */}
                 </IconButton>
               </Tooltip>
               
               <Tooltip title={showControls ? "Hide controls" : "Show controls"}>
                 <IconButton 
                   onClick={toggleControls}
+                  size="small" 
                   sx={{ 
                     color: theme.palette.text.secondary,
                     transition: 'transform 0.3s',
                     transform: showControls ? 'rotate(180deg)' : 'rotate(0)',
                     '&:hover': {
                       color: theme.palette.primary.main
-                    }
+                    },
+                    p: {xs: 0.25, sm: 0.5} // MODIFIED
                   }}
                 >
-                  <KeyboardArrowDown />
+                  <KeyboardArrowDown sx={{ fontSize: { xs: '1.2rem', sm: '1.4rem' } }} /> {/* MODIFIED */}
                 </IconButton>
               </Tooltip>
             </Box>
@@ -1810,11 +1790,11 @@ const EventTimer = ({
             <Paper 
               elevation={1}
               sx={{ 
-                mt: 1, 
-                mb: 2,
-                p: 2,
+                mt: { xs: 0.25, sm: 0.5 }, // MODIFIED
+                mb: { xs: 0.5, sm: 1 }, // MODIFIED
+                p: { xs: 0.75, sm: 1 }, // MODIFIED
                 width: '100%',
-                borderRadius: '8px'
+                borderRadius: '6px' // MODIFIED
               }}
             >
               <Box 
@@ -1822,11 +1802,17 @@ const EventTimer = ({
                   display: 'flex',
                   justifyContent: 'center',
                   alignItems: 'center',
-                  gap: 2,
-                  flexDirection: { xs: 'column', sm: 'row' },
+                  gap: { xs: 0.5, sm: 0.75 }, // MODIFIED
+                  flexDirection: { xs: 'row', sm: 'row' }, // MODIFIED: Default to row, wrap if needed by buttons
+                  flexWrap: 'wrap', // MODIFIED: Allow buttons to wrap
                   '& .MuiButton-root': { 
-                     width: { xs: '80%', sm: 'auto' },
-                     minWidth: { xs: '150px', sm: 'auto'}
+                     // width: { xs: 'auto', sm: 'auto' }, // Allow buttons to size naturally
+                     flexGrow: 1, // Allow buttons to grow and fill space if wrapping
+                     minWidth: { xs: '90px', sm: '100px'}, // MODIFIED minimum width
+                     fontSize: { xs: '0.65rem', sm: '0.7rem' }, // MODIFIED
+                     py: { xs: 0.4, sm: 0.6 }, // MODIFIED
+                     px: { xs: 0.8, sm: 1 }, // MODIFIED
+                     my: { xs: 0.25, sm: 0} // Add small vertical margin when stacked
                   }
                 }}
               >
@@ -1838,15 +1824,13 @@ const EventTimer = ({
                       <Button
                         variant="outlined"
                         color="secondary"
-                        startIcon={<SkipNext />}
+                        startIcon={<SkipNext sx={{ fontSize: { xs: '0.8rem', sm: '0.9rem'}}}/>}
                         onClick={handleNextRound}
-                        size="medium"
+                        size="small" 
                         sx={{
-                          borderRadius: '8px',
+                          borderRadius: '4px', // MODIFIED
                           textTransform: 'none',
-                          py: 1,
-                          px: 3,
-                          fontWeight: 600
+                          fontWeight: 500 // MODIFIED
                         }}
                       >
                         End Round
@@ -1856,15 +1840,13 @@ const EventTimer = ({
                     <Button
                       variant="contained"
                       color="warning"
-                      startIcon={<Pause />}
+                      startIcon={<Pause sx={{ fontSize: { xs: '0.8rem', sm: '0.9rem'}}}/>}
                       onClick={handlePauseRound}
-                      size="medium"
+                      size="small" 
                       sx={{ 
-                        borderRadius: '8px',
+                        borderRadius: '4px', // MODIFIED
                         textTransform: 'none',
-                        py: 1,
-                        px: 3,
-                        fontWeight: 600
+                        fontWeight: 500 // MODIFIED
                       }}
                     >
                       Pause {isBetweenRounds ? 'Break' : 'Round'}
@@ -1877,15 +1859,13 @@ const EventTimer = ({
                    <Button
                      variant="contained"
                      color="primary"
-                     startIcon={<PlayArrow />}
+                     startIcon={<PlayArrow sx={{ fontSize: { xs: '0.8rem', sm: '0.9rem'}}}/>}
                      onClick={handleResumeRound}
-                     size="medium"
+                     size="small" 
                      sx={{
-                       borderRadius: '8px',
+                       borderRadius: '4px', // MODIFIED
                        textTransform: 'none',
-                       py: 1,
-                       px: 3,
-                       fontWeight: 600
+                       fontWeight: 500 // MODIFIED
                      }}
                    >
                      Resume Round
@@ -1897,26 +1877,24 @@ const EventTimer = ({
                     <Button
                       variant="contained"
                       color="primary"
-                      startIcon={<PlayArrow />}
+                      startIcon={<PlayArrow sx={{ fontSize: { xs: '0.8rem', sm: '0.9rem'}}}/>}
                       onClick={handleStartRound}
-                      size="medium"
+                      size="small" 
                       sx={{
-                        borderRadius: '8px',
+                        borderRadius: '4px', // MODIFIED
                         textTransform: 'none',
-                        py: 1,
-                        px: 3,
-                        fontWeight: 600
+                        fontWeight: 500 // MODIFIED
                       }}
                     >
                       {timerStatus === 'between_rounds' ? 
-                        (breakTimeRemaining <= 0 ? 'Start Next Round' : `Start Next Round (${formatTime(breakTimeRemaining)} left)`) : 
+                        (breakTimeRemaining <= 0 ? 'Start Next' : `Next (${formatTime(breakTimeRemaining)})`) :  // MODIFIED: Shorter text
                         'Start Round'}
                     </Button>
                   )}
 
                   {/* --- ENDED STATE --- */}
                   {isEnded && (
-                     <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center', width: '100%' }}>
+                     <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', width: '100%', fontSize: { xs: '0.7rem', sm: '0.8rem' } }}> {/* MODIFIED */}
                        Event Finished
                      </Typography>
                   )}
@@ -2017,27 +1995,10 @@ const EventTimer = ({
   }
 
   return (
-    <Box sx={{ my: 2 }}>
+    <Box sx={{ my: 2, transform: 'translateZ(-2500)' }}>
        {isAdmin ? renderAdminView() : renderAttendeeView()}
        {renderSettingsDialog()}
       
-       {notificationPermission === 'default' && (
-         <Snackbar
-           open={true}
-           anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-         >
-           <Alert 
-             severity="info" 
-             action={
-               <Button color="inherit" size="small" onClick={handleEnableNotifications}>
-                 Enable
-               </Button>
-             }
-           >
-             Enable browser notifications for timer alerts
-           </Alert>
-         </Snackbar>
-       )}
     </Box>
   );
 };

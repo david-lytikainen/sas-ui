@@ -133,180 +133,206 @@ const Register = () => {
   };
 
   return (
-    <Container maxWidth="sm">
-      <Box sx={{ mt: 8 }}>
-        <Paper sx={{ p: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom align="center">
-            Register
-          </Typography>
+    <Container component="main" maxWidth="sm" sx={{ mt: 2, mb: 2 }}>
+      <Paper elevation={1} sx={{ p: { xs: 2, sm: 2, md: 3 }, borderRadius: 2 }}>
+        <Typography 
+          variant="h4"
+          component="h1" 
+          gutterBottom 
+          sx={{ 
+            textAlign: 'center', 
+            mb: 0.5,
+            fontWeight: 'bold',
+            color: 'primary.main',
+          }}
+        >
+         Saved & Single
+        </Typography>
+        <Typography variant="subtitle1" component="h2" sx={{ textAlign: 'center', mb: 1.5 , fontWeight: 'bold' }}>
+          Register
+        </Typography>
+        {error && (
+          <Alert severity="error" sx={{ mb: 1, fontSize: '0.8rem', py: 0.5 }}>
+            {error}
+          </Alert>
+        )}
+
+        <Box component="form" onSubmit={handleSubmit}>
+          <TextField
+            fullWidth
+            label="First Name"
+            name="first_name"
+            value={formData.first_name}
+            onChange={handleTextChange}
+            margin="dense"
+            required
+            size="small"
+          />
           
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
+          <TextField
+            fullWidth
+            label="Last Name"
+            name="last_name"
+            value={formData.last_name}
+            onChange={handleTextChange}
+            margin="dense"
+            required
+            size="small"
+          />
+          
+          <TextField
+            fullWidth
+            label="Email Address"
+            name="email"
+            type="email"
+            value={formData.email}
+            onChange={handleTextChange}
+            margin="dense"
+            required
+            size="small"
+          />
 
-          <Box component="form" onSubmit={handleSubmit}>
-            <TextField
-              fullWidth
-              label="First Name"
-              name="first_name"
-              value={formData.first_name}
-              onChange={handleTextChange}
-              margin="normal"
-              required
-            />
-            
-            <TextField
-              fullWidth
-              label="Last Name"
-              name="last_name"
-              value={formData.last_name}
-              onChange={handleTextChange}
-              margin="normal"
-              required
-            />
-            
-            <TextField
-              fullWidth
-              label="Email Address"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleTextChange}
-              margin="normal"
-              required
-            />
+          <TextField
+            fullWidth
+            label="Phone Number"
+            name="phone"
+            value={formData.phone}
+            onChange={handleTextChange}
+            margin="dense"
+            required
+            type="tel"
+            size="small"
+            inputProps={{
+              pattern: "[0-9]{10}",
+              title: "Please enter a 10-digit phone number"
+            }}
+          />
 
-            <TextField
-              fullWidth
-              label="Phone Number"
-              name="phone"
-              value={formData.phone}
-              onChange={handleTextChange}
-              margin="normal"
-              required
-              type="tel"
-              inputProps={{
-                pattern: "[0-9]{10}",
-                title: "Please enter a 10-digit phone number"
-              }}
-            />
+          <TextField
+            fullWidth
+            label="Birthday"
+            name="birthday"
+            type="date"
+            value={formData.birthday}
+            onChange={handleTextChange}
+            margin="dense"
+            required
+            size="small"
+            InputLabelProps={{
+              shrink: true,
+            }}
+            inputProps={{
+              max: new Date().toISOString().split('T')[0],
+            }}
+            helperText="Must be 18 or older"
+            FormHelperTextProps={{ sx: { fontSize: '0.75rem' } }}
+          />
 
-            <TextField
-              fullWidth
-              label="Birthday"
-              name="birthday"
-              type="date"
-              value={formData.birthday}
-              onChange={handleTextChange}
-              margin="normal"
-              required
-              InputLabelProps={{
-                shrink: true,
-              }}
-              inputProps={{
-                max: new Date().toISOString().split('T')[0],
-              }}
-              helperText="Must be 18 or older"
-            />
-
-            <FormControl fullWidth margin="normal" required>
-              <InputLabel id="gender-select-label">Gender</InputLabel>
-              <Select
-                labelId="gender-select-label"
-                id="gender-select"
-                name="gender"
-                value={formData.gender}
-                label="Gender"
-                onChange={handleSelectChange}
-              >
-                <MenuItem value="MALE">Male</MenuItem>
-                <MenuItem value="FEMALE">Female</MenuItem>
-              </Select>
-            </FormControl>
-
-            <FormControl component="fieldset" margin="normal" required>
-              <FormLabel component="legend">I want to:</FormLabel>
-              <RadioGroup
-                name="role"
-                value={formData.role}
-                onChange={handleTextChange}
-                row
-              >
-                <FormControlLabel
-                  value="attendee"
-                  control={<Radio />}
-                  label="Attend Speed Dating Events"
-                />
-                {/* <FormControlLabel
-                  value="organizer"
-                  control={<Radio />}
-                  label="Organize Speed Dating Events"
-                /> */}
-                {/* <FormControlLabel
-                  value="admin"
-                  control={<Radio />}
-                  label="Admin"
-                /> */}
-              </RadioGroup>
-            </FormControl>
-            
-            <TextField
-              fullWidth
-              label="Password"
-              name="password"
-              type={showPassword ? 'text' : 'password'}
-              value={formData.password}
-              onChange={handleTextChange}
-              margin="normal"
-              required
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setShowPassword(!showPassword)}
-                      edge="end"
-                    >
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
-            
-            <TextField
-              fullWidth
-              label="Confirm Password"
-              name="confirmPassword"
-              type={showPassword ? 'text' : 'password'}
-              value={formData.confirmPassword}
-              onChange={handleTextChange}
-              margin="normal"
-              required
-            />
-
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              size="large"
-              sx={{ mt: 3 }}
-              disabled={loading}
+          <FormControl fullWidth margin="dense" required size="small">
+            <InputLabel id="gender-select-label">Gender</InputLabel>
+            <Select
+              labelId="gender-select-label"
+              id="gender-select"
+              name="gender"
+              value={formData.gender}
+              label="Gender"
+              onChange={handleSelectChange}
             >
-              {loading ? 'Registering...' : 'Register'}
-            </Button>
+              <MenuItem value="MALE">Male</MenuItem>
+              <MenuItem value="FEMALE">Female</MenuItem>
+            </Select>
+          </FormControl>
 
-            <Button
-              fullWidth
-              onClick={() => navigate('/login')}
-              sx={{ mt: 2 }}
+          <FormControl component="fieldset" margin="dense" required sx={{ mt: 1}}>
+            <FormLabel component="legend" sx={{ fontSize: '0.8rem' }}>I want to:</FormLabel>
+            <RadioGroup
+              name="role"
+              value={formData.role}
+              onChange={handleTextChange}
+              row
+              sx={{ mt: -0.5 }}
             >
-              Already have an account? Login
-            </Button>
-          </Box>
-        </Paper>
-      </Box>
+              <FormControlLabel
+                value="attendee"
+                control={<Radio size="small" />}
+                label="Attend Speed Dating Events"
+                sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
+              />
+              {/* TODO: Add organizer role back in , hidden for now*/}
+              {/* <FormControlLabel
+                value="organizer"
+                control={<Radio size="small" />}
+                label="Organize Speed Dating Events"
+                 sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
+              /> */}
+              {/* TODO: Add admin role back in , hidden for now*/}
+              {/* <FormControlLabel
+                value="admin"
+                control={<Radio size="small"/>}
+                label="Admin"
+                 sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
+              /> */}
+            </RadioGroup>
+          </FormControl>
+          
+          <TextField
+            fullWidth
+            label="Password"
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            value={formData.password}
+            onChange={handleTextChange}
+            margin="dense"
+            required
+            size="small"
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    size="small"
+                    onClick={() => setShowPassword(!showPassword)}
+                    edge="end"
+                  >
+                    {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+          
+          <TextField
+            fullWidth
+            label="Confirm Password"
+            name="confirmPassword"
+            type={showPassword ? 'text' : 'password'}
+            value={formData.confirmPassword}
+            onChange={handleTextChange}
+            margin="dense"
+            required
+            size="small"
+          />
+
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            size="medium"
+            sx={{ mt: 1.5, mb: 0.5 }}
+            disabled={loading}
+          >
+            {loading ? 'Registering...' : 'Register'}
+          </Button>
+
+          <Button
+            fullWidth
+            onClick={() => navigate('/login')}
+            size="small"
+            sx={{ mt: 0.5 }}
+          >
+            Already have an account? Login
+          </Button>
+        </Box>
+      </Paper>
     </Container>
   );
 };
