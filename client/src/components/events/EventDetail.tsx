@@ -295,7 +295,7 @@ const EventDetail: React.FC = () => {
       </Paper>
 
       {/* Event Controls Section for Admins */}
-      {canManageEvent(event) && (event.status === 'In Progress' || event.status === 'Paused') && (
+      {canManageEvent(event) && (event.status === 'In Progress') && (
         <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
           <Box 
             onClick={() => setControlsOpen(!controlsOpen)} 
@@ -363,7 +363,7 @@ const EventDetail: React.FC = () => {
       )}
 
       {/* Show the schedule if the event is in progress and the user has one */}
-      {(event.status === 'In Progress' || event.status === 'Paused') && !loadingSchedule && schedule.length > 0 && (
+      {(event.status === 'In Progress') && !loadingSchedule && schedule.length > 0 && (
         <Paper elevation={3} sx={{ p: 3 }}>
           <Typography variant="h5" gutterBottom>
             Your Schedule
@@ -431,7 +431,7 @@ const EventDetail: React.FC = () => {
         </Paper>
       )}
 
-      {(event.status === 'In Progress' || event.status === 'Paused') && !loadingSchedule && schedule.length === 0 && (
+      {(event.status === 'In Progress') && !loadingSchedule && schedule.length === 0 && (
         <Paper elevation={3} sx={{ p: 3 }}>
           <Typography variant="h5" gutterBottom>
             Your Schedule
@@ -442,7 +442,7 @@ const EventDetail: React.FC = () => {
         </Paper>
       )}
 
-      {!canManageEvent(event) && (event.status === 'In Progress' || event.status === 'Paused') && (
+      {!canManageEvent(event) && (event.status === 'In Progress') && (
         <Box mb={4} mt={3}> {/* Added mt={3} for some spacing above the timer */}
           <Typography variant="h5" gutterBottom align="center"> {/* Optional: align center */}
             Round Timer

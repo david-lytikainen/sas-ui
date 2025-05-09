@@ -281,7 +281,7 @@ interface EventsApi {
       event_speed_date_id: number;
     }>> 
   }>;
-  startEvent: (eventId: string) => Promise<{ message: string }>;
+  startEvent: (eventId: string, numTables?: number, numRounds?: number) => Promise<{ message: string }>;
   resumeEvent: (eventId: string) => Promise<{ message: string }>;
   submitSpeedDateSelections: (
     eventId: string, 
@@ -295,6 +295,7 @@ interface Match {
   first_name: string;
   last_name: string;
   email: string;
+  phone: string;
   age: number;
   gender: string;
 }
@@ -409,9 +410,13 @@ const realEventsApi: EventsApi = {
     }
   },
   
-  startEvent: async (eventId: string) => {
+  startEvent: async (eventId: string, numTables?: number, numRounds?: number) => {
     try {
-      const response = await api.post(`/events/${eventId}/start`);
+      const payload = {
+        num_tables: numTables,
+        num_rounds: numRounds
+      };
+      const response = await api.post(`/events/${eventId}/start`, payload);
       return response.data;
     } catch (error: any) {
       if (error.response?.data?.error) {

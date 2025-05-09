@@ -23,8 +23,8 @@ interface Match {
   first_name: string;
   last_name: string;
   email: string;
+  phone: string;
   age: number;
-  gender: string;
 }
 
 interface MatchesDialogProps {
@@ -87,6 +87,9 @@ const MatchesDialog: React.FC<MatchesDialogProps> = ({
                         </Typography>
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
                           <EmailIcon sx={{ fontSize: '0.8rem' }} /> {match.email} 
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+                          <CakeIcon sx={{ fontSize: '0.8rem' }} /> Phone: {match.phone}
                         </Typography>
                       </>
                     }

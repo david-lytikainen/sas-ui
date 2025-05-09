@@ -1,4 +1,4 @@
-export type EventStatus = 'Registration Open' | 'In Progress' | 'Completed' | 'Cancelled' | 'Paused';
+export type EventStatus = 'Registration Open' | 'In Progress' | 'Completed' | 'Cancelled';
 
 export interface Event {
   id: number;

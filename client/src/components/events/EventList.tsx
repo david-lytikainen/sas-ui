@@ -37,10 +37,11 @@ import {
   DialogContentText,
   Divider,
   Snackbar,
+  SnackbarCloseReason,
 } from '@mui/material';
 import {
   Event as EventIcon,
-  HowToReg as SignUpIcon,
+  HowToReg as SignUpIcon, 
   Cancel as CancelIcon, 
   Person as PersonIcon, 
   LocationOn as LocationOnIcon,
@@ -52,7 +53,6 @@ import {
   Settings as SettingsIcon,
   List as ListIcon,
   PlayArrow as StartIcon,
-  Pause as PauseIcon,
   Stop as EndIcon,
   Visibility as ViewIcon,
   Edit as EditIcon,
@@ -72,6 +72,7 @@ interface Match {
   first_name: string;
   last_name: string;
   email: string;
+  phone: string;
   age: number;
   gender: string;
 }
@@ -134,8 +135,6 @@ const EventList = () => {
   const [startEventDialogOpen, setStartEventDialogOpen] = useState(false);
   const [selectedEventForStarting, setSelectedEventForStarting] = useState<Event | null>(null);
 
-  const [pauseEventDialogOpen, setPauseEventDialogOpen] = useState(false);
-  const [selectedEventForPausing, setSelectedEventForPausing] = useState<Event | null>(null);
 
   // Add new state variables for editing
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
@@ -187,6 +186,11 @@ const EventList = () => {
   const [currentMatches, setCurrentMatches] = useState<Match[]>([]);
   const [matchesLoading, setMatchesLoading] = useState<boolean>(false);
   const [matchesError, setMatchesError] = useState<string | null>(null);
+
+  // Add state for tables and rounds input
+  const [numTables, setNumTables] = useState<number>(10);
+  const [numRounds, setNumRounds] = useState<number>(10);
+  const [isTableConfigOpen, setIsTableConfigOpen] = useState<boolean>(false);
 
   const fetchMatchesForEvent = async (eventId: string) => {
     setMatchesLoading(true);
@@ -342,8 +346,6 @@ const EventList = () => {
         return 'info';
       case 'Cancelled':
         return 'error';
-      case 'Paused':
-        return 'warning';
       default:
         return 'default';
     }
@@ -365,10 +367,9 @@ const EventList = () => {
     // First by status using the statusPriority
     const statusOrder: Record<EventStatus, number> = {
       'In Progress': 1,
-      'Paused': 2,
-      'Registration Open': 3,
-      'Completed': 4,
-      'Cancelled': 5
+      'Registration Open': 2,
+      'Completed': 3,
+      'Cancelled': 4
     };
     
     // Primary sort by status
@@ -669,7 +670,7 @@ const EventList = () => {
       return null;
     }
     
-    if ((event.status === 'In Progress' || event.status === 'Paused') && isRegistered) {
+    if (event.status === 'In Progress'  && isRegistered) {
       if (registrationStatus === 'Checked In') {
         return (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', alignSelf: 'flex-start', width: '100%' }}> 
@@ -769,14 +770,6 @@ const EventList = () => {
                 )}
               </Paper>
             </Collapse>
-            {event.status === 'Paused' && (
-              <Chip
-                label="Event Paused"
-                color="warning"
-                size="small"
-                sx={{ mt: 1 }}
-              />
-            )}
           </Box>
         );
       }
@@ -864,14 +857,25 @@ const EventList = () => {
   // Event status update functions
   const handleStartEventClick = (event: Event) => {
     setSelectedEventForStarting(event);
-    setStartEventDialogOpen(true);
+    setNumTables(10); // Default values
+    setNumRounds(10);
+    setIsTableConfigOpen(true); // Open the table/round config dialog first
+  };
+
+  const handleTableConfigSubmit = () => {
+    setIsTableConfigOpen(false);
+    setStartEventDialogOpen(true); // Now open the confirmation dialog
   };
 
   const handleStartEvent = async () => {
     try {
       if (!selectedEventForStarting) return;
       
-      await eventsApi.startEvent(selectedEventForStarting.id.toString());
+      await eventsApi.startEvent(
+        selectedEventForStarting.id.toString(), 
+        numTables, 
+        numRounds
+      );
       setStartEventDialogOpen(false);
       setSelectedEventForStarting(null);
       await refreshEvents();
@@ -880,39 +884,11 @@ const EventList = () => {
     }
   };
 
-  const handlePauseEventClick = (event: Event) => {
-    setSelectedEventForPausing(event);
-    setPauseEventDialogOpen(true);
-  };
 
-  const handlePauseEvent = async () => {
-    try {
-      if (!selectedEventForPausing) return;
-      
-      // Update the event status to 'Paused'
-      await eventsApi.updateEventStatus(selectedEventForPausing.id.toString(), 'Paused');
-      setPauseEventDialogOpen(false);
-      setSelectedEventForPausing(null);
-      await refreshEvents();
-    } catch (error: any) {
-      setErrorMessage(error.message || 'Failed to pause event');
-    }
-  };
-
-  // Add a new function to handle resuming an event
-  const handleResumeEvent = async (event: Event) => {
-    try {
-      await eventsApi.resumeEvent(event.id.toString());
-      await refreshEvents();
-    } catch (error: any) {
-      setErrorMessage(error.message || 'Failed to resume event');
-    }
-  };
-
-  // Modified to show confirmation dialog only if event is in progress or paused
+  // Modified to show confirmation dialog only if event is in progress
   const handleEndEventClick = (event: Event) => {
-    if (event.status !== 'In Progress' && event.status !== 'Paused') {
-      setErrorMessage('Events can only be ended when they are in progress or paused.');
+    if (event.status !== 'In Progress') {
+      setErrorMessage('Events can only be ended when they are in progress.');
       return;
     }
     
@@ -995,7 +971,7 @@ const EventList = () => {
             
             {/* Event status management buttons */}
             <Grid container spacing={1} sx={{ mt: 0.5 }}>
-              <Grid item xs={4}>
+              <Grid item xs={6}>
                 <Button
                   variant="outlined"
                   size="small"
@@ -1003,41 +979,13 @@ const EventList = () => {
                   startIcon={<StartIcon />}
                   onClick={() => handleStartEventClick(event)}
                   fullWidth
-                  disabled={event.status === 'In Progress' || event.status === 'Completed' || event.status === 'Paused'}
+                  disabled={event.status === 'In Progress' || event.status === 'Completed'}
                   sx={{ borderRadius: 1 }}
                 >
                   Start
                 </Button>
               </Grid>
-              <Grid item xs={4}>
-                {event.status === 'Paused' ? (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    color="success"
-                    startIcon={<StartIcon />}
-                    onClick={() => handleResumeEvent(event)}
-                    fullWidth
-                    sx={{ borderRadius: 1 }}
-                  >
-                    Resume
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    color="primary"
-                    startIcon={<PauseIcon />}
-                    onClick={() => handlePauseEventClick(event)}
-                    fullWidth
-                    disabled={event.status !== 'In Progress'}
-                    sx={{ borderRadius: 1 }}
-                  >
-                    Pause
-                  </Button>
-                )}
-              </Grid>
-              <Grid item xs={4}>
+              <Grid item xs={6}>
                 <Button
                   variant="outlined"
                   size="small"
@@ -1045,7 +993,7 @@ const EventList = () => {
                   startIcon={<EndIcon />}
                   onClick={() => handleEndEventClick(event)}
                   fullWidth
-                  disabled={event.status !== 'In Progress' && event.status !== 'Paused'}
+                  disabled={event.status !== 'In Progress'}
                   sx={{ borderRadius: 1 }}
                 >
                   End
@@ -1067,7 +1015,7 @@ const EventList = () => {
             </Button>
 
             {/* View all schedules button - only visible when event is in progress or completed */}
-            {(event.status === 'In Progress' || event.status === 'Paused' || event.status === 'Completed') && (
+            {(event.status === 'In Progress' || event.status === 'Completed') && (
               <Button
                 variant="outlined"
                 size="small"
@@ -1379,17 +1327,12 @@ const EventList = () => {
         const isRegistered = isRegisteredForEvent(event.id);
         const registrationStatus = event.registration?.status || null;
 
-        // --- Add Log ---
-        // Log conditions for *every* event in the loop
         console.log(`Event ${event.id}: Status=${event.status}, Registered=${isRegistered}, CheckInStatus=${registrationStatus}, AlreadyFetched=${userSchedules.hasOwnProperty(event.id)}`);
-        // ---------------
 
-        // Now check conditions to fetch
-        if ((event.status === 'In Progress' || event.status === 'Paused' || event.status === 'Completed') && 
+        if ((event.status === 'In Progress' || event.status === 'Completed') && 
             isRegistered && 
             registrationStatus === 'Checked In') 
         {
-          // Only fetch if we don\'t already have it
           if (!userSchedules.hasOwnProperty(event.id)) { 
             try {
               console.log(`Fetching schedule for event ${event.id}`);
@@ -1410,7 +1353,7 @@ const EventList = () => {
             }
           }
         }
-      } // End of for loop
+      }
 
       if (needsUpdate) {
         setUserSchedules(prev => ({ ...prev, ...schedulesToUpdate }));
@@ -1421,10 +1364,8 @@ const EventList = () => {
     if (user && events.length > 0) {
         fetchSchedulesForActiveEvents();
     }
-  // Dependencies: events array changes, user registration status changes
-  }, [events, isRegisteredForEvent, user, userSchedules]); // Added userSchedules to prevent re-fetching if already present
+  }, [events, isRegisteredForEvent, user, userSchedules]); 
 
-  // ADD useEffect to check initial notification permission
   useEffect(() => {
     if ('Notification' in window) {
       const currentPermission = Notification.permission;
@@ -1435,7 +1376,20 @@ const EventList = () => {
     }
   }, []);
 
-  // ADD Functions to handle notification permission request
+  useEffect(() => {
+    let timerId: NodeJS.Timeout | undefined;
+    if (showNotificationSnackbar) {
+      timerId = setTimeout(() => {
+        setShowNotificationSnackbar(false);
+      }, 10000); // 10 seconds
+    }
+    return () => {
+      if (timerId) {
+        clearTimeout(timerId);
+      }
+    };
+  }, [showNotificationSnackbar]); 
+
   const requestNotificationPermission = useCallback(async () => {
     if (!('Notification' in window)) {
       console.log('This browser does not support notifications');
@@ -1444,16 +1398,16 @@ const EventList = () => {
     try {
       if (Notification.permission !== 'denied') {
         const permission = await Notification.requestPermission();
-        setShowNotificationSnackbar(false); // Hide snackbar after interaction
+        setShowNotificationSnackbar(false); 
         return permission;
       }
       return Notification.permission;
     } catch (error) {
       console.error('Error requesting notification permission:', error);
-      setShowNotificationSnackbar(false); // Hide snackbar on error
+      setShowNotificationSnackbar(false); 
       return 'denied';
     }
-  }, []);
+  }, [setShowNotificationSnackbar]);
 
   const handleEnableNotifications = () => {
     requestNotificationPermission().then(permission => {
@@ -1465,13 +1419,16 @@ const EventList = () => {
     });
   };
 
-  // Function to explicitly close the snackbar without enabling
-  const handleCloseNotificationSnackbar = (event?: React.SyntheticEvent | Event, reason?: string) => {
+  const handleCloseNotificationSnackbar = useCallback((_event: any, reason: SnackbarCloseReason) => {
     if (reason === 'clickaway') {
-      return; // Don't close on clickaway
+      return;
     }
     setShowNotificationSnackbar(false);
-  };
+  }, [setShowNotificationSnackbar]);
+
+  const handleAlertClose = useCallback(() => {
+    setShowNotificationSnackbar(false);
+  }, [setShowNotificationSnackbar]);
 
   // ADD Function to handle saving speed date selections
   const handleSaveSpeedDateSelections = async () => {
@@ -1493,11 +1450,8 @@ const EventList = () => {
     try {
       setSelectionErrorMessage(null); // Clear previous errors
       await eventsApi.submitSpeedDateSelections(selectedEventForAllSchedules.id.toString(), selectionsToSubmit);
-      // Show success feedback (e.g., a Snackbar or Alert)
-      // For now, using a simple alert. Consider replacing with a Snackbar.
       alert('Speed date selections saved successfully!');
-      // Optionally, you might want to close the dialog or refresh data
-      // setViewAllSchedulesDialogOpen(false); 
+
     } catch (error: any) {
       setSelectionErrorMessage(error.response?.data?.message || error.message || 'Failed to save speed date selections.');
     }
@@ -1513,249 +1467,238 @@ const EventList = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ pt: 4, pb: 4 }}>
-      {errorMessage && (
-        <Alert severity="error" onClose={() => setErrorMessage(null)} sx={{ mb: 2 }}>
-          {errorMessage}
-        </Alert>
-      )}
+    <>
+      <Container maxWidth="lg" sx={{ pt: 4, pb: 14 }}>
+        {errorMessage && (
+          <Alert severity="error" onClose={() => setErrorMessage(null)} sx={{ mb: 2 }}>
+            {errorMessage}
+          </Alert>
+        )}
 
-      <Box 
-        sx={{ 
-          display: 'flex', 
-          justifyContent: { xs: 'flex-start', sm: 'space-between' }, // This will push title to left and button group to right
-          alignItems: 'center', 
-          mb: 4,
-          flexDirection: { xs: 'row', sm: 'row' } 
-        }}
-      >
-        <Typography variant={isMobile ? "h5" : "h4"} component="h1" sx={{ fontWeight: 'bold', mr: 1 /* Add small right margin to title */ }}>
-          Events
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', ml: { xs: 2, sm: 0 } }}> {/* MODIFIED: Added left margin on xs screens */}
-          {user && (
-            <Button
-              variant="outlined" // Or "contained" based on your design preference
-              color="secondary" // Or "primary"
-              onClick={handleGlobalCheckInClick}
-              startIcon={<CheckInIcon />}
-              sx={{
-                minWidth: { xs: 'auto', sm: 'inherit' }, 
-                p: { xs: '6px 10px', sm: '6px 16px' },  // Reduced padding for xs
-                fontSize: { xs: '0.75rem', sm: '0.875rem' } // Reduced font size for xs
-              }}
-            >
-              {/* <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}> */}
-                Check-In
-              {/* </Box> */}
-            </Button>
-          )}
-          {(isAdmin() || isOrganizer()) && !showCreateCard && (
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleToggleCreateCard}
-              startIcon={<EventIcon />}
-              sx={{
-                minWidth: { xs: 'auto', sm: 'inherit' }, 
-                p: { xs: '6px 10px', sm: '6px 16px' },  // Reduced padding for xs
-                fontSize: { xs: '0.75rem', sm: '0.875rem' } // Reduced font size for xs
-              }}
-            >
-              {/* <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}> */}
-                Create Event
-              {/* </Box> */}
-            </Button>
-          )}
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            justifyContent: { xs: 'flex-start', sm: 'space-between' },
+            alignItems: 'center', 
+            mb: 4,
+            flexDirection: { xs: 'row', sm: 'row' } 
+          }}
+        >
+          <Typography variant={isMobile ? "h5" : "h4"} component="h1" sx={{ fontWeight: 'bold', mr: 1 }}>
+            Events
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', ml: { xs: 2, sm: 0 } }}>
+            {user && (
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={handleGlobalCheckInClick}
+                startIcon={<CheckInIcon />}
+                sx={{
+                  minWidth: { xs: 'auto', sm: 'inherit' }, 
+                  p: { xs: '6px 10px', sm: '6px 16px' }, 
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                }}
+              >
+                  Check-In
+              </Button>
+            )}
+            {(isAdmin() || isOrganizer()) && !showCreateCard && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleToggleCreateCard}
+                startIcon={<EventIcon />}
+                sx={{
+                  minWidth: { xs: 'auto', sm: 'inherit' }, 
+                  p: { xs: '6px 10px', sm: '6px 16px' }, 
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                }}
+              >
+                  Create Event
+              </Button>
+            )}
+          </Box>
         </Box>
-      </Box>
 
-      {showCreateCard && (isAdmin() || isOrganizer()) && (
-        <Card sx={{ mb: 4, mt: isMobile ? 2 : 0 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Create New Event
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Event Name"
-                  name="name" // Ensure 'name' prop matches the state key
-                  value={createForm.name}
-                  onChange={handleChange} // This should now work
-                  fullWidth
-                  required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Description"
-                  name="description" // Ensure 'name' prop matches the state key
-                  value={createForm.description}
-                  onChange={handleChange} // This should now work
-                  fullWidth
-                  multiline
-                  rows={4}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Start Date and Time"
-                  name="starts_at" // Ensure 'name' prop matches the state key
-                  type="datetime-local"
-                  value={createForm.starts_at}
-                  onChange={handleDateChange}
-                  fullWidth
-                  InputLabelProps={{
-                    shrink: true,
-                  }}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Address"
-                  name="address" // Ensure 'name' prop matches the state key
-                  value={createForm.address}
-                  onChange={handleChange} // This should now work
-                  fullWidth
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Max Capacity"
-                  name="max_capacity" // Ensure 'name' prop matches the state key
-                  type="number"
-                  value={createForm.max_capacity}
-                  onChange={handleChange} // This should now work
-                  fullWidth
-                  InputProps={{ inputProps: { min: 0 } }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Price Per Person"
-                  name="price_per_person" // Ensure 'name' prop matches the state key
-                  type="number"
-                  value={createForm.price_per_person}
-                  onChange={handlePriceChange} // Use specific handlePriceChange for its validation
-                  fullWidth
-                  InputProps={{ inputProps: { min: 0, step: "0.01" } }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel id="event-status-label">Status</InputLabel>
-                  <Select
-                    labelId="event-status-label"
-                    name="status"
-                    value={createForm.status}
-                    label="Status"
-                    onChange={(e) => setCreateForm(prev => ({ ...prev, status: e.target.value as EventStatus }))} // Select might need specific handling or adapt handleChange
-                  >
-                    <MenuItem value="Registration Open">Registration Open</MenuItem>
-                    <MenuItem value="Registration Closed">Registration Closed</MenuItem>
-                    <MenuItem value="Upcoming">Upcoming</MenuItem>
-                    <MenuItem value="In Progress">In Progress</MenuItem>
-                    <MenuItem value="Paused">Paused</MenuItem>
-                    <MenuItem value="Completed">Completed</MenuItem>
-                    <MenuItem value="Cancelled">Cancelled</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-            </Grid>
-          </CardContent>
-          <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
-            <Button onClick={handleToggleCreateCard} color="inherit">
-              Cancel
-            </Button>
-            <Button onClick={handleCreateEvent} variant="contained" color="primary">
-              Create Event
-            </Button>
-          </CardActions>
-        </Card>
-      )}
-      
-      {/* Grid for displaying event cards */}
-      {/* ... existing event cards grid ... */}
-
-      {/* actual event cards */}
-      <Grid container spacing={3}>
-        {sortedEvents.map(event => (
-          <Grid item xs={12} key={event.id}>
-            <Card sx={{ 
-              borderRadius: 2,
-              boxShadow: theme.shadows[2],
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              '&:hover': {
-                transform: 'translateY(-2px)',
-                boxShadow: theme.shadows[4],
-              }
-            }}>
-              <CardContent sx={{ p: { xs: 1.5, sm: 3 } }}> {/* Reduced padding on xs */}
-                {/* Align items center for better vertical alignment on wrap */}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 1, sm: 2 }, flexWrap: 'wrap', gap: 1 /* Add gap for wrapping */ }}>
-                  <Typography 
-                    variant="h5" 
-                    component="h2" 
-                    sx={{ 
-                      fontWeight: 600,
-                      fontSize: isMobile ? '1.1rem' : '1.5rem', // Reduced font size on mobile
-                      lineHeight: 1.2
+        {showCreateCard && (isAdmin() || isOrganizer()) && (
+          <Card sx={{ mb: 4, mt: isMobile ? 2 : 0 }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Create New Event
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Event Name"
+                    name="name"
+                    value={createForm.name}
+                    onChange={handleChange}
+                    fullWidth
+                    required
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Description"
+                    name="description"
+                    value={createForm.description}
+                    onChange={handleChange}
+                    fullWidth
+                    multiline
+                    rows={4}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Start Date and Time"
+                    name="starts_at"
+                    type="datetime-local"
+                    value={createForm.starts_at}
+                    onChange={handleDateChange}
+                    fullWidth
+                    InputLabelProps={{
+                      shrink: true,
                     }}
-                  >
-                    {event.name}
-                  </Typography>
-                    <Chip
-                      label={event.status}
-                      color={getStatusColor(event.status)}
-                    sx={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }} // Slightly smaller chip text on mobile
+                    required
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Address"
+                    name="address"
+                    value={createForm.address}
+                    onChange={handleChange}
+                    fullWidth
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Max Capacity"
+                    name="max_capacity"
+                    type="number"
+                    value={createForm.max_capacity}
+                    onChange={handleChange}
+                    fullWidth
+                    InputProps={{ inputProps: { min: 0 } }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Price Per Person"
+                    name="price_per_person"
+                    type="number"
+                    value={createForm.price_per_person}
+                    onChange={handlePriceChange}
+                    fullWidth
+                    InputProps={{ inputProps: { min: 0, step: "0.01" } }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel id="event-status-label">Status</InputLabel>
+                    <Select
+                      labelId="event-status-label"
+                      name="status"
+                      value={createForm.status}
+                      label="Status"
+                      onChange={(e) => setCreateForm(prev => ({ ...prev, status: e.target.value as EventStatus }))}
+                    >
+                      <MenuItem value="Registration Open">Registration Open</MenuItem>
+                      <MenuItem value="Registration Closed">Registration Closed</MenuItem>
+                      <MenuItem value="Upcoming">Upcoming</MenuItem>
+                      <MenuItem value="In Progress">In Progress</MenuItem>
+                      <MenuItem value="Completed">Completed</MenuItem>
+                      <MenuItem value="Cancelled">Cancelled</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </Grid>
+            </CardContent>
+            <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
+              <Button onClick={handleToggleCreateCard} color="inherit">
+                Cancel
+              </Button>
+              <Button onClick={handleCreateEvent} variant="contained" color="primary">
+                Create Event
+              </Button>
+            </CardActions>
+          </Card>
+        )}
+        
+        <Grid container spacing={3}>
+          {sortedEvents.map(event => (
+            <Grid item xs={12} key={event.id}>
+              <Card sx={{ 
+                borderRadius: 2,
+                boxShadow: theme.shadows[2],
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: theme.shadows[4],
+                }
+              }}>
+                <CardContent sx={{ p: { xs: 1.5, sm: 3 } }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 1, sm: 2 }, flexWrap: 'wrap', gap: 1}}>
+                    <Typography 
+                      variant="h5" 
+                      component="h2" 
+                      sx={{ 
+                        fontWeight: 600,
+                        fontSize: isMobile ? '1.1rem' : '1.5rem',
+                        lineHeight: 1.2
+                      }}
+                    >
+                      {event.name}
+                    </Typography>
+                      <Chip
+                        label={event.status}
+                        color={getStatusColor(event.status)}
+                      sx={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}
                     />
                   </Box>
-                <Box sx={{ mb: { xs: 1.5, sm: 2 } }}>
-                  <Typography 
-                    variant="body1" 
-                    color="text.secondary"
-                    sx={{ 
-                        mb: { xs: 1, sm: 2 }, 
-                        fontSize: isMobile ? '0.875rem' : '1rem' // Reduced font size for description
-                    }}
-                  >
-                  {event.description}
-                </Typography>
-                </Box>
-                
-                {/* Add the Timer Component for Events in Progress or Paused */}
-                {(event.status === 'In Progress' || event.status === 'Paused') && (
-                  <Box sx={{ mb: { xs: 1, sm: 3 } }}> {/* MODIFIED: Reduced bottom margin on xs */}
-                    <Divider sx={{ mb: { xs: 0.5, sm: 2 } }} /> {/* MODIFIED: Reduced bottom margin on xs */}
+                  <Box sx={{ mb: { xs: 1.5, sm: 2 } }}>
+                    <Typography 
+                      variant="body1" 
+                      color="text.secondary"
+                      sx={{ 
+                          mb: { xs: 1, sm: 2 }, 
+                          fontSize: isMobile ? '0.85rem' : '1rem'
+                      }}
+                    >
+                    {event.description}
+                  </Typography>
+                  </Box>
+                  
+                {(event.status === 'In Progress') && (
+                  <Box sx={{ mb: { xs: 1, sm: 3 } }}> 
+                    <Divider sx={{ mb: { xs: 0.5, sm: 2 } }} /> 
                     <Typography 
                       variant="h6" 
                       gutterBottom 
                       sx={{ 
-                        fontSize: { xs: '0.875rem', sm: '1.25rem' }, // MODIFIED: Reduced font size on xs
-                        mb: { xs: 0.5, sm: 2} // MODIFIED: Explicitly control margin, gutterBottom might add more
+                        fontSize: { xs: '0.875rem', sm: '1.25rem' },
+                        mb: { xs: 0.5, sm: 2}
                       }}
                     >
                       Round Timer
                     </Typography>
                     {(() => {
-                      // Moved logging logic outside the direct JSX return
                       const scheduleForTimer = isRegisteredForEvent(event.id) && event.registration?.status === 'Checked In' ? userSchedules[event.id] : undefined;
                       console.log(`Passing userSchedule to EventTimer for event ${event.id}:`, scheduleForTimer);
                       return (
                         <EventTimer 
                           eventId={event.id} 
                           isAdmin={canManageEvent(event)} 
-                          eventStatus={event.status} // Pass status down
-                          userSchedule={scheduleForTimer} // Pass the determined schedule
+                          eventStatus={event.status} 
+                          userSchedule={scheduleForTimer} 
                         />
                       );
                     })()}
                   </Box>
                 )}
                 
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1, sm: 2 } }}> {/* Reduced gap on xs */}
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1, sm: 2 } }}> 
                   <Typography 
                     variant="body2" 
                     color="text.secondary" 
@@ -1763,7 +1706,7 @@ const EventList = () => {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 0.5,
-                      fontSize: isMobile ? '0.75rem' : '0.875rem' // Reduced font size for details
+                      fontSize: isMobile ? '0.75rem' : '0.875rem' 
                     }}
                   >
                   <EventIcon fontSize="small" />
@@ -1776,7 +1719,7 @@ const EventList = () => {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 0.5,
-                      fontSize: isMobile ? '0.75rem' : '0.875rem' // Reduced font size for details
+                      fontSize: isMobile ? '0.75rem' : '0.875rem' 
                     }}
                   >
                     <PersonIcon fontSize="small" />
@@ -1789,7 +1732,7 @@ const EventList = () => {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 0.5,
-                      fontSize: isMobile ? '0.75rem' : '0.875rem' // Reduced font size for details
+                      fontSize: isMobile ? '0.75rem' : '0.875rem' 
                     }}
                   >
                     <AttachMoneyIcon fontSize="small" />
@@ -1802,7 +1745,7 @@ const EventList = () => {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 0.5,
-                      fontSize: isMobile ? '0.75rem' : '0.875rem' // Reduced font size for details
+                      fontSize: isMobile ? '0.75rem' : '0.875rem' 
                     }}
                   >
                   <LocationOnIcon fontSize="small" />
@@ -1814,12 +1757,12 @@ const EventList = () => {
                 {renderEventControls(event)}
               </CardContent>
               <CardActions sx={{ 
-                p: { xs: 1, sm: 2 }, // Reduced padding on xs
+                p: { xs: 1, sm: 2 }, 
                 pt: 1,
                 display: 'flex',
                 flexDirection: isMobile ? 'column' : 'row',
                 gap: 1,
-                justifyContent: 'flex-start' // Align buttons to the start
+                justifyContent: 'flex-start' 
               }}>
                 {renderActionButtons(event)}
               </CardActions>
@@ -2141,6 +2084,50 @@ const EventList = () => {
         </DialogActions>
       </Dialog>
       
+      {/* Table and Round Configuration Dialog */}
+      <Dialog 
+        open={isTableConfigOpen} 
+        onClose={() => setIsTableConfigOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Configure Speed Dating</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Please specify how many tables and rounds you want for this event.
+          </DialogContentText>
+          <Box sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              margin="dense"
+              label="Number of Tables"
+              type="number"
+              variant="outlined"
+              value={numTables}
+              onChange={(e) => setNumTables(parseInt(e.target.value) || 1)}
+              inputProps={{ min: 1 }}
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              fullWidth
+              margin="dense"
+              label="Number of Rounds"
+              type="number"
+              variant="outlined"
+              value={numRounds}
+              onChange={(e) => setNumRounds(parseInt(e.target.value) || 1)}
+              inputProps={{ min: 1 }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsTableConfigOpen(false)}>Cancel</Button>
+          <Button onClick={handleTableConfigSubmit} color="primary" variant="contained">
+            Next
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Start Event Confirmation Dialog */}
       <Dialog
         open={startEventDialogOpen}
@@ -2149,9 +2136,11 @@ const EventList = () => {
         <DialogTitle>Start Event</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to start "{selectedEventForStarting?.name}"? 
-            This will change the event status to "In Progress".
+            Are you sure you want to start "{selectedEventForStarting?.name}"?
           </DialogContentText>
+          <Typography variant="body1" sx={{ mt: 1, fontWeight: 'bold' }}>
+            This will use {numTables} tables and {numRounds} rounds.
+          </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setStartEventDialogOpen(false)}>Cancel</Button>
@@ -2161,25 +2150,6 @@ const EventList = () => {
         </DialogActions>
       </Dialog>
       
-      {/* Pause Event Confirmation Dialog */}
-      <Dialog
-        open={pauseEventDialogOpen}
-        onClose={() => setPauseEventDialogOpen(false)}
-      >
-        <DialogTitle>Pause Event</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to pause the timer for "{selectedEventForPausing?.name}"?
-            This will pause the event timer but keep the event status as "In Progress".
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPauseEventDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handlePauseEvent} color="primary" variant="contained">
-            Yes, Pause Timer
-          </Button>
-        </DialogActions>
-      </Dialog>
       
       {/* End Event Confirmation Dialog */}
       <Dialog
@@ -2342,14 +2312,11 @@ const EventList = () => {
                   </TableHead>
                   <TableBody>
                     {Object.entries(filteredSchedules).flatMap(([userId, userSchedule]) => {
-                      // Skip if userSchedule is not an array or empty
                       if (!Array.isArray(userSchedule) || userSchedule.length === 0) {
                         return [];
                       }
-                      
                       const user = Object.values(usersMap).find(u => u.id === Number(userId));
                       const userName = user ? `${user.first_name} ${user.last_name}` : `User ${userId}`;
-                      
                       return userSchedule.map((item: any, index: number) => (
                         <TableRow key={`${userId}-${index}`}>
                           <TableCell>{userName}</TableCell>
@@ -2357,9 +2324,8 @@ const EventList = () => {
                           <TableCell>{item.table}</TableCell>
                           <TableCell>{item.partner_name}</TableCell>
                           <TableCell>{item.partner_age || 'N/A'}</TableCell>
-                          {/* ADD Yes/No buttons for interest selection */}
                           <TableCell>
-                            {item.event_speed_date_id ? ( // Ensure event_speed_date_id exists
+                            {item.event_speed_date_id ? (
                               <Box sx={{ display: 'flex', gap: 0.5 }}>
                                 <Button
                                   variant={speedDateSelections[item.event_speed_date_id] === true ? 'contained' : 'outlined'}
@@ -2441,20 +2407,20 @@ const EventList = () => {
 
       {/* ADD Snackbar for Notification Permission Request */}
       <Snackbar
-         open={showNotificationSnackbar} // Control visibility with state
+         open={showNotificationSnackbar} 
          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-         autoHideDuration={10000} // 10 seconds
-         sx={{ position: 'fixed', bottom: 12, zIndex: theme.zIndex.snackbar + 1}} // Ensure it's above other elements if needed
+         onClose={handleCloseNotificationSnackbar}
+         sx={{ position: 'fixed', bottom: 12, zIndex: theme.zIndex.snackbar + 1}}
        >
          <Alert 
            severity="info" 
-           action={ // Button to trigger the permission request
-             <Button color="inherit" size="medium" onClick={handleEnableNotifications}>
+           action={ 
+             <Button color="inherit" size="medium" onClick={handleEnableNotifications} variant="outlined">
                Enable
              </Button>
            }
-           onClose={handleCloseNotificationSnackbar} // Add explicit close 'X' button
-           sx={{ width: '100%' }} // Ensure alert takes full width of snackbar
+           onClose={handleAlertClose} 
+           sx={{width: '100%', textAlign: 'center', pt: 1, pb: 1 }}
          >
            Enable browser notifications for event timer alerts
          </Alert>
@@ -2477,6 +2443,43 @@ const EventList = () => {
         />
       )}
     </Container>
+
+    <Snackbar
+       open={showNotificationSnackbar} 
+       anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+       onClose={handleCloseNotificationSnackbar} 
+       sx={{ position: 'flex', bottom: 12, zIndex: theme.zIndex.snackbar + 1}}
+     >
+       <Alert 
+         severity="info" 
+         action={ 
+           <Button color="inherit" size="medium" onClick={handleEnableNotifications} variant="outlined">
+             Enable
+           </Button>
+         }
+         onClose={handleAlertClose} 
+         sx={{width: '100%', textAlign: 'center', pt: 1, pb: 1 }} 
+       >
+         Enable browser notifications for event timer alerts
+       </Alert>
+     </Snackbar>
+
+    {selectedEventIdForMatches && (
+      <MatchesDialog
+        open={viewMatchesDialogOpen}
+        onClose={() => {
+          setViewMatchesDialogOpen(false);
+          setSelectedEventIdForMatches(null); 
+          setCurrentMatches([]);
+          setMatchesError(null);
+        }}
+        eventName={events.find(e => e.id.toString() === selectedEventIdForMatches)?.name}
+        matches={currentMatches}
+        loading={matchesLoading}
+        error={matchesError}
+      />
+    )}
+  </>
   );
 };
 
