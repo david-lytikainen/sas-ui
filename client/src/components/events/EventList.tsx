@@ -18,7 +18,7 @@ import {
   useTheme,
   TextField,
   Paper,
-  Link,
+  Link as MuiLink,
   Collapse,
   List,
   ListItem,
@@ -38,6 +38,7 @@ import {
   Divider,
   Snackbar,
   SnackbarCloseReason,
+  Tooltip,
 } from '@mui/material';
 import {
   Event as EventIcon,
@@ -850,22 +851,59 @@ const EventList = () => {
       
       return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Button 
-            size="small" 
-            startIcon={<SignUpIcon />} 
-            color="primary" 
-            onClick={() => handleSignUpClick(event.id)}
-            disabled={registrationDisabled}
-            sx={{
-              opacity: registrationDisabled ? 0.6 : 1,
-              '&.Mui-disabled': {
-                bgcolor: 'action.disabledBackground',
-                color: 'text.disabled'
-              }
-            }}
+          <Tooltip 
+            title={
+              registrationDisabled ? (
+                <Typography 
+                  sx={{ 
+                    fontSize: '0.9rem', 
+                    fontWeight: 'medium',
+                    textAlign: 'center',
+                    p: 0.5
+                  }}
+                >
+                  Registration closed, event starts within 2 hours.
+                </Typography>
+              ) : ""
+            }
+            arrow
+            placement="top"
+            enterTouchDelay={0}
+            leaveTouchDelay={1500}
           >
-            {registrationDisabled ? 'Registration Closed' : 'Register'}
-          </Button>
+            <span>
+              <Button 
+                size="small" 
+                startIcon={<SignUpIcon />} 
+                color="primary" 
+                onClick={() => handleSignUpClick(event.id)}
+                disabled={registrationDisabled}
+                sx={{
+                  opacity: registrationDisabled ? 0.6 : 1,
+                  '&.Mui-disabled': {
+                    bgcolor: 'action.disabledBackground',
+                    color: 'text.disabled'
+                  }
+                }}
+              >
+                {registrationDisabled ? 'Registration Closed' : 'Register'}
+              </Button>
+            </span>
+          </Tooltip>
+          {registrationDisabled && (
+            <Typography 
+              variant="caption" 
+              color="text.secondary" 
+              sx={{ 
+                fontSize: '0.7rem', 
+                mt: 0.5, 
+                textAlign: 'center',
+                display: { xs: 'block', md: 'none' }
+              }}
+            >
+              Tap for details
+            </Typography>
+          )}
         </Box>
       );
     }
@@ -2424,8 +2462,7 @@ const EventList = () => {
       
       {/* Support email footer */}
       <Box sx={{ mt: 4, pt: 2, display: 'flex', justifyContent: 'center', borderTop: `1px solid ${theme.palette.divider}` }}>
-        <Link 
-          component="a"
+        <MuiLink 
           href="mailto:savedandsingle.events@gmail.com" 
           sx={{ 
             display: 'flex', 
@@ -2443,7 +2480,7 @@ const EventList = () => {
           <Typography variant="body2">
             Need help? Contact Us
           </Typography>
-        </Link>
+        </MuiLink>
       </Box>
 
       {/* ADD Snackbar for Notification Permission Request */}
