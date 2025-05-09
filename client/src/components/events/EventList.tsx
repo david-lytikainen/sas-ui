@@ -238,12 +238,35 @@ const EventList = () => {
   // Calculate eventOptions directly instead of storing in state
   const eventOptions = events.filter(event => userRegisteredEvents.includes(event.id) && event.registration?.status === 'Registered');
 
+  const isRegistrationClosed = (event: Event) => {
+    if (!event.starts_at) return false;
+    
+    const eventStart = new Date(event.starts_at);
+    const now = new Date();
+    
+    // Calculate time difference in hours
+    const timeDiff = (eventStart.getTime() - now.getTime()) / (1000 * 60 * 60);
+    
+    // Return true if event starts in 2 hours or less
+    return timeDiff <= 2;
+  };
+
+  // Update handleSignUpClick to check registration close time
   const handleSignUpClick = (eventId: number) => {
     const event = events.find(e => e.id === eventId);
-    if (event && event.status === 'Completed') {
+    if (!event) return;
+    
+    if (event.status === 'Completed') {
       setErrorMessage("Registration is not available for completed events.");
       return;
     }
+    
+    // Check if event starts within 2 hours
+    if (isRegistrationClosed(event)) {
+      setErrorMessage("Registration is closed for this event (starts within 2 hours).");
+      return;
+    }
+    
     setSignUpEventId(eventId.toString());
     setSignUpDialogOpen(true);
   };
@@ -581,41 +604,49 @@ const EventList = () => {
                         }}
                       >
                         <Grid container spacing={1} alignItems="center">
-                          <Grid item xs={12} sm={item.event_speed_date_id ? 7 : 12}> 
+                          <Grid item xs={12}> 
                             <Typography variant="subtitle2" component="div" gutterBottom={false} sx={{ fontWeight: 'bold', mb: 0.25 }}>
                               Round {item.round}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.1 }}>
-                              Table: {item.table}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0 }}>
-                              Partner: {item.partner_name} (Age: {item.partner_age || 'N/A'})
-                            </Typography>
-                          </Grid>
-                          {item.event_speed_date_id && (
-                            <Grid item xs={12} sm={5}> 
-                              <Box sx={{ display: 'flex', gap: 0.5, justifyContent: { xs: 'flex-start', sm: 'flex-end' }, mt: { xs: 0.5, sm: 0 } }}> 
-                                <Button
-                                  variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === true ? 'contained' : 'outlined'}
-                                  size="small"
-                                  color="success"
-                                  onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, true)}
-                                  sx={{ minWidth: '60px' }}
-                                >
-                                  Yes
-                                </Button>
-                                <Button
-                                  variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === false ? 'contained' : 'outlined'}
-                                  size="small"
-                                  color="error"
-                                  onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, false)}
-                                  sx={{ minWidth: '60px' }}
-                                >
-                                  No
-                                </Button>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Box>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.1 }}>
+                                  Table: {item.table}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0 }}>
+                                  Partner: {item.partner_name} (Age: {item.partner_age || 'N/A'})
+                                </Typography>
                               </Box>
-                            </Grid>
-                          )}
+                              {item.event_speed_date_id && (
+                                <Box sx={{ 
+                                  display: 'flex',
+                                  gap: 0.75,
+                                  ml: 2,
+                                  position: 'relative',
+                                  top: '-10px'
+                                }}> 
+                                  <Button
+                                    variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === true ? 'contained' : 'outlined'}
+                                    size="small"
+                                    color="success"
+                                    onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, true)}
+                                    sx={{ minWidth: '50px', px: 1.5, py: 0.5, fontSize: '0.85rem' }}
+                                  >
+                                    Yes
+                                  </Button>
+                                  <Button
+                                    variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === false ? 'contained' : 'outlined'}
+                                    size="small"
+                                    color="error"
+                                    onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, false)}
+                                    sx={{ minWidth: '50px', px: 1.5, py: 0.5, fontSize: '0.85rem' }}
+                                  >
+                                    No
+                                  </Button>
+                                </Box>
+                              )}
+                            </Box>
+                          </Grid>
                         </Grid>
                       </Box>
                     ))}
@@ -707,45 +738,53 @@ const EventList = () => {
                         }}
                       >
                         <Grid container spacing={1} alignItems="center">
-                          <Grid item xs={12} sm={item.event_speed_date_id ? 6 : 12}>
-                            <Typography variant="subtitle2" component="div" sx={{ fontWeight: 'bold' }}>
+                          <Grid item xs={12}> 
+                            <Typography variant="subtitle2" component="div" gutterBottom={false} sx={{ fontWeight: 'bold', mb: 0.25 }}>
                               Round {item.round}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              Table: {item.table}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              Partner: {item.partner_name} (Age: {item.partner_age || 'N/A'})
-                            </Typography>
-                          </Grid>
-                          {item.event_speed_date_id && (
-                            <Grid item xs={12} sm={6}>
-                              <Box sx={{ display: 'flex', gap: 1, justifyContent: { xs: 'flex-start', sm: 'flex-end' }, mt: { xs: 1, sm: 0 } }}>
-                                <Button
-                                  variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === true ? 'contained' : 'outlined'}
-                                  size="small"
-                                  color="success"
-                                  onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, true)}
-                                  sx={{ minWidth: '60px' }}
-                                >
-                                  Yes
-                                </Button>
-                                <Button
-                                  variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === false ? 'contained' : 'outlined'}
-                                  size="small"
-                                  color="error"
-                                  onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, false)}
-                                  sx={{ minWidth: '60px' }}
-                                >
-                                  No
-                                </Button>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Box>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.1 }}>
+                                  Table: {item.table}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0 }}>
+                                  Partner: {item.partner_name} (Age: {item.partner_age || 'N/A'})
+                                </Typography>
                               </Box>
-                            </Grid>
-                          )}
+                              {item.event_speed_date_id && (
+                                <Box sx={{ 
+                                  display: 'flex',
+                                  gap: 0.75,
+                                  ml: 2,
+                                  position: 'relative',
+                                  top: '-8px'
+                                }}> 
+                                  <Button
+                                    variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === true ? 'contained' : 'outlined'}
+                                    size="small"
+                                    color="success"
+                                    onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, true)}
+                                    sx={{ minWidth: '50px', px: 1.5, py: 0.5, fontSize: '0.85rem' }}
+                                  >
+                                    Yes
+                                  </Button>
+                                  <Button
+                                    variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === false ? 'contained' : 'outlined'}
+                                    size="small"
+                                    color="error"
+                                    onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, false)}
+                                    sx={{ minWidth: '50px', px: 1.5, py: 0.5, fontSize: '0.85rem' }}
+                                  >
+                                    No
+                                  </Button>
+                                </Box>
+                              )}
+                            </Box>
+                          </Grid>
                         </Grid>
                       </Box>
                     ))}
-                     {attendeeSelectionError[event.id] && (
+                    {attendeeSelectionError[event.id] && (
                       <Alert severity="error" sx={{ mt: 1.5 }} onClose={() => setAttendeeSelectionError(prev => ({...prev, [event.id]: null}))}>
                         {attendeeSelectionError[event.id]}
                       </Alert>
@@ -766,65 +805,67 @@ const EventList = () => {
                     </Button>
                   </>
                 ) : (
-                  <Typography variant="body2" color="text.secondary">Your schedule for this event is not yet available or you are not checked in.</Typography>
+                  <Typography variant="body2" color="text.secondary">Your schedule for this event is not yet available or you were not checked in.</Typography>
                 )}
               </Paper>
             </Collapse>
           </Box>
         );
       }
+      return (
+        <Chip
+          label="In Progress"
+          color="warning"
+          size="small"
+        />
+      );
     }
     
-
-    if (isRegistered && registrationStatus === 'Registered') {
-      return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        <Button 
-          size="small" 
-          startIcon={<CancelIcon />} 
-          color="error"
-          onClick={() => handleCancelClick(event.id)}
-        >
-          Cancel Registration
-        </Button>
-        </Box>
-      );
-    } else if (isRegistered && registrationStatus === 'Checked In') {
-      return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        <Chip
-          label="Checked In"
-          color="success"
-          icon={<CheckInIcon />}
-        />
-        </Box>
-      );
-    } 
-    else if (isRegistered) { 
-      return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Button 
-              size="small" 
-              startIcon={<CancelIcon />} 
-              color="error"
-              onClick={() => handleCancelClick(event.id)}
-          >
+    if (isRegistered) {
+      if (event.status === 'Registration Open') {
+        return (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
+            <Chip
+              label={registrationStatus}
+              color={registrationStatus === 'Checked In' ? 'success' : 'info'}
+              icon={registrationStatus === 'Checked In' ? <CheckInIcon /> : undefined}
+              size="small"
+            />
+            <Button 
+              size="small"
+              variant="outlined" 
+              color="error" 
+              onClick={() => handleCancelClick(event.id)} 
+              startIcon={<CancelIcon />}
+            >
               Cancel Registration
-          </Button>
+            </Button>
           </Box>
-      );
-    }
-    else if (event.status === 'Registration Open') { 
+        );
+      }
+    } 
+    else if (event.status === 'Registration Open') {
+      // Check if event starts within 2 hours
+      const registrationDisabled = isRegistrationClosed(event);
+      
       return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        <Button 
-          size="small" 
-          startIcon={<SignUpIcon />} 
-          color="primary" 
-          onClick={() => handleSignUpClick(event.id)}
-        >
-          Register
-        </Button>
+          <Button 
+            size="small" 
+            startIcon={<SignUpIcon />} 
+            color="primary" 
+            onClick={() => handleSignUpClick(event.id)}
+            disabled={registrationDisabled}
+            sx={{
+              opacity: registrationDisabled ? 0.6 : 1,
+              '&.Mui-disabled': {
+                bgcolor: 'action.disabledBackground',
+                color: 'text.disabled'
+              }
+            }}
+          >
+            {registrationDisabled ? 'Registration Closed' : 'Register'}
+          </Button>
         </Box>
       );
     }
