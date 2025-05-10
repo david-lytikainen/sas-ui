@@ -97,28 +97,43 @@ const Navigation = () => {
               }}
               sx={{ mr: 4 }}
             >
-              <Typography
-                variant="h6"
-                noWrap
-                component={RouterLink}
-                to="/"
-                sx={{
-                  fontWeight: 1100,
-                  color: theme.palette.primary.main,
-                  textDecoration: 'none',
-                  letterSpacing: '.05rem',
-                  display: 'inline-block',
-                  transition: 'color 0.2s ease-in-out',
-                  '&:hover': {
-                    color: theme.palette.primary.dark,
-                    transform: 'scale(1.05)',
-                    transition: 'color 0.2s ease-in-out, transform 0.2s ease-in-out',
-                  },
-                
-                }}
-              >
-                S&S
-              </Typography>
+              <RouterLink to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
+                {isMobile ? (
+                  <Box 
+                    component="img" 
+                    src="/favicon.svg" 
+                    alt="Saved & Single Logo" 
+                    sx={{ 
+                      height: 32, 
+                      width: 32,
+                      transition: 'transform 0.2s ease-in-out',
+                      '&:hover': {
+                        transform: 'scale(1.05)'
+                      }
+                    }} 
+                  />
+                ) : (
+                  <Typography
+                    variant="h6"
+                    noWrap
+                    sx={{
+                      fontWeight: 1100,
+                      color: theme.palette.primary.main,
+                      textDecoration: 'none',
+                      letterSpacing: '.05rem',
+                      display: 'inline-block',
+                      transition: 'color 0.2s ease-in-out',
+                      '&:hover': {
+                        color: theme.palette.primary.dark,
+                        transform: 'scale(1.05)',
+                        transition: 'color 0.2s ease-in-out, transform 0.2s ease-in-out',
+                      },
+                    }}
+                  >
+                    S&S
+                  </Typography>
+                )}
+              </RouterLink>
             </AnimatedBox>
 
             <Box sx={{ display: 'flex', gap: isMobile ? 1 : 2, alignItems: 'center' }}>
