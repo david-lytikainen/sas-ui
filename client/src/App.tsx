@@ -235,11 +235,16 @@ function App() {
                 },
               }
             : {
-                primary: {
-                  main: '#1976d2', 
-                },
                 secondary: {
-                  main: '#dc004e', 
+                  main: '#707070', // Darker gray secondary color
+                },
+                background: {
+                  default: '#222222', // Dark gray background
+                  paper: '#333333',   // Slightly lighter gray for paper elements
+                },
+                text: {
+                  primary: '#E0E0E0', // Light gray text for good contrast
+                  secondary: '#B0B0B0', // Slightly darker gray for secondary text
                 },
               }),
         },
@@ -274,7 +279,7 @@ function App() {
                 backgroundImage: 'none',
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 ...(mode === 'dark' && {
-                  backgroundColor: '#1e1e1e',
+                  backgroundColor: '#333333',
                 }),
                  // Light mode paper background will be taken from palette.background.paper
                 '&:hover': {
@@ -291,7 +296,7 @@ function App() {
             styleOverrides: {
               root: {
                 backgroundColor: mode === 'dark' 
-                  ? 'rgba(0, 0, 0, 0.85)' 
+                  ? 'rgba(19, 19, 19, 0.85)' 
                   // Light mode AppBar - using warm off-white with blur
                   : 'rgba(255, 249, 245, 0.85)', 
                 backdropFilter: 'blur(20px)',
