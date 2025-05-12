@@ -1601,12 +1601,12 @@ const EventList = () => {
         </Box>
 
         {showCreateCard && (isAdmin() || isOrganizer()) && (
-          <Card sx={{ mb: 4, mt: isMobile ? 2 : 0 }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
+          <Card sx={{ mb: 3, mt: isMobile ? 1 : 0 }}>
+            <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+              <Typography variant="h6" gutterBottom sx={{ mb: isMobile ? 1 : 2 }}>
                 Create New Event
               </Typography>
-              <Grid container spacing={2}>
+              <Grid container spacing={isMobile ? 1 : 2}>
                 <Grid item xs={12} sm={6}>
                   <TextField
                     label="Event Name"
@@ -1615,6 +1615,8 @@ const EventList = () => {
                     onChange={handleChange}
                     fullWidth
                     required
+                    size={isMobile ? "small" : "medium"}
+                    margin="dense"
                   />
                 </Grid>
                 <Grid item xs={12}>
@@ -1625,7 +1627,9 @@ const EventList = () => {
                     onChange={handleChange}
                     fullWidth
                     multiline
-                    rows={4}
+                    rows={isMobile ? 2 : 4}
+                    size={isMobile ? "small" : "medium"}
+                    margin="dense"
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -1640,6 +1644,8 @@ const EventList = () => {
                       shrink: true,
                     }}
                     required
+                    size={isMobile ? "small" : "medium"}
+                    margin="dense"
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -1649,9 +1655,11 @@ const EventList = () => {
                     value={createForm.address}
                     onChange={handleChange}
                     fullWidth
+                    size={isMobile ? "small" : "medium"}
+                    margin="dense"
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={6} sm={6}>
                   <TextField
                     label="Max Capacity"
                     name="max_capacity"
@@ -1660,9 +1668,11 @@ const EventList = () => {
                     onChange={handleChange}
                     fullWidth
                     InputProps={{ inputProps: { min: 0 } }}
+                    size={isMobile ? "small" : "medium"}
+                    margin="dense"
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={6} sm={6}>
                   <TextField
                     label="Price Per Person"
                     name="price_per_person"
@@ -1671,10 +1681,12 @@ const EventList = () => {
                     onChange={handlePriceChange}
                     fullWidth
                     InputProps={{ inputProps: { min: 0, step: "0.01" } }}
+                    size={isMobile ? "small" : "medium"}
+                    margin="dense"
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
+                  <FormControl fullWidth size={isMobile ? "small" : "medium"} margin="dense">
                     <InputLabel id="event-status-label">Status</InputLabel>
                     <Select
                       labelId="event-status-label"
@@ -1694,11 +1706,11 @@ const EventList = () => {
                 </Grid>
               </Grid>
             </CardContent>
-            <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
-              <Button onClick={handleToggleCreateCard} color="inherit">
+            <CardActions sx={{ justifyContent: 'flex-end', p: isMobile ? 1 : 2 }}>
+              <Button onClick={handleToggleCreateCard} color="inherit" size={isMobile ? "small" : "medium"}>
                 Cancel
               </Button>
-              <Button onClick={handleCreateEvent} variant="contained" color="primary">
+              <Button onClick={handleCreateEvent} variant="contained" color="primary" size={isMobile ? "small" : "medium"}>
                 Create Event
               </Button>
             </CardActions>
