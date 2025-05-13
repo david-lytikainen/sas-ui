@@ -192,6 +192,8 @@ const EventList = () => {
   const [numTables, setNumTables] = useState<number>(10);
   const [numRounds, setNumRounds] = useState<number>(10);
   const [isTableConfigOpen, setIsTableConfigOpen] = useState<boolean>(false);
+  const [savedAttendeeSelections, setSavedAttendeeSelections] = useState<Record<number, Record<number, boolean>>>({}); // eventId -> { event_speed_date_id: interested }
+  const [saveIndicator, setSaveIndicator] = useState<Record<number, boolean>>({}); // eventId -> true if just saved
 
   const fetchMatchesForEvent = async (eventId: string) => {
     setMatchesLoading(true);
@@ -508,41 +510,95 @@ const EventList = () => {
     setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null }));
   };
 
-  const handleAttendeeSubmitSelections = async (eventId: number) => {
+  const getCurrentPicksForEvent = (eventId: number) => {
+    return Object.entries(attendeeSpeedDateSelections)
+      .filter(([_, sel]) => sel.eventId === eventId)
+      .reduce((acc, [id, sel]) => {
+        acc[Number(id)] = sel.interested;
+        return acc;
+      }, {} as Record<number, boolean>);
+  };
+
+  const isSaveDisabled = (eventId: number) => {
+    const current = getCurrentPicksForEvent(eventId);
+    const saved = savedAttendeeSelections[eventId] || {};
+    const allIds = new Set([...Object.keys(current), ...Object.keys(saved)]);
+    for (const id of Array.from(allIds)) {
+      if (current[Number(id)] !== saved[Number(id)]) return false;
+    }
+    return true;
+  };
+
+  const handleSaveAttendeeSelections = async (eventId: number) => {
+    const currentPicks = getCurrentPicksForEvent(eventId);
+    // Update local saved state first for immediate UI feedback if desired for isSaveDisabled
+    setSavedAttendeeSelections(prev => ({ ...prev, [eventId]: { ...currentPicks } }));
+
     setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null })); // Clear previous error
+    const schedule = userSchedules[eventId] || [];
+    
+    const selectionsToSubmit = schedule.map(item => ({
+      event_speed_date_id: item.event_speed_date_id,
+      interested: currentPicks[item.event_speed_date_id] === true // Default to false (NO) if not in currentPicks
+    }));
 
-    const selectionsToSubmit = Object.entries(attendeeSpeedDateSelections)
-      .filter(([_, selection]) => selection.eventId === eventId)
-      .map(([id, selection]) => ({
-        event_speed_date_id: Number(id),
-        interested: selection.interested,
-      }));
+    if (selectionsToSubmit.length === 0 && schedule.length > 0) {
 
-    if (selectionsToSubmit.length === 0) {
-      setAttendeeSelectionError(prev => ({ ...prev, [eventId]: 'No selections have been made for this event.' }));
+    } else if (schedule.length === 0) {
+      setAttendeeSelectionError(prev => ({ ...prev, [eventId]: 'No schedule found to save selections for this event.' }));
       return;
     }
+    setSaveIndicator(prev => ({ ...prev, [eventId]: true }));
 
     try {
       await eventsApi.submitSpeedDateSelections(eventId.toString(), selectionsToSubmit);
-      setSubmittedEventIds(prev => new Set(prev).add(eventId));
-      setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null }));
-      setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: false })); // Clear specific error on success too
+
+      setTimeout(() => setSaveIndicator(prev => ({ ...prev, [eventId]: false })), 1200);
+      setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: false }));
     } catch (error: any) {
       const specificErrorMessage = 'Speed date selections window closed 24 hours after event completion.';
       const backendErrorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
       
-      // Check for the specific error message from the backend
       if (backendErrorMessage === specificErrorMessage) {
         setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: true }));
-        setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null })); // Clear generic error if specific one is set
+        setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null })); 
       } else {
-        // Handle other generic errors
         setAttendeeSelectionError(prev => ({
           ...prev,
-          [eventId]: backendErrorMessage || 'Failed to submit your selections.'
+          [eventId]: backendErrorMessage || 'Failed to save your selections.'
         }));
-        setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: false })); // Clear specific error if a different error occurs
+        setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: false }));
+      }
+      setSaveIndicator(prev => ({ ...prev, [eventId]: false }));
+    }
+  };
+
+  const handleAttendeeSubmitSelections = async (eventId: number) => {
+    setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null }));
+    const schedule = userSchedules[eventId] || [];
+    const saved = savedAttendeeSelections[eventId] || {};
+    const selectionsToSubmit = schedule.map(item => ({
+      event_speed_date_id: item.event_speed_date_id,
+      interested: saved[item.event_speed_date_id] === true // default to false (NO)
+    }));
+    if (selectionsToSubmit.length === 0) {
+      setAttendeeSelectionError(prev => ({ ...prev, [eventId]: 'No schedule found for this event.' }));
+      return;
+    }
+    try {
+      await eventsApi.submitSpeedDateSelections(eventId.toString(), selectionsToSubmit);
+      setSubmittedEventIds(prev => new Set(prev).add(eventId));
+      setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null }));
+      setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: false }));
+    } catch (error: any) {
+      const specificErrorMessage = 'Speed date selections window closed 24 hours after event completion.';
+      const backendErrorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
+      if (backendErrorMessage === specificErrorMessage) {
+        setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: true }));
+        setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null }));
+      } else {
+        setAttendeeSelectionError(prev => ({ ...prev, [eventId]: backendErrorMessage || 'Failed to submit your selections.' }));
+        setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: false }));
       }
     }
   };
@@ -656,23 +712,36 @@ const EventList = () => {
                         {attendeeSelectionError[event.id]}
                       </Alert>
                     )}
-                    {/* Submit button logic adjusted */}
-                    <Button
-                      fullWidth
-                      variant="contained"
-                      color="primary"
-                      size="small"
-                      onClick={() => handleAttendeeSubmitSelections(event.id)}
-                      sx={{ mt: 1.5 }}
-                      disabled={
-                        // Disable if no selections made OR if already submitted OR if window is known closed
-                        !Object.values(attendeeSpeedDateSelections).some(sel => sel.eventId === event.id) ||
-                        submittedEventIds.has(event.id) ||
-                        selectionWindowClosedError[event.id] // Added check here
-                      }
-                    >
-                      {submittedEventIds.has(event.id) ? 'Selections Submitted' : 'Submit My Selections'}
-                    </Button>
+                    {/* Horizontal Save and Submit buttons */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mt: 1.5 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Button
+                          variant="outlined"
+                          color="inherit" // Changed from secondary to inherit
+                          size="small"
+                          onClick={() => handleSaveAttendeeSelections(event.id)}
+                          disabled={isSaveDisabled(event.id)}
+                        >
+                          Save
+                        </Button>
+                        {saveIndicator[event.id] && (
+                          <Typography variant="body2" color="success.main">Saved!</Typography>
+                        )}
+                      </Box>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        size="small"
+                        onClick={() => handleAttendeeSubmitSelections(event.id)}
+                        disabled={ // Logic for Completed events
+                          (!userSchedules[event.id] || userSchedules[event.id].length === 0) ||
+                          submittedEventIds.has(event.id) ||
+                          selectionWindowClosedError[event.id]
+                        }
+                      >
+                        {submittedEventIds.has(event.id) ? 'Selections Submitted' : 'Submit My Selections'}
+                      </Button>
+                    </Box>
                     {/* ADDED: Display specific message if window is closed */}
                     {selectionWindowClosedError[event.id] && (
                       <Typography variant="caption" color="error" sx={{ display: 'block', textAlign: 'center', mt: 0.5 }}>
@@ -790,20 +859,36 @@ const EventList = () => {
                         {attendeeSelectionError[event.id]}
                       </Alert>
                     )}
-                    <Button
-                      fullWidth
-                      variant="contained"
-                      color="primary"
-                      size="small"
-                      onClick={() => handleAttendeeSubmitSelections(event.id)}
-                      sx={{ mt: 1.5 }}
-                      disabled={
-                        !Object.values(attendeeSpeedDateSelections).some(sel => sel.eventId === event.id) ||
-                        submittedEventIds.has(event.id)
-                      }
-                    >
-                      {submittedEventIds.has(event.id) ? 'Selections Submitted' : 'Submit My Selections'}
-                    </Button>
+                    {/* Horizontal Save and Submit buttons */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mt: 1.5 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Button
+                          variant="outlined"
+                          color="inherit" // Changed from secondary to inherit
+                          size="small"
+                          onClick={() => handleSaveAttendeeSelections(event.id)}
+                          disabled={isSaveDisabled(event.id)}
+                        >
+                          Save
+                        </Button>
+                        {saveIndicator[event.id] && (
+                          <Typography variant="body2" color="success.main">Saved!</Typography>
+                        )}
+                      </Box>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        size="small"
+                        onClick={() => handleAttendeeSubmitSelections(event.id)}
+                        disabled={ // Corrected disabled logic for In Progress events
+                          (!userSchedules[event.id] || userSchedules[event.id].length === 0) || // Disable if no schedule
+                          submittedEventIds.has(event.id) ||
+                          selectionWindowClosedError[event.id]
+                        }
+                      >
+                        {submittedEventIds.has(event.id) ? 'Selections Submitted' : 'Submit My Selections'}
+                      </Button>
+                    </Box>
                   </>
                 ) : (
                   <Typography variant="body2" color="text.secondary">Your schedule for this event is not yet available or you were not checked in.</Typography>
@@ -1751,7 +1836,7 @@ const EventList = () => {
                   <Box sx={{ mb: { xs: 1.5, sm: 2 } }}>
                     <Typography 
                       variant="body1" 
-                      color="text.secondary"
+                      color="text.secondary" 
                       sx={{ 
                           mb: { xs: 1, sm: 2 }, 
                           fontSize: isMobile ? '0.85rem' : '1rem'
@@ -2397,8 +2482,6 @@ const EventList = () => {
                           )}
                         </Box>
                       </TableCell>
-                      {/* ADD New TableCell for Interest Selection */}
-                      <TableCell><strong>Interest</strong></TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -2415,32 +2498,6 @@ const EventList = () => {
                           <TableCell>{item.table}</TableCell>
                           <TableCell>{item.partner_name}</TableCell>
                           <TableCell>{item.partner_age || 'N/A'}</TableCell>
-                          <TableCell>
-                            {item.event_speed_date_id ? (
-                              <Box sx={{ display: 'flex', gap: 0.5 }}>
-                                <Button
-                                  variant={speedDateSelections[item.event_speed_date_id] === true ? 'contained' : 'outlined'}
-                                  size="small"
-                                  color="success"
-                                  onClick={() => setSpeedDateSelections(prev => ({ ...prev, [item.event_speed_date_id]: true }))}
-                                  sx={{ minWidth: '50px', p: '2px 6px', fontSize: '0.75rem' }}
-                                >
-                                  Yes
-                                </Button>
-                                <Button
-                                  variant={speedDateSelections[item.event_speed_date_id] === false ? 'contained' : 'outlined'}
-                                  size="small"
-                                  color="error"
-                                  onClick={() => setSpeedDateSelections(prev => ({ ...prev, [item.event_speed_date_id]: false }))}
-                                  sx={{ minWidth: '50px', p: '2px 6px', fontSize: '0.75rem' }}
-                                >
-                                  No
-                                </Button>
-                              </Box>
-                            ) : (
-                              <Typography variant="caption" color="textSecondary">N/A</Typography>
-                            )}
-                          </TableCell>
                         </TableRow>
                       ));
                     })}
