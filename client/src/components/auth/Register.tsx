@@ -206,6 +206,7 @@ const Register = () => {
               pattern: "[0-9]{10}",
               title: "Please enter a 10-digit phone number"
             }}
+            sx={{ mb: 1 }}
           />
 
           <TextField
@@ -220,12 +221,29 @@ const Register = () => {
             size="small"
             InputLabelProps={{
               shrink: true,
+              sx: {
+                color: 'text.secondary',
+              }
             }}
             inputProps={{
               max: new Date().toISOString().split('T')[0],
             }}
             helperText="Must be 18 or older"
-            FormHelperTextProps={{ sx: { fontSize: '0.75rem' } }}
+            FormHelperTextProps={{ 
+              sx: { 
+                fontSize: '0.75rem',
+                marginTop: '2px',
+                color: 'text.secondary',
+                opacity: 0.8
+              } 
+            }}
+            sx={{
+              mt: 0.5,
+              mb: .5,
+              '& .MuiInputBase-root': {
+                marginBottom: '0px'
+              }
+            }}
           />
 
           <FormControl fullWidth margin="dense" required size="small">
