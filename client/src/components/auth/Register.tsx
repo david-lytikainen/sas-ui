@@ -223,6 +223,9 @@ const Register = () => {
               shrink: true,
               sx: {
                 color: 'text.secondary',
+                textAlign: 'left',
+                transform: 'translate(12px, -9px) scale(0.75)',
+                transformOrigin: 'top left'
               }
             }}
             inputProps={{
@@ -230,20 +233,6 @@ const Register = () => {
               style: { 
                 textAlign: 'left',
                 paddingLeft: '12px'
-              },
-              placeholder: 'MM/DD/YYYY'
-            }}
-            InputProps={{
-              sx: {
-                '& input::-webkit-datetime-edit': {
-                  paddingLeft: 1,
-                  fontSize: '0.875rem'
-                },
-                '& input::-webkit-datetime-edit-fields-wrapper': {
-                  textAlign: 'left'
-                },
-                height: '40px',
-                padding: '0px'
               }
             }}
             helperText="Must be 18 or older"
@@ -260,15 +249,41 @@ const Register = () => {
               mb: .5,
               '& .MuiInputBase-root': {
                 marginBottom: '0px',
-                height: '40px'
+                height: '40px',
+                display: 'flex',
+                justifyContent: 'flex-start',
+                alignItems: 'center',
+                '& input': {
+                  textAlign: 'left',
+                  paddingLeft: '12px !important'
+                }
+              },
+              '& input[type="date"]::-webkit-date-and-time-value': {
+                textAlign: 'left'
               },
               '& input::-webkit-calendar-picker-indicator': {
                 marginRight: '8px',
+                position: 'absolute',
+                right: '0',
                 opacity: 0.7
               },
-              '& input': {
+              '& input::-webkit-datetime-edit': {
+                paddingLeft: 0,
+                textAlign: 'left'
+              },
+              '& input::-webkit-datetime-edit-fields-wrapper': {
                 textAlign: 'left',
-                direction: 'ltr'
+                paddingLeft: 0
+              },
+              '@supports (-webkit-touch-callout: none)': {
+                '& input[type="date"]': {
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-start',
+                  '&::-webkit-date-and-time-value': {
+                    margin: 0
+                  }
+                }
               }
             }}
           />
