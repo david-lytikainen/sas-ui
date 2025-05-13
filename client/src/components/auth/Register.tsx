@@ -255,11 +255,15 @@ const Register = () => {
                 alignItems: 'center',
                 '& input': {
                   textAlign: 'left',
-                  paddingLeft: '12px !important'
+                  paddingLeft: '12px !important',
+                  opacity: 1,
+                  color: 'text.primary'
                 }
               },
               '& input[type="date"]::-webkit-date-and-time-value': {
-                textAlign: 'left'
+                textAlign: 'left',
+                opacity: 1,
+                color: 'text.primary'
               },
               '& input::-webkit-calendar-picker-indicator': {
                 marginRight: '8px',
@@ -269,19 +273,41 @@ const Register = () => {
               },
               '& input::-webkit-datetime-edit': {
                 paddingLeft: 0,
-                textAlign: 'left'
+                textAlign: 'left',
+                opacity: 1,
+                color: 'text.primary'
               },
               '& input::-webkit-datetime-edit-fields-wrapper': {
                 textAlign: 'left',
-                paddingLeft: 0
+                paddingLeft: 0,
+                opacity: 1
+              },
+              '& input::-webkit-datetime-edit-text': {
+                opacity: 1, 
+                color: 'inherit'
+              },
+              '& input::-webkit-datetime-edit-month-field': {
+                opacity: 1,
+                color: 'inherit'
+              },
+              '& input::-webkit-datetime-edit-day-field': {
+                opacity: 1,
+                color: 'inherit'
+              },
+              '& input::-webkit-datetime-edit-year-field': {
+                opacity: 1,
+                color: 'inherit'
               },
               '@supports (-webkit-touch-callout: none)': {
                 '& input[type="date"]': {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'flex-start',
+                  opacity: 1,
                   '&::-webkit-date-and-time-value': {
-                    margin: 0
+                    margin: 0,
+                    opacity: 1,
+                    color: 'text.primary'
                   }
                 }
               }
