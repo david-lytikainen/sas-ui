@@ -227,6 +227,24 @@ const Register = () => {
             }}
             inputProps={{
               max: new Date().toISOString().split('T')[0],
+              style: { 
+                textAlign: 'left',
+                paddingLeft: '12px'
+              },
+              placeholder: 'MM/DD/YYYY'
+            }}
+            InputProps={{
+              sx: {
+                '& input::-webkit-datetime-edit': {
+                  paddingLeft: 1,
+                  fontSize: '0.875rem'
+                },
+                '& input::-webkit-datetime-edit-fields-wrapper': {
+                  textAlign: 'left'
+                },
+                height: '40px',
+                padding: '0px'
+              }
             }}
             helperText="Must be 18 or older"
             FormHelperTextProps={{ 
@@ -241,7 +259,16 @@ const Register = () => {
               mt: 0.5,
               mb: .5,
               '& .MuiInputBase-root': {
-                marginBottom: '0px'
+                marginBottom: '0px',
+                height: '40px'
+              },
+              '& input::-webkit-calendar-picker-indicator': {
+                marginRight: '8px',
+                opacity: 0.7
+              },
+              '& input': {
+                textAlign: 'left',
+                direction: 'ltr'
               }
             }}
           />
