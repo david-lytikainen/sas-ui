@@ -1736,6 +1736,8 @@ const EventList = () => {
                         paddingRight: '14px',
                         // Add iOS-specific fixes
                         WebkitAppearance: 'none', // Ensure consistent appearance across iOS versions
+                        textAlign: 'left !important',
+                        direction: 'ltr !important',
                         '&::-webkit-calendar-picker-indicator': {
                           position: 'absolute',
                           right: 0,
@@ -1746,7 +1748,12 @@ const EventList = () => {
                           opacity: 1,
                           height: '24px',
                           width: '24px',
-                          display: 'block'
+                          display: 'block',
+                          backgroundImage: 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\'><path fill=\'rgba(0,0,0,0.54)\' d=\'M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z\'/></svg>")',
+                          backgroundPosition: 'center',
+                          backgroundSize: 'contain',
+                          backgroundRepeat: 'no-repeat',
+                          zIndex: 2
                         }
                       },
                       '& .MuiOutlinedInput-root': {
@@ -1754,6 +1761,44 @@ const EventList = () => {
                       },
                       '& .MuiInputAdornment-root': {
                         marginLeft: 0
+                      },
+                      // iOS specific styles for date display - using alternative selector
+                      '& input[type="datetime-local"]': {
+                        display: 'flex',
+                        textAlign: 'left !important',
+                        direction: 'ltr !important',
+                        paddingLeft: '12px !important',
+                        '&::-webkit-date-and-time-value': {
+                          textAlign: 'left !important',
+                          margin: 0,
+                          padding: 0
+                        },
+                        '&::-webkit-datetime-edit': {
+                          textAlign: 'left !important',
+                          paddingLeft: 0
+                        },
+                        '&::-webkit-datetime-edit-fields-wrapper': {
+                          padding: 0,
+                          margin: 0,
+                          textAlign: 'left !important'
+                        },
+                        '&::-webkit-datetime-edit-text': {
+                          padding: 0,
+                          margin: 0,
+                          textAlign: 'left !important'
+                        },
+                        '&::-webkit-datetime-edit-hour-field, &::-webkit-datetime-edit-minute-field, &::-webkit-datetime-edit-day-field, &::-webkit-datetime-edit-month-field, &::-webkit-datetime-edit-year-field, &::-webkit-datetime-edit-ampm-field': {
+                          textAlign: 'left !important'
+                        }
+                      },
+                      // Explicit alignment and visibility for when the field has a value
+                      '& input[type="datetime-local"][value]:not([value=""])': {
+                        textAlign: 'left !important',
+                        direction: 'ltr !important',
+                        '&::-webkit-datetime-edit': {
+                          paddingLeft: 0,
+                          textAlign: 'left !important'
+                        }
                       }
                     }}
                   />
