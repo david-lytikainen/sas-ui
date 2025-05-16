@@ -260,54 +260,94 @@ const Register = () => {
                   color: 'text.primary'
                 }
               },
+              '& input[type="date"]': {
+                WebkitAppearance: 'none',
+                appearance: 'none',
+                position: 'relative',
+                display: 'block',
+                textAlign: 'left',
+                width: '100%',
+                paddingRight: '30px',
+                lineHeight: 'normal',
+                color: 'text.primary !important',
+                background: 'transparent !important',
+              },
               '& input[type="date"]::-webkit-date-and-time-value': {
                 textAlign: 'left',
                 opacity: 1,
-                color: 'text.primary'
+                color: 'text.primary',
+                margin: 0,
               },
               '& input::-webkit-calendar-picker-indicator': {
                 marginRight: '8px',
                 position: 'absolute',
                 right: '0',
-                opacity: 0.7
+                opacity: 0.7,
+                height: '20px',
+                width: '20px',
+                color: 'inherit',
+                cursor: 'pointer',
+                display: 'block',
               },
               '& input::-webkit-datetime-edit': {
                 paddingLeft: 0,
                 textAlign: 'left',
                 opacity: 1,
-                color: 'text.primary'
+                color: 'text.primary',
+                display: 'block',
+                minHeight: '1.6em',
+                whiteSpace: 'nowrap',
+                overflow: 'visible',
               },
               '& input::-webkit-datetime-edit-fields-wrapper': {
                 textAlign: 'left',
                 paddingLeft: 0,
-                opacity: 1
+                opacity: 1,
+                display: 'inline-flex',
+                whiteSpace: 'nowrap',
+                padding: '1px 0',
               },
               '& input::-webkit-datetime-edit-text': {
                 opacity: 1, 
-                color: 'inherit'
+                color: 'inherit',
+                display: 'inline',
+                whiteSpace: 'nowrap',
               },
               '& input::-webkit-datetime-edit-month-field': {
                 opacity: 1,
-                color: 'inherit'
+                color: 'inherit',
+                display: 'inline',
+                whiteSpace: 'nowrap',
               },
               '& input::-webkit-datetime-edit-day-field': {
                 opacity: 1,
-                color: 'inherit'
+                color: 'inherit',
+                display: 'inline',
+                whiteSpace: 'nowrap',
               },
               '& input::-webkit-datetime-edit-year-field': {
                 opacity: 1,
-                color: 'inherit'
+                color: 'inherit',
+                display: 'inline',
+                whiteSpace: 'nowrap',
               },
               '@supports (-webkit-touch-callout: none)': {
                 '& input[type="date"]': {
-                  display: 'flex',
+                  display: 'flex !important',
                   alignItems: 'center',
                   justifyContent: 'flex-start',
                   opacity: 1,
+                  color: 'text.primary !important',
+                  '-webkit-appearance': 'none',
+                  'appearance': 'none',
+                  padding: '0 12px',
                   '&::-webkit-date-and-time-value': {
                     margin: 0,
                     opacity: 1,
-                    color: 'text.primary'
+                    color: 'text.primary !important',
+                    display: 'inline-block',
+                    minWidth: '60px',
+                    position: 'relative'
                   }
                 }
               }

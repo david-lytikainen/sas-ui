@@ -1731,6 +1731,31 @@ const EventList = () => {
                     required
                     size={isMobile ? "small" : "medium"}
                     margin="dense"
+                    sx={{ 
+                      '& .MuiInputBase-input': { 
+                        paddingRight: '14px',
+                        // Add iOS-specific fixes
+                        WebkitAppearance: 'none', // Ensure consistent appearance across iOS versions
+                        '&::-webkit-calendar-picker-indicator': {
+                          position: 'absolute',
+                          right: 0,
+                          padding: '8px',
+                          marginRight: '4px',
+                          cursor: 'pointer',
+                          color: 'rgba(0, 0, 0, 0.54)',
+                          opacity: 1,
+                          height: '24px',
+                          width: '24px',
+                          display: 'block'
+                        }
+                      },
+                      '& .MuiOutlinedInput-root': {
+                        paddingRight: 0
+                      },
+                      '& .MuiInputAdornment-root': {
+                        marginLeft: 0
+                      }
+                    }}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
