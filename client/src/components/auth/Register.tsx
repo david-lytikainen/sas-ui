@@ -244,6 +244,21 @@ const Register = () => {
                 opacity: 0.8
               } 
             }}
+            InputProps={{
+              endAdornment: (
+                <div style={{
+                  position: 'absolute',
+                  right: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  pointerEvents: 'none',
+                }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" style={{opacity: 0.54}}>
+                    <path fill="currentColor" d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                  </svg>
+                </div>
+              ),
+            }}
             sx={{
               mt: 0.5,
               mb: .5,
@@ -260,6 +275,21 @@ const Register = () => {
                   color: 'text.primary'
                 }
               },
+              '& .MuiInputBase-root:has(input[value=""]):before': {
+                content: '"MM/DD/YYYY"',
+                display: formData.birthday ? 'none' : 'block',
+                position: 'absolute',
+                left: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                pointerEvents: 'none',
+                color: 'rgba(0, 0, 0, 0.38)',
+                fontSize: '16px',
+                zIndex: 1
+              },
+              '& .MuiInputBase-root:after': {
+                display: 'none'
+              },
               '& input[type="date"]': {
                 WebkitAppearance: 'none',
                 appearance: 'none',
@@ -274,30 +304,23 @@ const Register = () => {
               },
               '& input[type="date"]::-webkit-date-and-time-value': {
                 textAlign: 'left',
-                opacity: 1,
+                opacity: formData.birthday ? 1 : 0,
                 color: 'text.primary',
                 margin: 0,
               },
               '& input::-webkit-calendar-picker-indicator': {
-                marginRight: '8px',
+                opacity: 0,
                 position: 'absolute',
                 right: '0',
-                opacity: 0.7,
-                height: '20px',
-                width: '20px',
-                color: 'inherit',
+                top: 0,
+                height: '100%',
+                width: '30px',
                 cursor: 'pointer',
-                display: 'block',
-                backgroundImage: 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\'><path fill=\'rgba(0,0,0,0.54)\' d=\'M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z\'/></svg>")',
-                backgroundPosition: 'center',
-                backgroundSize: 'contain',
-                backgroundRepeat: 'no-repeat',
-                zIndex: 2
               },
               '& input::-webkit-datetime-edit': {
                 paddingLeft: 0,
                 textAlign: 'left',
-                opacity: 1,
+                opacity: formData.birthday ? 1 : 0,
                 color: 'text.primary',
                 display: 'block',
                 minHeight: '1.6em',
@@ -336,19 +359,22 @@ const Register = () => {
                 display: 'inline',
                 whiteSpace: 'nowrap',
               },
+              '& input:not([value]), & input[value=""]': {
+                color: 'rgba(0, 0, 0, 0.38)'
+              },
               '@supports (-webkit-touch-callout: none)': {
                 '& input[type="date"]': {
                   display: 'flex !important',
                   alignItems: 'center',
                   justifyContent: 'flex-start',
                   opacity: 1,
-                  color: 'text.primary !important',
+                  color: formData.birthday ? 'text.primary !important' : 'transparent !important',
                   '-webkit-appearance': 'none',
                   'appearance': 'none',
                   padding: '0 12px',
                   '&::-webkit-date-and-time-value': {
                     margin: 0,
-                    opacity: 1,
+                    opacity: formData.birthday ? 1 : 0,
                     color: 'text.primary !important',
                     display: 'inline-block',
                     minWidth: '60px',

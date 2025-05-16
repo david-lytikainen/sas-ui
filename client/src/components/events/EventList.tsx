@@ -1731,6 +1731,12 @@ const EventList = () => {
                     required
                     size={isMobile ? "small" : "medium"}
                     margin="dense"
+                    inputProps={{
+                      style: { 
+                        textAlign: 'left',
+                        paddingLeft: '12px'
+                      }
+                    }}
                     sx={{ 
                       '& .MuiInputBase-input': { 
                         paddingRight: '14px',
@@ -1738,6 +1744,10 @@ const EventList = () => {
                         WebkitAppearance: 'none', // Ensure consistent appearance across iOS versions
                         textAlign: 'left !important',
                         direction: 'ltr !important',
+                        '&::placeholder': {
+                          opacity: 0.7,
+                          color: 'text.secondary',
+                        },
                         '&::-webkit-calendar-picker-indicator': {
                           position: 'absolute',
                           right: 0,
@@ -1745,7 +1755,7 @@ const EventList = () => {
                           marginRight: '4px',
                           cursor: 'pointer',
                           color: 'rgba(0, 0, 0, 0.54)',
-                          opacity: 1,
+                          opacity: 0, // Hide default icon as we're using a custom one
                           height: '24px',
                           width: '24px',
                           display: 'block',
@@ -1756,26 +1766,45 @@ const EventList = () => {
                           zIndex: 2
                         }
                       },
+                      // Simplified placeholder approach to avoid overlapping text
+                      '& .MuiInputBase-root:has(input[value=""]):before': {
+                        content: '"MM/DD/YYYY hh:mm"',
+                        display: createForm.starts_at ? 'none' : 'block',
+                        position: 'absolute',
+                        left: '12px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        pointerEvents: 'none',
+                        color: 'rgba(0, 0, 0, 0.38)',
+                        fontSize: '16px',
+                        zIndex: 1
+                      },
+                      // Remove other placeholder mechanisms
+                      '& .MuiInputBase-root:after': {
+                        display: 'none'
+                      },
                       '& .MuiOutlinedInput-root': {
                         paddingRight: 0
                       },
                       '& .MuiInputAdornment-root': {
                         marginLeft: 0
                       },
-                      // iOS specific styles for date display - using alternative selector
+                      // iOS specific styles for date display
                       '& input[type="datetime-local"]': {
                         display: 'flex',
                         textAlign: 'left !important',
-                        direction: 'ltr !important',
+                        WebkitAppearance: 'none',
+                        appearance: 'none',
                         paddingLeft: '12px !important',
                         '&::-webkit-date-and-time-value': {
                           textAlign: 'left !important',
                           margin: 0,
-                          padding: 0
+                          opacity: createForm.starts_at ? 1 : 0 // Hide when empty to prevent overlap
                         },
                         '&::-webkit-datetime-edit': {
                           textAlign: 'left !important',
-                          paddingLeft: 0
+                          paddingLeft: 0,
+                          opacity: createForm.starts_at ? 1 : 0 // Hide when empty to prevent overlap
                         },
                         '&::-webkit-datetime-edit-fields-wrapper': {
                           padding: 0,
@@ -1789,17 +1818,38 @@ const EventList = () => {
                         },
                         '&::-webkit-datetime-edit-hour-field, &::-webkit-datetime-edit-minute-field, &::-webkit-datetime-edit-day-field, &::-webkit-datetime-edit-month-field, &::-webkit-datetime-edit-year-field, &::-webkit-datetime-edit-ampm-field': {
                           textAlign: 'left !important'
+                        },
+                        '&:not([value]), &[value=""]': {
+                          color: 'transparent' // Hide the actual input text when empty
                         }
                       },
                       // Explicit alignment and visibility for when the field has a value
                       '& input[type="datetime-local"][value]:not([value=""])': {
                         textAlign: 'left !important',
                         direction: 'ltr !important',
+                        color: 'text.primary !important',
                         '&::-webkit-datetime-edit': {
                           paddingLeft: 0,
-                          textAlign: 'left !important'
+                          textAlign: 'left !important',
+                          opacity: 1
                         }
                       }
+                    }}
+                    InputProps={{
+                      endAdornment: (
+                        <div style={{
+                          position: 'absolute',
+                          right: '10px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          pointerEvents: 'none',
+                          zIndex: 2
+                        }}>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" style={{opacity: 0.54}}>
+                            <path fill="currentColor" d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                          </svg>
+                        </div>
+                      ),
                     }}
                   />
                 </Grid>
