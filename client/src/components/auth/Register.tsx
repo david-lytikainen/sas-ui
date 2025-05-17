@@ -19,12 +19,14 @@ import {
   MenuItem,
   InputLabel,
   SelectChangeEvent,
+  useTheme,
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 
 const Register = () => {
   const navigate = useNavigate();
+  const theme = useTheme();
   const { register } = useAuth();
   const [formData, setFormData] = useState({
     first_name: '',
@@ -283,7 +285,7 @@ const Register = () => {
                 top: '50%',
                 transform: 'translateY(-50%)',
                 pointerEvents: 'none',
-                color: 'rgba(0, 0, 0, 0.38)',
+                color:  theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.64)' : 'rgba(0, 0, 0, 0.47)',
                 fontSize: '16px',
                 zIndex: 1
               },
