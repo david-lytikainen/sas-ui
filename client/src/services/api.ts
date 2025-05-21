@@ -321,7 +321,11 @@ const realEventsApi: EventsApi = {
   },
 
   create: async (eventData) => {
-    const response = await api.post('/events/create', eventData);
+    const eventDataWithTZ = {
+      ...eventData,
+      starts_at: eventData.starts_at && new Date(eventData.starts_at).toISOString()
+    };
+    const response = await api.post('/events/create', eventDataWithTZ);
     return response.data;
   },
 
