@@ -88,7 +88,7 @@ const Navigation = () => {
     >
       <Container maxWidth={false}>
         <Toolbar disableGutters>
-          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1, marginTop: '4px'}}>
             <AnimatedBox
               onMouseEnter={() => setLogoHovered(true)}
               onMouseLeave={() => setLogoHovered(false)}
@@ -104,6 +104,7 @@ const Navigation = () => {
                 to="/"
                 sx={{
                   fontWeight: 1100,
+                  fontSize: '1.5rem',
                   color: theme.palette.primary.main,
                   textDecoration: 'none',
                   letterSpacing: '.05rem',
