@@ -59,6 +59,7 @@ import {
   Edit as EditIcon,
   Save as SaveIcon,
   Cancel as CancelEditIcon,
+  Download as DownloadIcon,
 } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
@@ -1632,6 +1633,81 @@ const EventList = () => {
     }));
   };
 
+  const handleExportSchedules = () => {
+    if (!selectedEventForAllSchedules || !filteredSchedules || Object.keys(filteredSchedules).length === 0) {
+      setErrorMessage('No schedules available to export');
+      return;
+    }
+
+    try {
+      let csvContent = 'User Name,Round,Table,Partner Name,Partner Age\n';
+
+      Object.entries(filteredSchedules).forEach(([userId, userSchedule]) => {
+        if (!Array.isArray(userSchedule) || userSchedule.length === 0) return;
+
+        const user = Object.values(usersMap).find(u => u.id === Number(userId));
+        const userName = user ? `${user.first_name} ${user.last_name}` : `User ${userId}`;
+
+        userSchedule.forEach((item: any) => {
+          // Escape fields that might contain commas
+          const escapedUserName = `"${userName}"`;
+          const escapedPartnerName = `"${item.partner_name}"`;
+          
+          csvContent += `${escapedUserName},${item.round},${item.table},${escapedPartnerName},${item.partner_age || 'N/A'}\n`;
+        });
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${selectedEventForAllSchedules.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_schedules.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error exporting schedules:', error);
+      setErrorMessage('Failed to export schedules');
+    }
+  };
+
+  const handleExportRegisteredUsers = () => {
+    if (!selectedEventForRegisteredUsers || !registeredUsers || registeredUsers.length === 0) {
+      setErrorMessage('No registered users available to export');
+      return;
+    }
+
+    try {
+      let csvContent = 'Name,Email,Phone,Gender,Age,Birthday,Registration Date,Check-in Time,Status,PIN\n';
+
+      registeredUsers.forEach((user) => {
+        const birthday = user.birthday ? new Date(user.birthday).toLocaleDateString() : 'N/A';
+        const registrationDate = user.registration_date ? new Date(user.registration_date).toLocaleString() : 'N/A';
+        const checkInDate = user.check_in_date ? new Date(user.check_in_date).toLocaleString() : 'Not checked in';
+
+        const escapedName = `"${user.name}"`;
+        const escapedEmail = `"${user.email}"`;
+        const escapedPhone = `"${user.phone}"`;
+        
+        csvContent += `${escapedName},${escapedEmail},${escapedPhone},${user.gender || 'N/A'},${user.age || 'N/A'},${birthday},${registrationDate},${checkInDate},${user.status},${user.pin}\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${selectedEventForRegisteredUsers.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_registered_users.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error exporting registered users:', error);
+      setErrorMessage('Failed to export registered users');
+    }
+  };
+
   return (
     <>
       <Container maxWidth="lg" sx={{ pt: 4, pb: 14 }}>
@@ -2380,7 +2456,19 @@ const EventList = () => {
             </Typography>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ display: 'flex', justifyContent: 'space-between', px: 2, py: 1.5 }}>
+          <Box>
+            {isAdmin() && registeredUsers.length > 0 && (
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={handleExportRegisteredUsers}
+                startIcon={<DownloadIcon />}
+              >
+                Export CSV
+              </Button>
+            )}
+          </Box>
           <Button onClick={() => setViewRegisteredUsersDialogOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
@@ -2479,20 +2567,20 @@ const EventList = () => {
       <Dialog
         open={viewAllSchedulesDialogOpen}
         onClose={() => setViewAllSchedulesDialogOpen(false)}
-        maxWidth="md" // Consider "lg" or "xl" if table becomes too wide
+        maxWidth="md"
         fullWidth
       >
         <DialogTitle>
           {selectedEventForAllSchedules?.name} - All Schedules
         </DialogTitle>
-        <DialogContent dividers sx={{ p: { xs: 0, sm: 1 } }}> {/* Remove padding on xs */}
+        <DialogContent dividers sx={{ p: { xs: 0, sm: 1 } }}>
           {loadingAllSchedules ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
               <Typography>Loading all schedules...</Typography>
             </Box>
           ) : Object.keys(allSchedules).length > 0 ? (
             <Box sx={{ mt: 2 }}>
-              <Box sx={{ mb: 2, px: 1 }}>
+              <Box sx={{ mb: 2, px: 1, display: 'flex', gap: 2, alignItems: 'center' }}>
                 <TextField
                   label="Search"
                   placeholder="Search by name, round, table..."
@@ -2509,6 +2597,17 @@ const EventList = () => {
                     ),
                   }}
                 />
+                {isAdmin() && ( // Only show export button for admins
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    onClick={handleExportSchedules}
+                    startIcon={<DownloadIcon />}
+                    sx={{ whiteSpace: 'nowrap' }}
+                  >
+                    Export CSV
+                  </Button>
+                )}
               </Box>
               {selectionErrorMessage && (
                 <Alert severity="error" sx={{ mb: 2, mx: 1 }} onClose={() => setSelectionErrorMessage(null)}>
