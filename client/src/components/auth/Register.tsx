@@ -54,7 +54,7 @@ const Register = () => {
     }
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: name === 'email' ? value.toLowerCase() : value
     }));
   };
 
@@ -115,7 +115,7 @@ const Register = () => {
       setLoading(true);
       // Create registration data object with fields that match the API interface
       const registrationData = {
-        email: formData.email,
+        email: formData.email.toLowerCase(),
         password: formData.password,
         first_name: formData.first_name,
         last_name: formData.last_name,
