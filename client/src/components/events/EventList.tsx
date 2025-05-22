@@ -195,6 +195,31 @@ const EventList = () => {
   const [isTableConfigOpen, setIsTableConfigOpen] = useState<boolean>(false);
   const [savedAttendeeSelections, setSavedAttendeeSelections] = useState<Record<number, Record<number, boolean>>>({}); // eventId -> { event_speed_date_id: interested }
   const [saveIndicator, setSaveIndicator] = useState<Record<number, boolean>>({}); // eventId -> true if just saved
+  const formatUTCToLocal = (utcDateString: string, includeTime: boolean = true) => {
+    try {
+      const date = new Date(utcDateString);
+      if (isNaN(date.getTime())) return 'Invalid date';
+      
+      const options: Intl.DateTimeFormatOptions = {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: includeTime ? '2-digit' : undefined,
+        minute: includeTime ? '2-digit' : undefined,
+        timeZoneName: includeTime ? 'short' : undefined,
+      };
+      
+      return date.toLocaleString(undefined, options);
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid date';
+    }
+  };
+
+  // Update the formatDate function
+  const formatDate = (dateString: string) => {
+    return formatUTCToLocal(dateString, true);
+  };
 
   const fetchMatchesForEvent = async (eventId: string) => {
     setMatchesLoading(true);
@@ -376,19 +401,6 @@ const EventList = () => {
       default:
         return 'default';
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'UTC'
-    });
   };
 
   // Sort events like a SQL database would
@@ -1682,9 +1694,9 @@ const EventList = () => {
       let csvContent = 'Name,Email,Phone,Gender,Age,Birthday,Registration Date,Check-in Time,Status,PIN\n';
 
       registeredUsers.forEach((user) => {
-        const birthday = user.birthday ? new Date(user.birthday).toLocaleDateString() : 'N/A';
-        const registrationDate = user.registration_date ? new Date(user.registration_date).toLocaleString() : 'N/A';
-        const checkInDate = user.check_in_date ? new Date(user.check_in_date).toLocaleString() : 'Not checked in';
+        const birthday = user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A';
+        const registrationDate = user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A';
+        const checkInDate = user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in';
 
         const escapedName = `"${user.name}"`;
         const escapedEmail = `"${user.email}"`;
@@ -2400,7 +2412,7 @@ const EventList = () => {
                           </TableCell>
                           <TableCell>
                             {/* Registered (Read-only) */}
-                            {user.registration_date ? new Date(user.registration_date).toLocaleString() : 'N/A'}
+                            {user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'}
                           </TableCell>
                           <TableCell>
                             {/* Status (Read-only Chip) */}
@@ -2408,7 +2420,7 @@ const EventList = () => {
                           </TableCell>
                           <TableCell>
                             {/* Check-in Time (Read-only) */}
-                            {user.check_in_date ? new Date(user.check_in_date).toLocaleString() : 'Not checked in'}
+                            {user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'}
                           </TableCell>
                           <TableCell sx={{ textAlign: 'center' }}>
                             {/* PIN Input */}
@@ -2432,10 +2444,10 @@ const EventList = () => {
                           <TableCell>{user.phone}</TableCell>
                           <TableCell>{user.gender}</TableCell>
                           <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
-                          <TableCell> {user.birthday ? new Date(user.birthday).toLocaleDateString() : 'N/A'} </TableCell>
-                          <TableCell> {user.registration_date ? new Date(user.registration_date).toLocaleString() : 'N/A'} </TableCell>
+                          <TableCell> {user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'} </TableCell>
+                          <TableCell> {user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'} </TableCell>
                           <TableCell> <Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /> </TableCell>
-                          <TableCell> {user.check_in_date ? new Date(user.check_in_date).toLocaleString() : 'Not checked in'} </TableCell>
+                          <TableCell> {user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'} </TableCell>
                           <TableCell sx={{ textAlign: 'center' }}>{user.pin}</TableCell>
                           {(isAdmin() || isOrganizer()) && ( // Call isAdmin and isOrganizer as functions
                             <TableCell sx={{ textAlign: 'center' }}>
