@@ -60,6 +60,7 @@ import {
   Save as SaveIcon,
   Cancel as CancelEditIcon,
   Download as DownloadIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
@@ -195,6 +196,22 @@ const EventList = () => {
   const [isTableConfigOpen, setIsTableConfigOpen] = useState<boolean>(false);
   const [savedAttendeeSelections, setSavedAttendeeSelections] = useState<Record<number, Record<number, boolean>>>({}); // eventId -> { event_speed_date_id: interested }
   const [saveIndicator, setSaveIndicator] = useState<Record<number, boolean>>({}); // eventId -> true if just saved
+
+  const [editEventDialogOpen, setEditEventDialogOpen] = useState<boolean>(false);
+  const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
+  const [editEventForm, setEditEventForm] = useState<Partial<Event>>({
+    name: '',
+    description: '',
+    starts_at: '',
+    address: '',
+    max_capacity: '0',
+    price_per_person: '0',
+    status: 'Registration Open' as EventStatus,
+  });
+
+  const [deleteEventConfirmOpen, setDeleteEventConfirmOpen] = useState<boolean>(false);
+  const [eventToDeleteId, setEventToDeleteId] = useState<number | null>(null);
+
   const formatUTCToLocal = (utcDateString: string, includeTime: boolean = true) => {
     try {
       const date = new Date(utcDateString);
@@ -1207,6 +1224,36 @@ const EventList = () => {
                 View All Schedules
               </Button>
             )}
+
+            <Grid container spacing={1} sx={{ mt: 0.5 }}>
+              <Grid item xs={6}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  color="info"
+                  startIcon={<EditIcon />}
+                  onClick={() => handleOpenEditEventDialog(event)}
+                  fullWidth
+                  sx={{ borderRadius: 1 }}
+                >
+                  Edit Event
+                </Button>
+              </Grid>
+              <Grid item xs={6}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  color="warning"
+                  startIcon={<DeleteIcon />}
+                  onClick={() => handleOpenDeleteEventConfirm(event.id)}
+                  fullWidth
+                  sx={{ borderRadius: 1 }}
+                  disabled={event.status === 'In Progress' || event.status === 'Completed'}
+                >
+                  Delete Event
+                </Button>
+              </Grid>
+            </Grid>
           </Box>
         </Collapse>
       </>
@@ -1717,6 +1764,72 @@ const EventList = () => {
     } catch (error) {
       console.error('Error exporting registered users:', error);
       setErrorMessage('Failed to export registered users');
+    }
+  };
+
+  const handleOpenEditEventDialog = (event: Event) => {
+    setEventToEdit(event);
+    setEditEventForm({
+      name: event.name,
+      description: event.description,
+      starts_at: event.starts_at ? new Date(new Date(event.starts_at).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '',
+      address: event.address,
+      max_capacity: event.max_capacity.toString(),
+      price_per_person: event.price_per_person.toString(),
+      status: event.status,
+        });
+    setEditEventDialogOpen(true);
+  };
+
+  const handleEditEventFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | { name?: string; value: unknown }>) => {
+    const target = e.target as HTMLInputElement | HTMLTextAreaElement; // Type assertion
+    const name = target.name;
+    const value = target.value;
+
+    setEditEventForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+  
+  const handleUpdateEvent = async () => {
+    if (!eventToEdit || !editEventForm) return;
+
+    try {
+      const dataToUpdate: Partial<Event> = { ...editEventForm };
+      if (dataToUpdate.max_capacity) {
+        dataToUpdate.max_capacity = dataToUpdate.max_capacity.toString();
+      }
+      if (dataToUpdate.price_per_person) {
+        dataToUpdate.price_per_person = dataToUpdate.price_per_person.toString();
+      }
+       if (dataToUpdate.starts_at) {
+        dataToUpdate.starts_at = new Date(dataToUpdate.starts_at).toISOString();
+      }
+
+      await eventsApi.updateEvent(eventToEdit.id.toString(), dataToUpdate);
+      setEditEventDialogOpen(false);
+      setEventToEdit(null);
+      refreshEvents();
+    } catch (error: any) {
+      setErrorMessage(error.response?.data?.error || error.message || 'Failed to update event');
+    }
+  };
+
+  const handleOpenDeleteEventConfirm = (eventId: number) => {
+    setEventToDeleteId(eventId);
+    setDeleteEventConfirmOpen(true);
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!eventToDeleteId) return;
+    try {
+      await eventsApi.deleteEvent(eventToDeleteId.toString());
+      setDeleteEventConfirmOpen(false);
+      setEventToDeleteId(null);
+      refreshEvents();
+    } catch (error: any) {
+      setErrorMessage(error.response?.data?.error || error.message || 'Failed to delete event');
     }
   };
 
@@ -2825,43 +2938,135 @@ const EventList = () => {
           error={matchesError}
         />
       )}
+
+      {/* ADD: Edit Event Dialog */}
+      <Dialog open={editEventDialogOpen} onClose={() => setEditEventDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Event: {eventToEdit?.name}</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ pt: 1 }}>
+            <Grid item xs={12}>
+              <TextField
+                label="Event Name"
+                name="name"
+                value={editEventForm.name || ''}
+                onChange={handleEditEventFormChange}
+                fullWidth
+                required
+                size={isMobile ? "small" : "medium"}
+                margin="dense"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Description"
+                name="description"
+                value={editEventForm.description || ''}
+                onChange={handleEditEventFormChange}
+                fullWidth
+                multiline
+                rows={isMobile ? 2 : 4}
+                size={isMobile ? "small" : "medium"}
+                margin="dense"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Start Date and Time"
+                name="starts_at"
+                type="datetime-local"
+                value={editEventForm.starts_at || ''}
+                onChange={handleEditEventFormChange}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                required
+                size={isMobile ? "small" : "medium"}
+                margin="dense"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Address"
+                name="address"
+                value={editEventForm.address || ''}
+                onChange={handleEditEventFormChange}
+                fullWidth
+                size={isMobile ? "small" : "medium"}
+                margin="dense"
+              />
+            </Grid>
+            <Grid item xs={6} sm={6}>
+              <TextField
+                label="Max Capacity"
+                name="max_capacity"
+                type="number"
+                value={editEventForm.max_capacity || ''}
+                onChange={handleEditEventFormChange}
+                fullWidth
+                InputProps={{ inputProps: { min: 0 } }}
+                size={isMobile ? "small" : "medium"}
+                margin="dense"
+              />
+            </Grid>
+            <Grid item xs={6} sm={6}>
+              <TextField
+                label="Price Per Person"
+                name="price_per_person"
+                type="number"
+                value={editEventForm.price_per_person || '0'}
+                onChange={handleEditEventFormChange}
+                fullWidth
+                InputProps={{ inputProps: { min: 0, step: "0.01" } }}
+                size={isMobile ? "small" : "medium"}
+                margin="dense"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth size={isMobile ? "small" : "medium"} margin="dense">
+                <InputLabel id="edit-event-status-label">Status</InputLabel>
+                <Select
+                  labelId="edit-event-status-label"
+                  name="status"
+                  value={editEventForm.status || 'Registration Open'}
+                  label="Status"
+                  onChange={(e) => setEditEventForm(prev => ({ ...prev, status: e.target.value as EventStatus }))}
+                >
+                  <MenuItem value="Registration Open">Registration Open</MenuItem>
+                  <MenuItem value="Registration Closed">Registration Closed</MenuItem>
+                  <MenuItem value="Upcoming">Upcoming</MenuItem>
+                  <MenuItem value="In Progress">In Progress</MenuItem>
+                  <MenuItem value="Completed">Completed</MenuItem>
+                  <MenuItem value="Cancelled">Cancelled</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditEventDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleUpdateEvent} color="primary" variant="contained">Update Event</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ADD: Delete Event Confirmation Dialog */}
+      <Dialog
+        open={deleteEventConfirmOpen}
+        onClose={() => setDeleteEventConfirmOpen(false)}
+      >
+        <DialogTitle>Delete Event</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete the event: <strong>{events.find(e => e.id === eventToDeleteId)?.name}</strong>?
+            This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteEventConfirmOpen(false)}>Cancel</Button>
+          <Button onClick={handleDeleteEvent} color="error" variant="contained">
+            Delete Event
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
-
-    <Snackbar
-       open={showNotificationSnackbar} 
-       anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-       onClose={handleCloseNotificationSnackbar} 
-       sx={{ position: 'flex', bottom: 12, zIndex: theme.zIndex.snackbar + 1}}
-     >
-       <Alert 
-         severity="info" 
-         action={ 
-           <Button color="inherit" size="medium" onClick={handleEnableNotifications} variant="outlined">
-             Enable
-           </Button>
-         }
-         onClose={handleAlertClose} 
-         sx={{width: '100%', textAlign: 'center', pt: 1, pb: 1 }} 
-       >
-         Enable browser notifications for event timer alerts
-       </Alert>
-     </Snackbar>
-
-    {selectedEventIdForMatches && (
-      <MatchesDialog
-        open={viewMatchesDialogOpen}
-        onClose={() => {
-          setViewMatchesDialogOpen(false);
-          setSelectedEventIdForMatches(null); 
-          setCurrentMatches([]);
-          setMatchesError(null);
-        }}
-        eventName={events.find(e => e.id.toString() === selectedEventIdForMatches)?.name}
-        matches={currentMatches}
-        loading={matchesLoading}
-        error={matchesError}
-      />
-    )}
   </>
   );
 };

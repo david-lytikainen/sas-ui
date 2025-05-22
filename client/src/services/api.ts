@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { AuthResponse, TokenValidationResponse} from '../types/user';
-import { Event } from '../types/event';
+import { Event, ScheduleItem } from '../types/event';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
@@ -231,6 +231,8 @@ interface EventsApi {
   getAll: () => Promise<Event[]>;
   getById: (eventId: string) => Promise<Event>;
   create: (eventData: Omit<Event, 'id' | 'creator_id' | 'created_at' | 'updated_at' | 'registration_deadline'>) => Promise<Event>;
+  updateEvent: (eventId: string, eventData: Partial<Event>) => Promise<{ message: string, event: Event }>;
+  deleteEvent: (eventId: string) => Promise<{ message: string }>;
   registerForEvent: (eventId: string) => Promise<{ message: string }>;
   cancelRegistration: (eventId: string) => Promise<{ message: string }>;
   checkIn: (eventId: string, pin: string) => Promise<{ message: string }>;
@@ -262,24 +264,10 @@ interface EventsApi {
     birthday?: string
   }) => Promise<{ message: string, updated_fields: string[] }>;
   getSchedule: (eventId: string) => Promise<{ 
-    schedule: Array<{
-      round: number,
-      table: number,
-      partner_id: number,
-      partner_name: string,
-      partner_age: number | null,
-      event_speed_date_id: number;
-    }> 
+    schedule: Array<ScheduleItem> 
   }>;
   getAllSchedules: (eventId: string) => Promise<{ 
-    schedules: Record<number, Array<{
-      round: number,
-      table: number,
-      partner_id: number,
-      partner_name: string,
-      partner_age: number | null,
-      event_speed_date_id: number;
-    }>> 
+    schedules: Record<number, Array<ScheduleItem>> 
   }>;
   startEvent: (eventId: string, numTables?: number, numRounds?: number) => Promise<{ message: string }>;
   resumeEvent: (eventId: string) => Promise<{ message: string }>;
@@ -326,6 +314,16 @@ const realEventsApi: EventsApi = {
       starts_at: eventData.starts_at && new Date(eventData.starts_at).toISOString()
     };
     const response = await api.post('/events/create', eventDataWithTZ);
+    return response.data;
+  },
+
+  updateEvent: async (eventId: string, eventData: Partial<Event>): Promise<{ message: string, event: Event }> => {
+    const response = await api.put(`/events/${eventId}`, eventData);
+    return response.data;
+  },
+
+  deleteEvent: async (eventId: string): Promise<{ message: string }> => {
+    const response = await api.delete(`/events/${eventId}`);
     return response.data;
   },
 
