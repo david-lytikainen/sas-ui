@@ -102,29 +102,12 @@ const realAuthApi = {
     phone?: string;
     birthday: string;
     gender: string;
-    role: 'attendee' | 'organizer' | 'admin';
   }): Promise<AuthResponse> => {
-    // Map role name to role ID
-    let role_id: number;
-    switch (userData.role) {
-      case 'admin':
-        role_id = 3; // Admin role ID
-        break;
-      case 'organizer':
-        role_id = 2; // Organizer role ID
-        break;
-      case 'attendee':
-        role_id = 1; // Attendee role ID
-        break;
-      default:
-        throw new Error('Invalid role');
-    }
-    
     // Prepare data for backend format
     const backendUserData = {
       email: userData.email,
       password: userData.password,
-      role_id: role_id,
+      role_id: 1,
       first_name: userData.first_name,
       last_name: userData.last_name,
       phone: userData.phone || "",

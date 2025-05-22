@@ -37,7 +37,6 @@ const Register = () => {
     birthday: '',
     gender: '',
     phone: '',
-    role: 'attendee' as 'attendee' | 'organizer' | 'admin',
   });
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -122,7 +121,6 @@ const Register = () => {
         birthday: new Date(formData.birthday).toISOString().split('T')[0],
         gender: formData.gender,
         phone: formData.phone,
-        role: formData.role as 'attendee' | 'organizer' | 'admin',
       };
       
       await register(registrationData);
@@ -402,6 +400,7 @@ const Register = () => {
             </Select>
           </FormControl>
 
+          {/* WILL ADD THIS BACK MAYBE LATER 
           <FormControl component="fieldset" margin="dense" required sx={{ mt: 1}}>
             <FormLabel component="legend" sx={{ fontSize: '0.8rem' }}>I want to:</FormLabel>
             <RadioGroup
@@ -417,22 +416,20 @@ const Register = () => {
                 label="Attend Speed Dating Events"
                 sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
               />
-              {/* TODO: Add organizer role back in , hidden for now*/}
-              {/* <FormControlLabel
+              <FormControlLabel
                 value="organizer"
                 control={<Radio size="small" />}
                 label="Organize Speed Dating Events"
                  sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
-              /> */}
-              {/* TODO: Add admin role back in , hidden for now*/}
-              {/* <FormControlLabel
+              />
+              <FormControlLabel
                 value="admin"
                 control={<Radio size="small"/>}
                 label="Admin"
                  sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
-              /> */}
+              />
             </RadioGroup>
-          </FormControl>
+          </FormControl> */}
           
           <TextField
             fullWidth
