@@ -11,6 +11,7 @@ export interface Event {
   status: EventStatus;
   price_per_person: string;
   registration_deadline: string;
+  registered_attendee_count?: number;
   registration?: {
     status: string;
     pin?: string;

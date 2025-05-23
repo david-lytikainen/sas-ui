@@ -67,6 +67,10 @@ const EventDetail: React.FC = () => {
         if (id) {
           const foundEvent = await eventsApi.getById(id);
           console.log('Found event:', foundEvent);
+          // Ensure registered_attendee_count defaults to 0 if not a number
+          if (foundEvent && typeof foundEvent.registered_attendee_count !== 'number') {
+            foundEvent.registered_attendee_count = 0;
+          }
           setEvent(foundEvent);
         } else {
           setError('Invalid event ID');
@@ -275,6 +279,19 @@ const EventDetail: React.FC = () => {
                   secondary={`$${parseFloat(event.price_per_person).toFixed(2)} per person`} 
                 />
               </ListItem>
+              {/* Add Spots Filled Display START */} 
+              {typeof event.registered_attendee_count === 'number' && event.max_capacity && (
+                <ListItem>
+                  <ListItemIcon>
+                    <PeopleIcon />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary="Spots Filled" 
+                    secondary={`${event.registered_attendee_count}/${event.max_capacity}`} 
+                  />
+                </ListItem>
+              )}
+              {/* Add Spots Filled Display END */}
             </List>
           </Grid>
 

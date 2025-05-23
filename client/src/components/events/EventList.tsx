@@ -61,6 +61,7 @@ import {
   Cancel as CancelEditIcon,
   Download as DownloadIcon,
   Delete as DeleteIcon,
+  People as PeopleIcon,
 } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
@@ -277,6 +278,7 @@ const EventList = () => {
         ? contextEvent.price_per_person.toString() 
         : contextEvent.price_per_person || '0',
       registration_deadline: contextEvent.registration_deadline,
+      registered_attendee_count: typeof contextEvent.registered_attendee_count === 'number' ? contextEvent.registered_attendee_count : 0, // Modified this line
       registration: registration
     } as Event;
   });
@@ -2187,7 +2189,6 @@ const EventList = () => {
                     </Typography>
                     {(() => {
                       const scheduleForTimer = isRegisteredForEvent(event.id) && event.registration?.status === 'Checked In' ? userSchedules[event.id] : undefined;
-                      console.log(`Passing userSchedule to EventTimer for event ${event.id}:`, scheduleForTimer);
                       return (
                         <EventTimer 
                           eventId={event.id} 
@@ -2227,6 +2228,23 @@ const EventList = () => {
                     <PersonIcon fontSize="small" />
                     {event.max_capacity} attendees max
                   </Typography>
+                  {/* Add Spots Filled Display START */} 
+                  {typeof event.registered_attendee_count === 'number' && event.max_capacity && (
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary" 
+                      sx={{ 
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        fontSize: isMobile ? '0.75rem' : '0.875rem' 
+                      }}
+                    >
+                      <PeopleIcon fontSize="small" />
+                      {`${event.registered_attendee_count}/${event.max_capacity} spots filled`}
+                    </Typography>
+                  )}
+                  {/* Add Spots Filled Display END */}
                   <Typography 
                     variant="body2" 
                     color="text.secondary" 
