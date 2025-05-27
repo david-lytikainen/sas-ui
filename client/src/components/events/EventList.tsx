@@ -213,6 +213,10 @@ const EventList = () => {
   const [deleteEventConfirmOpen, setDeleteEventConfirmOpen] = useState<boolean>(false);
   const [eventToDeleteId, setEventToDeleteId] = useState<number | null>(null);
 
+  // Add state for the waitlist confirmation dialog
+  const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false);
+  const [eventForWaitlist, setEventForWaitlist] = useState<Event | null>(null);
+
   const formatUTCToLocal = (utcDateString: string, includeTime: boolean = true) => {
     try {
       const date = new Date(utcDateString);
@@ -284,7 +288,10 @@ const EventList = () => {
   });
 
   // Calculate eventOptions directly instead of storing in state
-  const eventOptions = events.filter(event => userRegisteredEvents.includes(event.id) && event.registration?.status === 'Registered');
+  const eventOptions = events.filter(event => 
+    userRegisteredEvents.includes(event.id) && 
+    (event.status === 'Registration Open' || event.status === 'In Progress')
+  );
 
   const isRegistrationClosed = (event: Event) => {
     if (!event.starts_at) return false;
@@ -322,30 +329,61 @@ const EventList = () => {
   const handleSignUpConfirm = async () => {
     if (signUpEventId) {
       try {
-        await eventsApi.registerForEvent(signUpEventId);
+        // Ensure API call is made without join_waitlist initially
+        await eventsApi.registerForEvent(signUpEventId, { join_waitlist: false }); 
         
         setSignUpDialogOpen(false);
-        const successfullyRegisteredEventId = signUpEventId; // Keep track for logging or potential optimistic UI
+        const successfullyRegisteredEventId = signUpEventId;
         setSignUpEventId(null);
         
         try {
           await refreshEvents();
         } catch (refreshError: any) {
           console.error(`Registration for event ${successfullyRegisteredEventId} was successful, but failed to refresh the events list:`, refreshError);
-          const backendMessage = refreshError.response?.data?.message || refreshError.response?.data?.error;
+          const backendMsg = refreshError.response?.data?.message || refreshError.response?.data?.error; // Renamed to avoid conflict
           setErrorMessage(
-            `You've been registered for the event, but we couldn't update the list automatically. Error: ${backendMessage || refreshError.message}. Please try refreshing the page.`
+            `You've been registered for the event, but we couldn't update the list automatically. Error: ${backendMsg || refreshError.message}. Please try refreshing the page.`
           );
         }
       } catch (registrationError: any) {
         console.error('Failed to register for event:', registrationError);
-        const backendMessage = registrationError.response?.data?.error || registrationError.response?.data?.message; // Prioritize 'error' field
-        if (backendMessage === "Event is full, cannot register") {
-          setErrorMessage("This event is currently full. Please try again later or contact the organizer.");
+        const backendError = registrationError.response?.data?.error;
+        const backendMsg = registrationError.response?.data?.message; // Renamed to avoid conflict
+        const waitlistAvailable = registrationError.response?.data?.waitlist_available === true;
+
+        if (backendError === "Event is full, cannot register" && waitlistAvailable) {
+          const event = events.find(e => e.id.toString() === signUpEventId);
+          if (event) {
+            setEventForWaitlist(event);
+            setWaitlistDialogOpen(true); // Open the dialog to ASK to join waitlist
+          } else {
+            setErrorMessage("This event is currently full. Waitlist option available, but event details could not be found.");
+          }
         } else {
-          setErrorMessage(backendMessage || registrationError.message || 'An error occurred while trying to register for the event.');
+          setErrorMessage(backendError || backendMsg || registrationError.message || 'An error occurred while trying to register for the event.');
         }
-        setSignUpDialogOpen(false);
+        setSignUpDialogOpen(false); 
+      }
+    }
+  };
+
+  // New function to handle confirming to join the waitlist
+  const handleJoinWaitlistConfirm = async () => {
+    if (eventForWaitlist) {
+      try {
+        await eventsApi.registerForEvent(eventForWaitlist.id.toString(), { join_waitlist: true });
+        setWaitlistDialogOpen(false);
+        setEventForWaitlist(null);
+        setErrorMessage(null); // Clear previous error messages
+        // Show a success message (e.g., using a Snackbar or a simple alert for now)
+        alert(`Successfully joined the waitlist for "${eventForWaitlist.name}"! You will be notified if a spot opens up.`);
+        await refreshEvents(); // Refresh events to show waitlist status if applicable
+      } catch (waitlistError: any) {
+        console.error('Failed to join waitlist:', waitlistError);
+        const backendError = waitlistError.response?.data?.error;
+        const backendMessage = waitlistError.response?.data?.message;
+        setErrorMessage(backendError || backendMessage || waitlistError.message || 'An error occurred while trying to join the waitlist.');
+        setWaitlistDialogOpen(false); // Close the dialog even on error
       }
     }
   };
@@ -645,11 +683,56 @@ const EventList = () => {
   const renderActionButtons = (event: Event) => {
     // Check if the user is registered for this event
     const isRegistered = isRegisteredForEvent(event.id);
-    const registrationStatus = event.registration?.status || null;
+    // Ensure registrationStatus has a fallback for clarity
+    let registrationStatusText = event.registration?.status || null;
+
+    // Handle Waitlisted status first
+    if (registrationStatusText === 'Waitlisted') {
+      return (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
+          <Chip
+            label="Waitlisted"
+            color="warning" // Or another color you prefer for waitlisted
+            size="small"
+          />
+          {/* Optionally, allow cancellation from waitlist here if desired */}
+          <Button 
+            size="small"
+            variant="outlined" 
+            color="error" 
+            onClick={() => handleCancelClick(event.id)} // Assumes handleCancelClick can also cancel waitlist
+            startIcon={<CancelIcon />}
+          >
+            Leave Waitlist
+          </Button>
+        </Box>
+      );
+    }
     
-    // Don't show any action buttons for completed events
+    if (isRegistered && !registrationStatusText && event.status !== 'Completed' && event.status !== 'In Progress') {
+      return (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
+          <Chip
+            label={registrationStatusText} // Use the derived status text
+            color={registrationStatusText === 'Checked In' ? 'success' : 'info'}
+            icon={registrationStatusText === 'Checked In' ? <CheckInIcon /> : undefined}
+            size="small"
+          />
+          <Button 
+            size="small"
+            variant="outlined" 
+            color="error" 
+            onClick={() => handleCancelClick(event.id)} 
+            startIcon={<CancelIcon />}
+          >
+            Cancel Registration
+          </Button>
+        </Box>
+      );
+    }
+    
     if (event.status === 'Completed') {
-      if (isRegistered && registrationStatus === 'Checked In') {
+      if (isRegistered && registrationStatusText === 'Checked In') {
         const isCurrentUserAttendee = user && !isAdmin() && !isOrganizer();
 
         return (
@@ -811,7 +894,7 @@ const EventList = () => {
     }
     
     if (event.status === 'In Progress'  && isRegistered) {
-      if (registrationStatus === 'Checked In') {
+      if (registrationStatusText === 'Checked In') {
         return (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', alignSelf: 'flex-start', width: '100%' }}> 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start', mb: expandedUserSchedules[event.id] ? 1 : 0 }}> 
@@ -951,9 +1034,9 @@ const EventList = () => {
         return (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
             <Chip
-              label={registrationStatus}
-              color={registrationStatus === 'Checked In' ? 'success' : 'info'}
-              icon={registrationStatus === 'Checked In' ? <CheckInIcon /> : undefined}
+              label={registrationStatusText} // Use the derived status text
+              color={registrationStatusText === 'Checked In' ? 'success' : 'info'}
+              icon={registrationStatusText === 'Checked In' ? <CheckInIcon /> : undefined}
               size="small"
             />
             <Button 
@@ -3081,6 +3164,34 @@ const EventList = () => {
           <Button onClick={() => setDeleteEventConfirmOpen(false)}>Cancel</Button>
           <Button onClick={handleDeleteEvent} color="error" variant="contained">
             Delete Event
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Waitlist Confirmation Dialog */}
+      <Dialog
+        open={waitlistDialogOpen}
+        onClose={() => {
+          setWaitlistDialogOpen(false);
+          setEventForWaitlist(null);
+        }}
+      >
+        <DialogTitle>Join Waitlist for "{eventForWaitlist?.name}"?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This event is currently full. Would you like to be added to the waitlist?
+          </DialogContentText>
+          <DialogContentText variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            If a spot opens up, you may be automatically registered.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setWaitlistDialogOpen(false);
+            setEventForWaitlist(null);
+          }}>No, Thanks</Button>
+          <Button onClick={handleJoinWaitlistConfirm} color="primary" variant="contained">
+            Yes, Join Waitlist
           </Button>
         </DialogActions>
       </Dialog>

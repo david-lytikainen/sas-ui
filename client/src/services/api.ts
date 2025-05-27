@@ -216,7 +216,7 @@ interface EventsApi {
   create: (eventData: Omit<Event, 'id' | 'creator_id' | 'created_at' | 'updated_at' | 'registration_deadline'>) => Promise<Event>;
   updateEvent: (eventId: string, eventData: Partial<Event>) => Promise<{ message: string, event: Event }>;
   deleteEvent: (eventId: string) => Promise<{ message: string }>;
-  registerForEvent: (eventId: string) => Promise<{ message: string }>;
+  registerForEvent: (eventId: string, body?: { join_waitlist: boolean }) => Promise<{ message: string, waitlist_available?: boolean }>;
   cancelRegistration: (eventId: string) => Promise<{ message: string }>;
   checkIn: (eventId: string, pin: string) => Promise<{ message: string }>;
   testGetEvents: () => Promise<Event[]>;
@@ -310,8 +310,8 @@ const realEventsApi: EventsApi = {
     return response.data;
   },
 
-  registerForEvent: async (eventId: string) => {
-    const response = await api.post(`/events/${eventId}/register`);
+  registerForEvent: async (eventId: string, body?: { join_waitlist: boolean }) => {
+    const response = await api.post(`/events/${eventId}/register`, body);
     return response.data;
   },
 
