@@ -13,11 +13,6 @@ interface EventContextType {
   isRegisteredForEvent: (eventId: number) => boolean;
 }
 
-interface EventsResponse {
-  events?: Event[];
-  registrations?: Array<{event_id: number}>;
-}
-
 const EventContext = createContext<EventContextType | undefined>(undefined);
 
 export const useEvents = () => {
