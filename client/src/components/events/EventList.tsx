@@ -339,8 +339,13 @@ const EventList = () => {
         }
       } catch (registrationError: any) {
         console.error('Failed to register for event:', registrationError);
-        const backendMessage = registrationError.response?.data?.message || registrationError.response?.data?.error;
-        setErrorMessage(backendMessage || registrationError.message || 'An error occurred while trying to register for the event.');
+        const backendMessage = registrationError.response?.data?.error || registrationError.response?.data?.message; // Prioritize 'error' field
+        if (backendMessage === "Event is full, cannot register") {
+          setErrorMessage("This event is currently full. Please try again later or contact the organizer.");
+        } else {
+          setErrorMessage(backendMessage || registrationError.message || 'An error occurred while trying to register for the event.');
+        }
+        setSignUpDialogOpen(false);
       }
     }
   };
