@@ -351,7 +351,9 @@ const EventList = () => {
         const backendMsg = registrationError.response?.data?.message; // Renamed to avoid conflict
         const waitlistAvailable = registrationError.response?.data?.waitlist_available === true;
 
-        if (backendError === "Event is full, cannot register" && waitlistAvailable) {
+        if ((backendError === "Event is full, cannot register" 
+                || backendError === "Event is full for this gender, cannot register") 
+              && waitlistAvailable) {
           const event = events.find(e => e.id.toString() === signUpEventId);
           if (event) {
             setEventForWaitlist(event);
