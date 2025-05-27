@@ -2114,11 +2114,6 @@ const EventList = () => {
                       onChange={(e) => setCreateForm(prev => ({ ...prev, status: e.target.value as EventStatus }))}
                     >
                       <MenuItem value="Registration Open">Registration Open</MenuItem>
-                      <MenuItem value="Registration Closed">Registration Closed</MenuItem>
-                      <MenuItem value="Upcoming">Upcoming</MenuItem>
-                      <MenuItem value="In Progress">In Progress</MenuItem>
-                      <MenuItem value="Completed">Completed</MenuItem>
-                      <MenuItem value="Cancelled">Cancelled</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
