@@ -189,7 +189,7 @@ const Navigation = () => {
               }}
               style={toggleButtonProps}
             >
-              {theme.palette.mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+              {theme.palette.mode === 'dark' ? <Brightness4Icon /> : <Brightness7Icon />}
             </AnimatedIconButton>
             {user && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 1 : 2, ml: 'auto' }}>
