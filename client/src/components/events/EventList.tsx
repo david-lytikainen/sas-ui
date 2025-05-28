@@ -180,7 +180,7 @@ const EventList = () => {
   const [attendeeSpeedDateSelections, setAttendeeSpeedDateSelections] = useState<Record<number, { eventId: number, interested: boolean }>>({});
   const [attendeeSelectionError, setAttendeeSelectionError] = useState<Record<number, string | null>>({});
   // ADD State to track successful submissions by the attendee
-  const [submittedEventIds, setSubmittedEventIds] = useState<Set<number>>(new Set());
+  // const [submittedEventIds, setSubmittedEventIds] = useState<Set<number>>(new Set());
   // ADD State to track if the selection window is confirmed closed for an event
   const [selectionWindowClosedError, setSelectionWindowClosedError] = useState<Record<number, boolean>>({});
 
@@ -216,6 +216,22 @@ const EventList = () => {
   // Add state for the waitlist confirmation dialog
   const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false);
   const [eventForWaitlist, setEventForWaitlist] = useState<Event | null>(null);
+
+  // Helper functions for localStorage
+  const getPersistedSelections = (eventId: number): Record<number, boolean> => {
+    const selections = localStorage.getItem(`attendeeSelections_${eventId}`);
+    return selections ? JSON.parse(selections) : {};
+  };
+
+  const persistSelection = (eventId: number, eventSpeedDateId: number, interested: boolean) => {
+    const selections = getPersistedSelections(eventId);
+    selections[eventSpeedDateId] = interested;
+    localStorage.setItem(`attendeeSelections_${eventId}`, JSON.stringify(selections));
+  };
+  
+  const persistAllSelectionsForEvent = (eventId: number, selections: Record<number, boolean>) => {
+    localStorage.setItem(`attendeeSelections_${eventId}`, JSON.stringify(selections));
+  };
 
   const formatUTCToLocal = (utcDateString: string, includeTime: boolean = true) => {
     try {
@@ -587,6 +603,8 @@ const EventList = () => {
       ...prev,
       [eventSpeedDateId]: { eventId, interested }
     }));
+    // Persist this individual selection to localStorage
+    persistSelection(eventId, eventSpeedDateId, interested);
     // Clear error for this event when a selection is made
     setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null }));
   };
@@ -611,9 +629,18 @@ const EventList = () => {
   };
 
   const handleSaveAttendeeSelections = async (eventId: number) => {
+    const event = filteredEvents.find(e => e.id === eventId);
+    if (!event) {
+      console.error("Event not found in handleSaveAttendeeSelections for eventId:", eventId);
+      setAttendeeSelectionError(prev => ({ ...prev, [eventId]: 'Event details not found. Cannot save selections.' }));
+      return;
+    }
+
     const currentPicks = getCurrentPicksForEvent(eventId);
     // Update local saved state first for immediate UI feedback if desired for isSaveDisabled
     setSavedAttendeeSelections(prev => ({ ...prev, [eventId]: { ...currentPicks } }));
+    // Persist all current selections for this event to localStorage
+    persistAllSelectionsForEvent(eventId, currentPicks);
 
     setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null })); // Clear previous error
     const schedule = userSchedules[eventId] || [];
@@ -623,66 +650,46 @@ const EventList = () => {
       interested: currentPicks[item.event_speed_date_id] === true // Default to false (NO) if not in currentPicks
     }));
 
-    if (selectionsToSubmit.length === 0 && schedule.length > 0) {
-
-    } else if (schedule.length === 0) {
+    if (schedule.length === 0) {
       setAttendeeSelectionError(prev => ({ ...prev, [eventId]: 'No schedule found to save selections for this event.' }));
       return;
     }
     setSaveIndicator(prev => ({ ...prev, [eventId]: true }));
 
-    try {
-      await eventsApi.submitSpeedDateSelections(eventId.toString(), selectionsToSubmit);
+    // Only attempt to submit to the backend if the event is not completed
+    if (event.status !== 'Completed') {
+      try {
+        await eventsApi.submitSpeedDateSelections(eventId.toString(), selectionsToSubmit);
 
+        setTimeout(() => setSaveIndicator(prev => ({ ...prev, [eventId]: false })), 1200);
+        setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: false })); // Reset this flag on successful submission
+      } catch (error: any) {
+        const specificErrorMessage = 'Speed date selections window closed 24 hours after event completion.';
+        const backendErrorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
+        
+        if (backendErrorMessage === specificErrorMessage) {
+          setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: true }));
+          setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null })); 
+        } else {
+          setAttendeeSelectionError(prev => ({
+            ...prev,
+            [eventId]: backendErrorMessage || 'Failed to save your selections.'
+          }));
+          setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: false }));
+        }
+        // Ensure save indicator is turned off on error too
+        setTimeout(() => setSaveIndicator(prev => ({ ...prev, [eventId]: false })), 1200);
+      }
+    } else {
+      // For completed events, selections are saved locally. API submission is skipped.
+      console.log(`Event ${eventId} (${event.name}) is completed. Selections saved locally only.`);
+      // The save indicator is already true, turn it off after a delay.
       setTimeout(() => setSaveIndicator(prev => ({ ...prev, [eventId]: false })), 1200);
-      setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: false }));
-    } catch (error: any) {
-      const specificErrorMessage = 'Speed date selections window closed 24 hours after event completion.';
-      const backendErrorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
-      
-      if (backendErrorMessage === specificErrorMessage) {
-        setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: true }));
-        setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null })); 
-      } else {
-        setAttendeeSelectionError(prev => ({
-          ...prev,
-          [eventId]: backendErrorMessage || 'Failed to save your selections.'
-        }));
-        setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: false }));
-      }
-      setSaveIndicator(prev => ({ ...prev, [eventId]: false }));
+      // No need to set specific errors here, as local save is successful.
+      // Backend selectionWindowClosedError is not relevant as we didn't attempt submission.
     }
   };
 
-  const handleAttendeeSubmitSelections = async (eventId: number) => {
-    setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null }));
-    const schedule = userSchedules[eventId] || [];
-    const saved = savedAttendeeSelections[eventId] || {};
-    const selectionsToSubmit = schedule.map(item => ({
-      event_speed_date_id: item.event_speed_date_id,
-      interested: saved[item.event_speed_date_id] === true // default to false (NO)
-    }));
-    if (selectionsToSubmit.length === 0) {
-      setAttendeeSelectionError(prev => ({ ...prev, [eventId]: 'No schedule found for this event.' }));
-      return;
-    }
-    try {
-      await eventsApi.submitSpeedDateSelections(eventId.toString(), selectionsToSubmit);
-      setSubmittedEventIds(prev => new Set(prev).add(eventId));
-      setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null }));
-      setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: false }));
-    } catch (error: any) {
-      const specificErrorMessage = 'Speed date selections window closed 24 hours after event completion.';
-      const backendErrorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
-      if (backendErrorMessage === specificErrorMessage) {
-        setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: true }));
-        setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null }));
-      } else {
-        setAttendeeSelectionError(prev => ({ ...prev, [eventId]: backendErrorMessage || 'Failed to submit your selections.' }));
-        setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: false }));
-      }
-    }
-  };
 
   const renderActionButtons = (event: Event) => {
     // Check if the user is registered for this event
@@ -839,7 +846,7 @@ const EventList = () => {
                       </Alert>
                     )}
                     {/* Horizontal Save and Submit buttons */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mt: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, mt: 1.5 }}> {/* MODIFIED: justifyContent to flex-end */}
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Button
                           variant="outlined"
@@ -848,12 +855,13 @@ const EventList = () => {
                           onClick={() => handleSaveAttendeeSelections(event.id)}
                           disabled={isSaveDisabled(event.id)}
                         >
-                          Save
+                          Save Selections {/* MODIFIED TEXT */}
                         </Button>
                         {saveIndicator[event.id] && (
                           <Typography variant="body2" color="success.main">Saved!</Typography>
                         )}
                       </Box>
+                      {/* REMOVED SUBMIT BUTTON
                       <Button
                         variant="contained"
                         color="primary"
@@ -867,6 +875,7 @@ const EventList = () => {
                       >
                         {submittedEventIds.has(event.id) ? 'Selections Submitted' : 'Submit My Selections'}
                       </Button>
+                      */}
                     </Box>
                     {/* ADDED: Display specific message if window is closed */}
                     {selectionWindowClosedError[event.id] && (
@@ -986,7 +995,7 @@ const EventList = () => {
                       </Alert>
                     )}
                     {/* Horizontal Save and Submit buttons */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mt: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, mt: 1.5 }}> {/* MODIFIED: justifyContent to flex-end */}
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Button
                           variant="outlined"
@@ -995,12 +1004,13 @@ const EventList = () => {
                           onClick={() => handleSaveAttendeeSelections(event.id)}
                           disabled={isSaveDisabled(event.id)}
                         >
-                          Save
+                          Save Selections {/* MODIFIED TEXT */}
                         </Button>
                         {saveIndicator[event.id] && (
                           <Typography variant="body2" color="success.main">Saved!</Typography>
                         )}
                       </Box>
+                      {/* REMOVED SUBMIT BUTTON
                       <Button
                         variant="contained"
                         color="primary"
@@ -1014,6 +1024,7 @@ const EventList = () => {
                       >
                         {submittedEventIds.has(event.id) ? 'Selections Submitted' : 'Submit My Selections'}
                       </Button>
+                       */}
                     </Box>
                   </>
                 ) : (
@@ -1641,13 +1652,15 @@ const EventList = () => {
   useEffect(() => {
     const fetchSchedulesForActiveEvents = async () => {
       const schedulesToUpdate: Record<number, ScheduleItem[]> = {};
-      let needsUpdate = false;
+      const newAttendeeSelections: Record<number, { eventId: number, interested: boolean }> = {};
+      const newSavedSelections: Record<number, Record<number, boolean>> = {};
+      let needsScheduleUpdate = false;
 
       for (const event of filteredEvents) { // Use filteredEvents
         const isRegistered = isRegisteredForEvent(event.id);
         const registrationStatus = event.registration?.status || null;
 
-        console.log(`Event ${event.id}: Status=${event.status}, Registered=${isRegistered}, CheckInStatus=${registrationStatus}, AlreadyFetched=${userSchedules.hasOwnProperty(event.id)}`);
+        // console.log(`Event ${event.id}: Status=${event.status}, Registered=${isRegistered}, CheckInStatus=${registrationStatus}, AlreadyFetched=${userSchedules.hasOwnProperty(event.id)}`);
 
         if ((event.status === 'In Progress' || event.status === 'Completed') && 
             isRegistered && 
@@ -1655,28 +1668,64 @@ const EventList = () => {
         {
           if (!userSchedules.hasOwnProperty(event.id)) { 
             try {
-              console.log(`Fetching schedule for event ${event.id}`);
+              // console.log(`Fetching schedule for event ${event.id}`);
               const response = await eventsApi.getSchedule(event.id.toString());
               if (response && response.schedule) {
-                console.log(`Fetched schedule for event ${event.id}:`, response.schedule);
+                // console.log(`Fetched schedule for event ${event.id}:`, response.schedule);
                 schedulesToUpdate[event.id] = response.schedule;
-                needsUpdate = true;
+                
+                // Load persisted selections for this event's schedule
+                const persisted = getPersistedSelections(event.id);
+                newSavedSelections[event.id] = { ...persisted }; // Initialize saved selections
+                response.schedule.forEach(item => {
+                  if (item.event_speed_date_id && persisted.hasOwnProperty(item.event_speed_date_id)) {
+                    newAttendeeSelections[item.event_speed_date_id] = {
+                      eventId: event.id,
+                      interested: persisted[item.event_speed_date_id]
+                    };
+                  }
+                });
+                needsScheduleUpdate = true;
               } else {
-                 console.log(`No schedule found for event ${event.id}`);
+                 // console.log(`No schedule found for event ${event.id}`);
                  schedulesToUpdate[event.id] = []; 
-                 needsUpdate = true;
+                 newSavedSelections[event.id] = {}; // Initialize saved selections even if no schedule
+                 needsScheduleUpdate = true;
               }
             } catch (err) {
               console.error(`Failed to fetch schedule for event ${event.id}:`, err);
               schedulesToUpdate[event.id] = []; 
-              needsUpdate = true;
+              newSavedSelections[event.id] = {}; // Initialize saved selections on error
+              needsScheduleUpdate = true;
+            }
+          } else {
+            // Schedules already fetched, ensure selections are loaded if not already part of initial load
+            // This handles cases where component re-renders but schedules were already present
+            if (!savedAttendeeSelections[event.id]) {
+              const persisted = getPersistedSelections(event.id);
+              newSavedSelections[event.id] = { ...persisted };
+              (userSchedules[event.id] || []).forEach(item => {
+                if (item.event_speed_date_id && persisted.hasOwnProperty(item.event_speed_date_id) && !attendeeSpeedDateSelections[item.event_speed_date_id]) {
+                  newAttendeeSelections[item.event_speed_date_id] = {
+                    eventId: event.id,
+                    interested: persisted[item.event_speed_date_id]
+                  };
+                }
+              });
             }
           }
         }
       }
 
-      if (needsUpdate) {
+      if (needsScheduleUpdate) {
         setUserSchedules(prev => ({ ...prev, ...schedulesToUpdate }));
+      }
+      // Update selections states together
+      if (Object.keys(newAttendeeSelections).length > 0) {
+        setAttendeeSpeedDateSelections(prev => ({ ...prev, ...newAttendeeSelections }));
+      }
+      if (Object.keys(newSavedSelections).length > 0) {
+        setSavedAttendeeSelections(prev => ({ ...prev, ...newSavedSelections}));
       }
     }; // End of fetchSchedulesForActiveEvents
 
@@ -1684,7 +1733,7 @@ const EventList = () => {
     if (user && filteredEvents.length > 0) { // Use filteredEvents
         fetchSchedulesForActiveEvents();
     }
-  }, [filteredEvents, isRegisteredForEvent, user, userSchedules]); // Use filteredEvents
+  }, [filteredEvents, isRegisteredForEvent, user, userSchedules, savedAttendeeSelections, attendeeSpeedDateSelections]); // Added savedAttendeeSelections & attendeeSpeedDateSelections to deps
 
   useEffect(() => {
     if ('Notification' in window) {
@@ -1696,19 +1745,6 @@ const EventList = () => {
     }
   }, []);
 
-  useEffect(() => {
-    let timerId: NodeJS.Timeout | undefined;
-    if (showNotificationSnackbar) {
-      timerId = setTimeout(() => {
-        setShowNotificationSnackbar(false);
-      }, 10000); // 10 seconds
-    }
-    return () => {
-      if (timerId) {
-        clearTimeout(timerId);
-      }
-    };
-  }, [showNotificationSnackbar]); 
 
   const requestNotificationPermission = useCallback(async () => {
     if (!('Notification' in window)) {
@@ -1737,6 +1773,12 @@ const EventList = () => {
         console.log(`Notification permission status: ${permission}`);
       }
     });
+  };
+
+  const handleDeclineNotifications = () => {
+    setShowNotificationSnackbar(false);
+    // Optionally store this preference in localStorage to prevent showing again
+    localStorage.setItem('notificationsDeclined', 'true');
   };
 
   const handleCloseNotificationSnackbar = useCallback((_event: any, reason: SnackbarCloseReason) => {
@@ -3006,19 +3048,35 @@ const EventList = () => {
         </MuiLink>
       </Box>
 
-      {/* ADD Snackbar for Notification Permission Request */}
+      {/* UPDATE Snackbar for Notification Permission Request */}
       <Snackbar
          open={showNotificationSnackbar} 
          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
          onClose={handleCloseNotificationSnackbar}
          sx={{ position: 'fixed', bottom: 12, zIndex: theme.zIndex.snackbar + 1}}
+         autoHideDuration={null} // Remove auto-hide
        >
          <Alert 
            severity="info" 
-           action={ 
-             <Button color="inherit" size="medium" onClick={handleEnableNotifications} variant="outlined">
-               Enable
-             </Button>
+           action={
+             <Box sx={{ display: 'flex', gap: 1 }}>
+               <Button 
+                 color="error" 
+                 size="medium" 
+                 onClick={handleDeclineNotifications} 
+                 variant="outlined"
+               >
+                 Decline
+               </Button>
+               <Button 
+                 color="inherit" 
+                 size="medium" 
+                 onClick={handleEnableNotifications} 
+                 variant="outlined"
+               >
+                 Enable
+               </Button>
+             </Box>
            }
            onClose={handleAlertClose} 
            sx={{width: '100%', textAlign: 'center', pt: 1, pb: 1 }}
