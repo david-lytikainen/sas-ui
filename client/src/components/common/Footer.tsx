@@ -19,7 +19,7 @@ const Footer: React.FC = () => {
     >
       <Container maxWidth="lg">
         <Typography variant="body2" color="text.secondary" align="center">
-          © {new Date().getFullYear()} Saved & Single. All rights reserved.
+          Saved & Single {new Date().getFullYear()}
         </Typography>
         <Typography variant="body2" color="text.secondary" align="center" sx={{mt: 1}}>
           <RouterLink to="/privacy-policy" style={{color: 'inherit', textDecoration: 'none'}}>
