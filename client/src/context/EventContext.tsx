@@ -1,10 +1,11 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 import { eventsApi } from '../services/api';
 import { Event } from '../types/event';
 
 interface EventContextType {
   events: Event[];
+  filteredEvents: Event[];
   loading: boolean;
   error: string | null;
   userRegisteredEvents: number[];
@@ -147,10 +148,26 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return userRegisteredEvents.includes(eventId);
   }, [userRegisteredEvents]);
 
+  // Memoized filtered events
+  const filteredEvents = useMemo(() => {
+    if (!user) return []; // Or handle as appropriate if no user is logged in
+
+    return events.filter(event => {
+      const eventNameLower = event.name.toLowerCase();
+      if (eventNameLower.includes('mock event')) {
+        // If it's a mock event, only show to admin or event_organizer
+        return isAdmin() || isOrganizer();
+      }
+      // If not a mock event, show to everyone
+      return true;
+    });
+  }, [events, user, isAdmin, isOrganizer]);
+
   return (
     <EventContext.Provider
       value={{
         events,
+        filteredEvents,
         loading,
         error,
         userRegisteredEvents,
