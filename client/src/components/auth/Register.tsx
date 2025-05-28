@@ -16,6 +16,7 @@ import {
   InputLabel,
   SelectChangeEvent,
   useTheme,
+  Link as MuiLink,
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
@@ -474,6 +475,14 @@ const Register = () => {
           >
             {loading ? 'Registering...' : 'Register'}
           </Button>
+
+          <Typography variant="caption" display="block" sx={{ mt: 1.5, textAlign: 'center', color: 'text.secondary' }}>
+            By clicking Register, you acknowledge that you have read and agree to the{' '}
+            <MuiLink component="a" href="/privacy-policy" target="_blank" rel="noopener noreferrer">
+              Privacy Policy
+            </MuiLink>
+            .
+          </Typography>
 
           <Button
             fullWidth

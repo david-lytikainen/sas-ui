@@ -18,6 +18,7 @@ import { ColorModeContext } from './context/ColorModeContext';
 import SystemSettings from './components/profile/SystemSettings';
 import AnimatedWrapper from './components/common/AnimatedWrapper';
 import EventAttendees from './components/admin/EventAttendees';
+import PrivacyPolicy from './components/legal/PrivacyPolicy';
 
 
 // Add global styles for animations
@@ -106,6 +107,7 @@ const ProtectedRoutes = () => {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
 
       {/* Settings Route */}
       <Route
