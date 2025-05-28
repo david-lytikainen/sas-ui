@@ -82,7 +82,7 @@ interface Match {
 }
 
 const EventList = () => {
-  const { events: contextEvents, createEvent, refreshEvents, isRegisteredForEvent, userRegisteredEvents } = useEvents();
+  const { events: contextEvents, createEvent, refreshEvents, isRegisteredForEvent, userRegisteredEvents, filteredEvents } = useEvents(); // Destructure filteredEvents
   const { user, isAdmin, isOrganizer } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -265,7 +265,7 @@ const EventList = () => {
     fetchMatchesForEvent(event.id.toString());
   };
 
-  const events: Event[] = contextEvents.map((contextEvent: any) => {
+  contextEvents.map((contextEvent: any) => {
     // Find the corresponding registration if it exists
     const registration = contextEvent.registration || null;
     
@@ -288,7 +288,8 @@ const EventList = () => {
   });
 
   // Calculate eventOptions directly instead of storing in state
-  const eventOptions = events.filter(event => 
+  // Use filteredEvents for options available for check-in etc., if appropriate
+  const eventOptions = filteredEvents.filter(event => 
     userRegisteredEvents.includes(event.id) && 
     (event.status === 'Registration Open' || event.status === 'In Progress')
   );
@@ -308,7 +309,7 @@ const EventList = () => {
 
   // Update handleSignUpClick to check registration close time
   const handleSignUpClick = (eventId: number) => {
-    const event = events.find(e => e.id === eventId);
+    const event = filteredEvents.find(e => e.id === eventId); // Use filteredEvents
     if (!event) return;
     
     if (event.status === 'Completed') {
@@ -354,7 +355,7 @@ const EventList = () => {
         if ((backendError === "Event is full, cannot register" 
                 || backendError === "Event is full for this gender, cannot register") 
               && waitlistAvailable) {
-          const event = events.find(e => e.id.toString() === signUpEventId);
+          const event = filteredEvents.find(e => e.id.toString() === signUpEventId); // Use filteredEvents
           if (event) {
             setEventForWaitlist(event);
             setWaitlistDialogOpen(true); // Open the dialog to ASK to join waitlist
@@ -391,7 +392,7 @@ const EventList = () => {
   };
 
   const handleCancelClick = (eventId: number) => {
-    const event = events.find(e => e.id === eventId);
+    const event = filteredEvents.find(e => e.id === eventId); // Use filteredEvents
     if (event && event.status === 'Completed') {
       setErrorMessage("Cannot cancel registration for completed events.");
       return;
@@ -423,7 +424,7 @@ const EventList = () => {
   };
   
   const handleEventSelection = (eventId: number) => {
-    const selectedEvent = events.find(e => e.id === eventId) || null;
+    const selectedEvent = filteredEvents.find(e => e.id === eventId) || null; // Use filteredEvents
     setSelectedEventForCheckIn(selectedEvent);
   };
   
@@ -468,7 +469,7 @@ const EventList = () => {
   };
 
   // Sort events like a SQL database would
-  const sortedEvents = [...events].sort((a, b) => {
+  const sortedEvents = [...filteredEvents].sort((a, b) => { // Use filteredEvents
     // First by status using the statusPriority
     const statusOrder: Record<EventStatus, number> = {
       'In Progress': 1,
@@ -1130,7 +1131,7 @@ const EventList = () => {
   const navigateToAttendees = async (eventId: number) => {
     try {
       console.log(`Fetching registered users for event ID: ${eventId}`);
-      const event = events.find(e => e.id === eventId) || null;
+      const event = filteredEvents.find(e => e.id === eventId) || null; // Use filteredEvents
       setSelectedEventForRegisteredUsers(event);
       
       const response = await eventsApi.getEventAttendees(eventId.toString());
@@ -1201,7 +1202,7 @@ const EventList = () => {
   // View attendee pins
   const handleViewPins = async (eventId: number) => {
     try {
-      const event = events.find(e => e.id === eventId) || null;
+      const event = filteredEvents.find(e => e.id === eventId) || null; // Use filteredEvents
       setSelectedEventForPins(event);
       setPinSearchTerm(''); // Reset search term
       
@@ -1441,7 +1442,7 @@ const EventList = () => {
   const handleViewAllSchedules = async (eventId: number) => {
     try {
       setLoadingAllSchedules(true);
-      setSelectedEventForAllSchedules(events.find(e => e.id === eventId) || null);
+      setSelectedEventForAllSchedules(filteredEvents.find(e => e.id === eventId) || null); // Use filteredEvents
       setSearchTerm(''); // Reset search term when opening dialog
       setSortConfig(null); // Reset sort config when opening dialog
       setSpeedDateSelections({}); // Initialize/reset selections
@@ -1641,7 +1642,7 @@ const EventList = () => {
       const schedulesToUpdate: Record<number, ScheduleItem[]> = {};
       let needsUpdate = false;
 
-      for (const event of events) {
+      for (const event of filteredEvents) { // Use filteredEvents
         const isRegistered = isRegisteredForEvent(event.id);
         const registrationStatus = event.registration?.status || null;
 
@@ -1679,10 +1680,10 @@ const EventList = () => {
     }; // End of fetchSchedulesForActiveEvents
 
     // Check if user data and events are loaded before fetching
-    if (user && events.length > 0) {
+    if (user && filteredEvents.length > 0) { // Use filteredEvents
         fetchSchedulesForActiveEvents();
     }
-  }, [events, isRegisteredForEvent, user, userSchedules]); 
+  }, [filteredEvents, isRegisteredForEvent, user, userSchedules]); // Use filteredEvents
 
   useEffect(() => {
     if ('Notification' in window) {
@@ -3035,7 +3036,7 @@ const EventList = () => {
             setCurrentMatches([]);
             setMatchesError(null);
           }}
-          eventName={events.find(e => e.id.toString() === selectedEventIdForMatches)?.name}
+          eventName={filteredEvents.find(e => e.id.toString() === selectedEventIdForMatches)?.name}
           matches={currentMatches}
           loading={matchesLoading}
           error={matchesError}
@@ -3158,7 +3159,7 @@ const EventList = () => {
         <DialogTitle>Delete Event</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to delete the event: <strong>{events.find(e => e.id === eventToDeleteId)?.name}</strong>?
+            Are you sure you want to delete the event: <strong>{filteredEvents.find(e => e.id === eventToDeleteId)?.name}</strong>? {/* Use filteredEvents to find name */}
             This action cannot be undone.
           </DialogContentText>
         </DialogContent>

@@ -206,7 +206,8 @@ const EventTimer = ({
         const notification = new Notification(`Round ${roundNumber} Started!`, {
           body: `The timer for round ${roundNumber} is now active.`,
           icon: '/favicon.svg',
-          tag: 'new-round-start'
+          tag: 'new-round-start',
+          requireInteraction: true // Make notification persistent
         });
         notification.onclick = () => { window.focus(); notification.close(); };
       } catch (error) {
@@ -1022,7 +1023,8 @@ const EventTimer = ({
           const notification = new Notification('Break Over Soon', { 
             body: `Get ready! Round ${nextRoundInfo || 'next'} is about to start.`,
             icon: '/favicon.svg',
-            tag: 'break-end'
+            tag: 'break-end',
+            requireInteraction: true // Make notification persistent
           });
           notification.onclick = () => { window.focus(); notification.close(); };
         } catch (error) {
