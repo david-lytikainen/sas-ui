@@ -121,7 +121,7 @@ const Register = () => {
       };
       
       await register(registrationData);
-      navigate('/');
+      navigate('/events');
     } catch (err: any) {
       setError(err.message || 'An error occurred during registration');
     } finally {

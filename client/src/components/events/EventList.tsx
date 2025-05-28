@@ -38,7 +38,7 @@ import {
   Divider,
   Snackbar,
   SnackbarCloseReason,
-  Tooltip,
+  CircularProgress,
 } from '@mui/material';
 import {
   Event as EventIcon,
@@ -82,6 +82,13 @@ interface Match {
   phone: string;
   age: number;
   gender: string;
+}
+
+interface MatchPair {
+  user1_name: string;
+  user1_email: string;
+  user2_name: string;
+  user2_email: string;
 }
 
 const EventList = () => {
@@ -219,6 +226,46 @@ const EventList = () => {
   // Add state for the waitlist confirmation dialog
   const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false);
   const [eventForWaitlist, setEventForWaitlist] = useState<Event | null>(null);
+
+  // State for "View All Matches"
+  const [viewAllEventMatchesDialogOpen, setViewAllEventMatchesDialogOpen] = useState<boolean>(false);
+  const [selectedEventForAllEventMatches, setSelectedEventForAllEventMatches] = useState<Event | null>(null);
+  const [allEventMatches, setAllEventMatches] = useState<MatchPair[]>([]);
+  const [allEventMatchesLoading, setAllEventMatchesLoading] = useState<boolean>(false);
+  const [allEventMatchesError, setAllEventMatchesError] = useState<string | null>(null);
+
+  const handleExportAllMatches = () => {
+    if (!selectedEventForAllEventMatches || allEventMatches.length === 0) {
+      setErrorMessage('No matches available to export.');
+      return;
+    }
+
+    try {
+      let csvContent = 'User 1 Name,User 1 Email,User 2 Name,User 2 Email\n';
+      allEventMatches.forEach(match => {
+        const row = [
+          `"${match.user1_name}"`,
+          `"${match.user1_email}"`,
+          `"${match.user2_name}"`,
+          `"${match.user2_email}"`,
+        ].join(',');
+        csvContent += row + '\n';
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${selectedEventForAllEventMatches.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_all_matches.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting all matches:', error);
+      setErrorMessage('Failed to export all matches.');
+    }
+  };
 
   // Helper functions for localStorage
   const getPersistedSelections = (eventId: number): Record<number, boolean> => {
@@ -695,90 +742,53 @@ const EventList = () => {
 
 
   const renderActionButtons = (event: Event) => {
-    // Check if the user is registered for this event
-    const isRegistered = isRegisteredForEvent(event.id);
-    // Ensure registrationStatus has a fallback for clarity
-    let registrationStatusText = event.registration?.status || null;
+    const isUserRegistered = isRegisteredForEvent(event.id);
+    const registrationStatus = event.registration?.status;
 
     // Handle Waitlisted status first
-    if (registrationStatusText === 'Waitlisted') {
+    if (registrationStatus === 'Waitlisted') {
       return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
-          <Chip
-            label="Waitlisted"
-            color="warning" // Or another color you prefer for waitlisted
-            size="small"
-          />
-          {/* Optionally, allow cancellation from waitlist here if desired */}
-          <Button 
-            size="small"
-            variant="outlined" 
-            color="error" 
-            onClick={() => handleCancelClick(event.id)} // Assumes handleCancelClick can also cancel waitlist
-            startIcon={<CancelIcon />}
-          >
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start', width: '100%' }}>
+          <Chip label="Waitlisted" color="warning" size="small" sx={{ alignSelf: 'flex-start' }} />
+          <Button size="small" variant="outlined" color="error" onClick={() => handleCancelClick(event.id)} startIcon={<CancelIcon />} sx={{ alignSelf: 'flex-start' }}>
             Leave Waitlist
           </Button>
         </Box>
       );
     }
     
-    if (isRegistered && !registrationStatusText && event.status !== 'Completed' && event.status !== 'In Progress') {
+    // If registered (and not waitlisted) and event is not completed or in progress
+    if (isUserRegistered && registrationStatus !== 'Waitlisted' && event.status !== 'Completed' && event.status !== 'In Progress') {
+      const chipLabel = registrationStatus === 'Checked In' ? 'Checked In' : 'Registered';
+      const chipColor = registrationStatus === 'Checked In' ? 'success' : 'info';
+      const chipIcon = registrationStatus === 'Checked In' ? <CheckInIcon /> : undefined;
       return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
-          <Chip
-            label={registrationStatusText} // Use the derived status text
-            color={registrationStatusText === 'Checked In' ? 'success' : 'info'}
-            icon={registrationStatusText === 'Checked In' ? <CheckInIcon /> : undefined}
-            size="small"
-          />
-          <Button 
-            size="small"
-            variant="outlined" 
-            color="error" 
-            onClick={() => handleCancelClick(event.id)} 
-            startIcon={<CancelIcon />}
-          >
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start', width: '100%' }}>
+          <Chip label={chipLabel} color={chipColor} icon={chipIcon} size="small" sx={{ alignSelf: 'flex-start' }} />
+          <Button size="small" variant="outlined" color="error" onClick={() => handleCancelClick(event.id)} startIcon={<CancelIcon />} sx={{ alignSelf: 'flex-start' }}>
             Cancel Registration
           </Button>
         </Box>
       );
     }
     
+    // Logic for Completed events 
     if (event.status === 'Completed') {
-      if (isRegistered && registrationStatusText === 'Checked In') {
+      if (isUserRegistered && registrationStatus === 'Checked In') {
         const isCurrentUserAttendee = user && !isAdmin() && !isOrganizer();
-
         return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%', alignSelf: 'flex-start' }}> 
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }}> 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start', mb: expandedUserSchedules[event.id] ? 1 : 0 }}> 
-              <Chip
-                label="Checked In"
-                color="success"
-                icon={<CheckInIcon />}
-                size="small"
-              />
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => toggleUserScheduleInline(event.id)} // Keep this toggle
-                startIcon={expandedUserSchedules[event.id] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-              >
+              <Chip label="Checked In" color="success" icon={<CheckInIcon />} size="small" sx={{ alignSelf: 'flex-start' }}/>
+              <Button size="small" variant="outlined" onClick={() => toggleUserScheduleInline(event.id)} startIcon={expandedUserSchedules[event.id] ? <ExpandLessIcon /> : <ExpandMoreIcon />} sx={{ alignSelf: 'flex-start' }}>
                 My Schedule
               </Button>
               {isCurrentUserAttendee && (
-                <Button
-                  size="small"
-                  variant="contained" // Or outlined, depending on preference
-                  color="primary"
-                  onClick={() => handleViewMatchesClick(event)} // Keep this handler
-                  sx={{ mt: 0.5 }} // Add a little margin top
-                >
+                <Button size="small" variant="contained" color="primary" onClick={() => handleViewMatchesClick(event)} sx={{ mt: 0.5, alignSelf: 'flex-start' }}>
                   View My Matches
                 </Button>
               )}
             </Box>
-            {/* This Collapse should show schedule and selection UI for Completed events too */}
             <Collapse in={expandedUserSchedules[event.id]} timeout="auto" unmountOnExit sx={{ width: '100%'}}>
               <Paper elevation={1} sx={{ p: 1.5, mt: 1, bgcolor: 'background.default' }}>
                 {userSchedules[event.id] && userSchedules[event.id].length > 0 ? (
@@ -894,246 +904,55 @@ const EventList = () => {
             </Collapse>
           </Box>
         );
-      }
-      if (!canManageEvent(event)) {
+      } else if (isUserRegistered) {
         return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
-            <Chip
-              label="Event Completed"
-              color="info"
-              size="small"
-            />
-          </Box>
+            <Chip label="Registered (Event Ended)" size="small" sx={{ alignSelf: 'flex-start' }} />
         );
+      } else {
+        return <Chip label="Event Ended" size="small" sx={{ alignSelf: 'flex-start' }} />;
       }
-      return null;
     }
-    
-    if (event.status === 'In Progress'  && isRegistered) {
-      if (registrationStatusText === 'Checked In') {
-        return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', alignSelf: 'flex-start', width: '100%' }}> 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start', mb: expandedUserSchedules[event.id] ? 1 : 0 }}> 
-              <Chip
-                label="Checked In"
-                color="success"
-                icon={<CheckInIcon />}
-                size="small"
-              />
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => toggleUserScheduleInline(event.id)}
-                startIcon={expandedUserSchedules[event.id] ? <ExpandLessIcon fontSize="small"/> : <ExpandMoreIcon fontSize="small"/>}
-              >
-                My Schedule
-              </Button>
-            </Box>
-            <Collapse in={expandedUserSchedules[event.id]} timeout="auto" unmountOnExit sx={{ width: '100%'}}>
-              <Paper elevation={1} sx={{ p: 1.5, mt: 1, bgcolor: 'background.default' }}>
-                {userSchedules[event.id] && userSchedules[event.id].length > 0 ? (
-                  <>
-                    {userSchedules[event.id].map((item, index) => (
-                      <Box 
-                        key={item.event_speed_date_id || index}
-                        sx={{ 
-                          mb: { xs: 0.5, sm: index === userSchedules[event.id].length - 1 ? 0 : 0.75 },
-                          p: { xs: 0.5, sm: 0.75 },
-                          borderLeft: '3px solid', 
-                          borderColor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
-                          borderRadius: '4px',
-                          backgroundColor: theme.palette.action.hover,
-                        }}
-                      >
-                        <Grid container spacing={1} alignItems="center">
-                          <Grid item xs={12}> 
-                            <Typography variant="subtitle2" component="div" gutterBottom={false} sx={{ fontWeight: 'bold', mb: 0.25 }}>
-                              Round {item.round}
-                            </Typography>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Box>
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.1 }}>
-                                  Table: {item.table}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0 }}>
-                                  Partner: {item.partner_name} (Age: {item.partner_age || 'N/A'})
-                                </Typography>
-                              </Box>
-                              {item.event_speed_date_id && (
-                                <Box sx={{ 
-                                  display: 'flex',
-                                  gap: 0.75,
-                                  ml: 2,
-                                  position: 'relative',
-                                  top: '-8px'
-                                }}> 
-                                  <Button
-                                    variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === true ? 'contained' : 'outlined'}
-                                    size="small"
-                                    color="success"
-                                    onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, true)}
-                                    sx={{ minWidth: '50px', px: 1.5, py: 0.5, fontSize: '0.85rem' }}
-                                  >
-                                    Yes
-                                  </Button>
-                                  <Button
-                                    variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === false ? 'contained' : 'outlined'}
-                                    size="small"
-                                    color="error"
-                                    onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, false)}
-                                    sx={{ minWidth: '50px', px: 1.5, py: 0.5, fontSize: '0.85rem' }}
-                                  >
-                                    No
-                                  </Button>
-                                </Box>
-                              )}
-                            </Box>
-                          </Grid>
-                        </Grid>
-                      </Box>
-                    ))}
-                    {attendeeSelectionError[event.id] && (
-                      <Alert severity="error" sx={{ mt: 1.5 }} onClose={() => setAttendeeSelectionError(prev => ({...prev, [event.id]: null}))}>
-                        {attendeeSelectionError[event.id]}
-                      </Alert>
-                    )}
-                    {/* Horizontal Save and Submit buttons */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, mt: 1.5 }}> {/* MODIFIED: justifyContent to flex-end */}
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Button
-                          variant="outlined"
-                          color="inherit" // Changed from secondary to inherit
-                          size="small"
-                          onClick={() => handleSaveAttendeeSelections(event.id)}
-                          disabled={isSaveDisabled(event.id)}
-                        >
-                          Save Selections {/* MODIFIED TEXT */}
-                        </Button>
-                        {saveIndicator[event.id] && (
-                          <Typography variant="body2" color="success.main">Saved!</Typography>
-                        )}
-                      </Box>
-                      {/* REMOVED SUBMIT BUTTON
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        size="small"
-                        onClick={() => handleAttendeeSubmitSelections(event.id)}
-                        disabled={ // Corrected disabled logic for In Progress events
-                          (!userSchedules[event.id] || userSchedules[event.id].length === 0) || // Disable if no schedule
-                          submittedEventIds.has(event.id) ||
-                          selectionWindowClosedError[event.id]
-                        }
-                      >
-                        {submittedEventIds.has(event.id) ? 'Selections Submitted' : 'Submit My Selections'}
-                      </Button>
-                       */}
-                    </Box>
-                  </>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">Your schedule for this event is not yet available or you were not checked in.</Typography>
-                )}
-              </Paper>
-            </Collapse>
-          </Box>
-        );
-      }
+
+    // Standard Sign Up / Join Waitlist button logic refined
+    const isUserNotRegisteredOrWaitlisted = !isUserRegistered && registrationStatus !== 'Waitlisted';
+
+    if (event.status === 'Registration Open' && isUserNotRegisteredOrWaitlisted) {
       return (
-        <Chip
-          label="In Progress"
-          color="warning"
-          size="small"
-        />
+        <Button 
+          variant="contained" 
+          color="primary" 
+          startIcon={<SignUpIcon />} 
+          onClick={() => handleSignUpClick(event.id)}
+          disabled={isRegistrationClosed(event)}
+          sx={{ width: { xs: '100%', sm: 'auto' }, alignSelf: {xs: 'stretch', sm: 'flex-start'} }}
+        >
+          Sign Up
+        </Button>
       );
     }
     
-    if (isRegistered) {
-      if (event.status === 'Registration Open') {
-        return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
-            <Chip
-              label={registrationStatusText} // Use the derived status text
-              color={registrationStatusText === 'Checked In' ? 'success' : 'info'}
-              icon={registrationStatusText === 'Checked In' ? <CheckInIcon /> : undefined}
-              size="small"
-            />
-            <Button 
-              size="small"
-              variant="outlined" 
-              color="error" 
-              onClick={() => handleCancelClick(event.id)} 
-              startIcon={<CancelIcon />}
-            >
-              Cancel Registration
-            </Button>
-          </Box>
-        );
-      }
-    } 
-    else if (event.status === 'Registration Open') {
-      // Check if event starts within 2 hours
-      const registrationDisabled = isRegistrationClosed(event);
-      
+    // @ts-expect-error TODO: Revisit TS error here
+    if ((event.status as EventStatus) === 'Waitlist Open' && isUserNotRegisteredOrWaitlisted) {
       return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Tooltip 
-            title={
-              registrationDisabled ? (
-                <Typography 
-                  sx={{ 
-                    fontSize: '0.9rem', 
-                    fontWeight: 'medium',
-                    textAlign: 'center',
-                    p: 0.5
-                  }}
-                >
-                  Registration closed, event starts within 2 hours.
-                </Typography>
-              ) : ""
-            }
-            arrow
-            placement="top"
-            enterTouchDelay={0}
-            leaveTouchDelay={1500}
-          >
-            <span>
-              <Button 
-                size="small" 
-                startIcon={<SignUpIcon />} 
-                color="primary" 
-                onClick={() => handleSignUpClick(event.id)}
-                disabled={registrationDisabled}
-                sx={{
-                  opacity: registrationDisabled ? 0.6 : 1,
-                  '&.Mui-disabled': {
-                    bgcolor: 'action.disabledBackground',
-                    color: 'text.disabled'
-                  }
-                }}
-              >
-                {registrationDisabled ? 'Registration Closed' : 'Register'}
-              </Button>
-            </span>
-          </Tooltip>
-          {registrationDisabled && (
-            <Typography 
-              variant="caption" 
-              color="text.secondary" 
-              sx={{ 
-                fontSize: '0.7rem', 
-                mt: 0.5, 
-                textAlign: 'center',
-                display: { xs: 'block', md: 'none' }
-              }}
-            >
-              Tap for details
-            </Typography>
-          )}
-        </Box>
+        <Button 
+          variant="contained" 
+          color="primary" 
+          startIcon={<SignUpIcon />} 
+          onClick={() => handleSignUpClick(event.id)} // Assuming same handler, or it could be specific
+          disabled={isRegistrationClosed(event)} // Assuming same disabled logic
+          sx={{ width: { xs: '100%', sm: 'auto' }, alignSelf: {xs: 'stretch', sm: 'flex-start'} }}
+        >
+          Join Waitlist
+        </Button>
       );
     }
-    
-    return null;
+
+    // Fallback for other statuses e.g. 'In Progress' where user is not checked in
+    if (event.status === 'In Progress' && registrationStatus !== 'Checked In') {
+        return <Chip label="Event In Progress" color="default" size="small" sx={{ alignSelf: 'flex-start' }} />;
+    }
+
+    return null; 
   };
 
   // Function to check if user can manage event
@@ -1330,6 +1149,21 @@ const EventList = () => {
                 sx={{ borderRadius: 1 }}
               >
                 View All Schedules
+              </Button>
+            )}
+
+            {/* ADD "View All Event Matches" Button for Completed Events */}
+            {event.status === 'Completed' && (
+              <Button
+                variant="outlined"
+                size="small"
+                color="primary"
+                startIcon={<PeopleIcon />} // Using PeopleIcon as an example
+                onClick={() => handleViewAllMatchesClick(event)}
+                fullWidth
+                sx={{ borderRadius: 1, mt: 1 }}
+              >
+                View All Event Matches
               </Button>
             )}
 
@@ -1971,6 +1805,22 @@ const EventList = () => {
       refreshEvents();
     } catch (error: any) {
       setErrorMessage(error.response?.data?.error || error.message || 'Failed to delete event');
+    }
+  };
+
+  const handleViewAllMatchesClick = async (event: Event) => {
+    setSelectedEventForAllEventMatches(event);
+    setAllEventMatchesLoading(true);
+    setAllEventMatchesError(null);
+    setAllEventMatches([]);
+    try {
+      const response = await eventsApi.getAllMatchesForEvent(event.id.toString());
+      setAllEventMatches(response.matches);
+    } catch (err: any) {
+      setAllEventMatchesError(err.message || 'Failed to load all event matches.');
+    } finally {
+      setAllEventMatchesLoading(false);
+      setViewAllEventMatchesDialogOpen(true);
     }
   };
 
@@ -3224,6 +3074,86 @@ const EventList = () => {
           <Button onClick={handleJoinWaitlistConfirm} color="primary" variant="contained">
             Yes, Join Waitlist
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* "View All Matches" Dialog */}
+      <Dialog
+        open={viewAllEventMatchesDialogOpen}
+        onClose={() => {
+          setViewAllEventMatchesDialogOpen(false);
+          setSelectedEventForAllEventMatches(null); // Reset event selection
+          setAllEventMatches([]); // Clear matches
+          setAllEventMatchesError(null); // Clear error
+        }}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          {selectedEventForAllEventMatches?.name} - All Mutual Matches
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: { xs: 1, sm: 2 } }}>
+          {allEventMatchesLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4, minHeight: '200px' }}>
+              <CircularProgress />
+              <Typography sx={{ ml: 2 }}>Loading all matches...</Typography>
+            </Box>
+          ) : allEventMatchesError ? (
+            <Alert severity="error" sx={{ m: 2 }}>{allEventMatchesError}</Alert>
+          ) : allEventMatches.length > 0 ? (
+            <Box sx={{ mt: 1 }}>
+              <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle1">
+                  Total Match Pairs: {allEventMatches.length}
+                </Typography>
+                {(isAdmin() || isOrganizer()) && (
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    onClick={handleExportAllMatches}
+                    startIcon={<DownloadIcon />}
+                    sx={{ whiteSpace: 'nowrap' }}
+                  >
+                    Export CSV
+                  </Button>
+                )}
+              </Box>
+              <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+                <Table stickyHeader size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell><strong>User 1 Name</strong></TableCell>
+                      <TableCell><strong>User 1 Email</strong></TableCell>
+                      <TableCell><strong>User 2 Name</strong></TableCell>
+                      <TableCell><strong>User 2 Email</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {allEventMatches.map((match, index) => (
+                      <TableRow key={index} hover>
+                        <TableCell>{match.user1_name}</TableCell>
+                        <TableCell>{match.user1_email}</TableCell>
+                        <TableCell>{match.user2_name}</TableCell>
+                        <TableCell>{match.user2_email}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          ) : (
+            <DialogContentText sx={{ textAlign: 'center', p: 3, minHeight: '100px' }}>
+              No mutual matches found for this event.
+            </DialogContentText>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'flex-end', p: 2 }}>
+          <Button onClick={() => {
+            setViewAllEventMatchesDialogOpen(false);
+            setSelectedEventForAllEventMatches(null);
+            setAllEventMatches([]);
+            setAllEventMatchesError(null);
+          }}>Close</Button>
         </DialogActions>
       </Dialog>
     </Container>

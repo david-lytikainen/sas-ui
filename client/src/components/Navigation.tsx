@@ -1,5 +1,5 @@
 import { useContext, useState } from 'react';
-import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -19,6 +19,8 @@ import { ColorModeContext } from '../context/ColorModeContext';
 import {
   ExitToApp as ExitIcon,
   Home as HomeIcon,
+  Login as LoginIcon,
+  PersonAdd as PersonAddIcon
 } from '@mui/icons-material';
 
 const AnimatedIconButton = animated(IconButton);
@@ -27,6 +29,7 @@ const AnimatedBox = animated(Box);
 const Navigation = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const colorMode = useContext(ColorModeContext);
@@ -122,63 +125,65 @@ const Navigation = () => {
               </Typography>
             </AnimatedBox>
 
-            <Box sx={{ display: 'flex', gap: isMobile ? 1 : 2, alignItems: 'center' }}>
-              {trail.map(({ y, opacity }, index) => (
-                <animated.div 
-                  key={navItems[index].to} 
-                  style={{ 
-                    opacity,
-                    transform: y.to(value => `translate3d(0,${value}px,0)`),
-                  }}
-                >
-                  <Button
-                    component={RouterLink}
-                    to={navItems[index].to}
-                    color={isActive(navItems[index].to) ? "primary" : "inherit"}
-                    startIcon={navItems[index].icon}
-                    sx={{
-                      fontWeight: isActive(navItems[index].to) ? 600 : 500,
-                      color: isActive(navItems[index].to) 
-                        ? theme.palette.primary.main 
-                        : theme.palette.mode === 'light' 
-                          ? theme.palette.text.primary
-                          : 'inherit',
-                      '&:hover': {
-                        backgroundColor: theme.palette.mode === 'dark' 
-                          ? 'rgba(255, 255, 255, 0.08)' 
-                          : 'rgba(0, 0, 0, 0.04)',
-                        color: theme.palette.primary.main,
-                      },
-                      display: 'flex',
-                      alignItems: 'center',
-                      height: '100%',
-                      padding: isMobile ? '6px 8px' : '8px 16px',
-                      minWidth: isMobile ? 'auto' : undefined,
-                      '& .MuiButton-startIcon': {
-                        marginRight: isMobile ? 0 : 2,
-                      },
+            {user && (
+              <Box sx={{ display: 'flex', gap: isMobile ? 1 : 2, alignItems: 'center' }}>
+                {trail.map(({ y, opacity }, index) => (
+                  <animated.div 
+                    key={navItems[index].to} 
+                    style={{ 
+                      opacity,
+                      transform: y.to(value => `translate3d(0,${value}px,0)`),
                     }}
                   >
-                    {!isMobile && (
-                      <Typography
-                        component="span"
-                        sx={{
-                          color: 'inherit',
-                          fontSize: '0.875rem',
-                          lineHeight: 1.5,
-                          ml: -0.5,
-                        }}
-                      >
-                        {navItems[index].label}
-                      </Typography>
-                    )}
-                  </Button>
-                </animated.div>
-              ))}
-            </Box>
+                    <Button
+                      component={RouterLink}
+                      to={navItems[index].to}
+                      color={isActive(navItems[index].to) ? "primary" : "inherit"}
+                      startIcon={navItems[index].icon}
+                      sx={{
+                        fontWeight: isActive(navItems[index].to) ? 600 : 500,
+                        color: isActive(navItems[index].to) 
+                          ? theme.palette.primary.main 
+                          : theme.palette.mode === 'light' 
+                            ? theme.palette.text.primary
+                            : 'inherit',
+                        '&:hover': {
+                          backgroundColor: theme.palette.mode === 'dark' 
+                            ? 'rgba(255, 255, 255, 0.08)' 
+                            : 'rgba(0, 0, 0, 0.04)',
+                          color: theme.palette.primary.main,
+                        },
+                        display: 'flex',
+                        alignItems: 'center',
+                        height: '100%',
+                        padding: isMobile ? '6px 8px' : '8px 16px',
+                        minWidth: isMobile ? 'auto' : undefined,
+                        '& .MuiButton-startIcon': {
+                          marginRight: isMobile ? 0 : 2,
+                        },
+                      }}
+                    >
+                      {!isMobile && (
+                        <Typography
+                          component="span"
+                          sx={{
+                            color: 'inherit',
+                            fontSize: '0.875rem',
+                            lineHeight: 1.5,
+                            ml: -0.5,
+                          }}
+                        >
+                          {navItems[index].label}
+                        </Typography>
+                      )}
+                    </Button>
+                  </animated.div>
+                ))}
+              </Box>
+            )}
           </Box>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 1 }}>
             <AnimatedIconButton 
               onClick={colorMode.toggleColorMode} 
               sx={{ 
@@ -189,10 +194,11 @@ const Navigation = () => {
               }}
               style={toggleButtonProps}
             >
-              {theme.palette.mode === 'dark' ? <Brightness4Icon /> : <Brightness7Icon />}
+              {theme.palette.mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
             </AnimatedIconButton>
-            {user && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 1 : 2, ml: 'auto' }}>
+            
+            {user ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 1 : 2 }}>
                 <Button
                   sx={{
                     color: theme.palette.mode === 'light' 
@@ -207,7 +213,47 @@ const Navigation = () => {
                   onClick={logout}
                   startIcon={isMobile ? undefined : <ExitIcon />}
                 >
-                  Logout
+                  {isMobile ? <ExitIcon /> : 'Logout'}
+                </Button>
+              </Box>
+            ) : (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 1 }}>
+                <Button
+                  color="inherit"
+                  onClick={() => navigate('/login')}
+                  startIcon={isMobile ? undefined : <LoginIcon />}
+                  sx={{
+                    fontWeight: 500,
+                    color: theme.palette.mode === 'light' ? theme.palette.text.primary : 'inherit',
+                    '&:hover': {
+                      backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+                      color: theme.palette.primary.main,
+                    },
+                    padding: isMobile ? '6px 8px' : '8px 12px',
+                    minWidth: isMobile ? 'auto' : undefined,
+                  }}
+                >
+                  {isMobile ? <LoginIcon /> : 'Login'}
+                </Button>
+                <Button
+                  variant={isMobile ? "text" : "outlined"}
+                  color="primary"
+                  onClick={() => navigate('/register')}
+                  startIcon={isMobile ? undefined : <PersonAddIcon />}
+                  sx={{
+                    fontWeight: 500,
+                    borderColor: isMobile ? 'transparent' : undefined,
+                    color: isMobile ? (theme.palette.mode === 'light' ? theme.palette.text.primary : 'inherit') : undefined,
+                    '&:hover': {
+                        backgroundColor: theme.palette.mode === 'dark' ? 'rgba(217, 139, 156, 0.1)' : 'rgba(217, 139, 156, 0.08)',
+                        borderColor: isMobile ? 'transparent' : theme.palette.primary.main,
+                        color: theme.palette.primary.main,
+                    },
+                    padding: isMobile ? '6px 8px' : '8px 12px',
+                    minWidth: isMobile ? 'auto' : undefined,
+                  }}
+                >
+                  {isMobile ? <PersonAddIcon /> : 'Register'}
                 </Button>
               </Box>
             )}
