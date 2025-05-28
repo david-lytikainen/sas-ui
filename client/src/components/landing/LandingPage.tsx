@@ -217,7 +217,7 @@ const LandingPage: React.FC = () => {
       {/* Photos Carousel Section */}
       <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
         <Typography variant="h4" component="h2" gutterBottom align="center" sx={{ fontWeight: 600, mb: 4, border: 'none', background: 'none' }}>
-          Glimpses From Our Events
+          Glimpses From Our 2024 Event
         </Typography>
         <Box sx={{ position: 'relative', maxWidth: '1000px', mx: 'auto' }}>
           <Paper 
