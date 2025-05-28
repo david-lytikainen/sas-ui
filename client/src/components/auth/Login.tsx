@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -18,7 +18,7 @@ import { Visibility, VisibilityOff } from '@mui/icons-material';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -44,7 +44,7 @@ const Login = () => {
     setError(null);
     try {
       await login(formData.email, formData.password);
-      navigate('/');
+      navigate('/events');
     } catch (err: any) {
       setError(err.message || 'Invalid email or password');
     } finally {
@@ -55,6 +55,18 @@ const Login = () => {
   const handleTogglePassword = () => {
     setShowPassword(!showPassword);
   };
+
+  useEffect(() => {
+    if (user) {
+      navigate('/events', { replace: true });
+    }
+  }, [user, navigate]);
+
+  // If user is already logged in, render nothing or a loading indicator
+  // while redirecting to prevent brief flash of login form.
+  if (user) {
+    return null; // Or <CircularProgress /> if you have it imported and prefer a loader
+  }
 
   return (
     <Container component="main" maxWidth="xs" sx={{ mt: 15, mb: 15}}>

@@ -259,6 +259,14 @@ interface EventsApi {
     selections: Array<{ event_speed_date_id: number; interested: boolean }>
   ) => Promise<any>;
   getMyMatches: (eventId: string) => Promise<{ matches: Match[] }>;
+  getAllMatchesForEvent: (eventId: string) => Promise<{ matches: MatchPair[] }>;
+}
+
+interface MatchPair {
+  user1_name: string;
+  user1_email: string;
+  user2_name: string;
+  user2_email: string;
 }
 
 interface Match {
@@ -441,6 +449,18 @@ const realEventsApi: EventsApi = {
         throw new Error(error.response.data.error);
       }
       throw new Error('Failed to fetch your matches for this event.');
+    }
+  },
+  getAllMatchesForEvent: async (eventId: string) => {
+    try {
+      const response = await api.get(`/events/${eventId}/all-matches`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Error fetching all matches for event ${eventId}:`, error);
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error('Failed to fetch all matches for this event.');
     }
   }
 };
