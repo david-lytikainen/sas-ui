@@ -299,12 +299,33 @@ const EventTimer = ({
       
         // Extract and set correct time values based on status
         if (fetchedStatus === 'active') {
-          // For active timer, use time_remaining from response or fall back to round_duration
-          // ATTENDEE FIX: Ensure attendees don't get zero time (use at least 5 seconds)
-          const reportedRemainingTime = data.time_remaining !== undefined ? data.time_remaining : data.timer?.round_duration ?? 180;
-          const remainingTime = Math.max(isAdmin ? 1 : 5, reportedRemainingTime);
+          // CRITICAL FIX: Calculate time remaining based on round_start_time for active timers
+          let remainingTime: number;
           
-          console.log(`Setting active timer with remaining time: ${remainingTime}`);
+          if (data.timer?.round_start_time) {
+            const startTime = new Date(data.timer.round_start_time).getTime();
+            const now = Date.now();
+            const elapsedSeconds = Math.floor((now - startTime) / 1000);
+            const roundDuration = data.timer.round_duration || 180;
+            remainingTime = Math.max(0, roundDuration - elapsedSeconds);
+            
+            console.log(`Calculated time remaining from round_start_time:`, {
+              startTime: new Date(startTime).toISOString(),
+              now: new Date(now).toISOString(),
+              elapsedSeconds,
+              roundDuration,
+              remainingTime
+            });
+          } else {
+            // Fallback to API's time_remaining if no round_start_time
+            remainingTime = data.time_remaining !== undefined ? data.time_remaining : data.timer?.round_duration ?? 180;
+            console.log(`Using API's time_remaining as fallback: ${remainingTime}s`);
+          }
+          
+          // ATTENDEE FIX: Ensure attendees don't get zero time (use at least 5 seconds)
+          remainingTime = Math.max(isAdmin ? 1 : 5, remainingTime);
+          
+          console.log(`Setting active timer with remaining time: ${remainingTime}s`);
           
           // CRITICAL FIX: Only update time if we don't have a running timer
           if (timerIntervalRef.current === null || timerStatus !== 'active') {

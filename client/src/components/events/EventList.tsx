@@ -703,15 +703,14 @@ const EventList = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
           <Chip
             label="Waitlisted"
-            color="warning" // Or another color you prefer for waitlisted
+            color="warning"
             size="small"
           />
-          {/* Optionally, allow cancellation from waitlist here if desired */}
           <Button 
             size="small"
             variant="outlined" 
             color="error" 
-            onClick={() => handleCancelClick(event.id)} // Assumes handleCancelClick can also cancel waitlist
+            onClick={() => handleCancelClick(event.id)}
             startIcon={<CancelIcon />}
           >
             Leave Waitlist
@@ -724,7 +723,7 @@ const EventList = () => {
       return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
           <Chip
-            label={registrationStatusText} // Use the derived status text
+            label={registrationStatusText}
             color={registrationStatusText === 'Checked In' ? 'success' : 'info'}
             icon={registrationStatusText === 'Checked In' ? <CheckInIcon /> : undefined}
             size="small"
@@ -758,7 +757,7 @@ const EventList = () => {
               <Button
                 size="small"
                 variant="outlined"
-                onClick={() => toggleUserScheduleInline(event.id)} // Keep this toggle
+                onClick={() => toggleUserScheduleInline(event.id)}
                 startIcon={expandedUserSchedules[event.id] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
               >
                 My Schedule
@@ -766,16 +765,16 @@ const EventList = () => {
               {isCurrentUserAttendee && (
                 <Button
                   size="small"
-                  variant="contained" // Or outlined, depending on preference
+                  variant="contained"
                   color="primary"
-                  onClick={() => handleViewMatchesClick(event)} // Keep this handler
-                  sx={{ mt: 0.5 }} // Add a little margin top
+                  onClick={() => handleViewMatchesClick(event)}
+                  sx={{ mt: 0.5 }}
                 >
                   View My Matches
                 </Button>
               )}
             </Box>
-            {/* This Collapse should show schedule and selection UI for Completed events too */}
+            {/* Rest of the completed event UI */}
             <Collapse in={expandedUserSchedules[event.id]} timeout="auto" unmountOnExit sx={{ width: '100%'}}>
               <Paper elevation={1} sx={{ p: 1.5, mt: 1, bgcolor: 'background.default' }}>
                 {userSchedules[event.id] && userSchedules[event.id].length > 0 ? (
@@ -906,17 +905,12 @@ const EventList = () => {
       return null;
     }
     
-    if (event.status === 'In Progress'  && isRegistered) {
+    if (event.status === 'In Progress' && isRegistered) {
       if (registrationStatusText === 'Checked In') {
         return (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', alignSelf: 'flex-start', width: '100%' }}> 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start', mb: expandedUserSchedules[event.id] ? 1 : 0 }}> 
-              <Chip
-                label="Checked In"
-                color="success"
-                icon={<CheckInIcon />}
-                size="small"
-              />
+              {/* Removed the Checked In chip for In Progress events */}
               <Button
                 size="small"
                 variant="outlined"
@@ -1035,13 +1029,7 @@ const EventList = () => {
           </Box>
         );
       }
-      return (
-        <Chip
-          label="In Progress"
-          color="warning"
-          size="small"
-        />
-      );
+      return null; // Don't show any status chip for In Progress events
     }
     
     if (isRegistered) {
@@ -1049,7 +1037,7 @@ const EventList = () => {
         return (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}>
             <Chip
-              label={registrationStatusText} // Use the derived status text
+              label={registrationStatusText}
               color={registrationStatusText === 'Checked In' ? 'success' : 'info'}
               icon={registrationStatusText === 'Checked In' ? <CheckInIcon /> : undefined}
               size="small"
@@ -1066,7 +1054,7 @@ const EventList = () => {
           </Box>
         );
       }
-    } 
+    }
     else if (event.status === 'Registration Open') {
       // Check if event starts within 2 hours
       const registrationDisabled = isRegistrationClosed(event);
@@ -2290,6 +2278,8 @@ const EventList = () => {
                       sx={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}
                     />
                   </Box>
+
+                  {event.status !== 'In Progress' && (
                   <Box sx={{ mb: { xs: 1.5, sm: 2 } }}>
                     <Typography 
                       variant="body1" 
@@ -2302,6 +2292,7 @@ const EventList = () => {
                     {event.description}
                   </Typography>
                   </Box>
+                  )}
                   
                 {(event.status === 'In Progress') && (
                   <Box sx={{ mb: { xs: 1, sm: 3 } }}> 
@@ -2330,6 +2321,7 @@ const EventList = () => {
                   </Box>
                 )}
                 
+                {event.status !== 'In Progress' && (
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1, sm: 2 } }}> 
                   <Typography 
                     variant="body2" 
@@ -2401,6 +2393,7 @@ const EventList = () => {
                   {event.address}
                 </Typography>
                 </Box>
+                )}
                 
                 {/* Event admin controls */}
                 {renderEventControls(event)}
