@@ -1524,28 +1524,17 @@ const EventList = () => {
       filtered = { ...allSchedules };
     } else {
       // Apply filtering based on search term
-      const lowercaseSearch = search.toLowerCase();
-      
+      const lowercaseSearch = search.toLowerCase().trim();
       Object.entries(allSchedules).forEach(([userId, userSchedule]) => {
         if (!Array.isArray(userSchedule) || userSchedule.length === 0) return;
         
         const user = Object.values(usersMap).find(u => u.id === Number(userId));
         const userName = user ? `${user.first_name} ${user.last_name}`.toLowerCase() : '';
-        
+        const nameWords = userName.split(/\s+/);
+        const nameMatch = nameWords.some(word => word.startsWith(lowercaseSearch));
         // Filter this user's schedule based on search
-        const filteredUserSchedule = userSchedule.filter((item: any) => {
-          const partnerName = item.partner_name.toLowerCase();
-          const round = item.round.toString();
-          const table = item.table.toString();
-          
-          return userName.includes(lowercaseSearch) || 
-                 partnerName.includes(lowercaseSearch) || 
-                 round.includes(lowercaseSearch) || 
-                 table.includes(lowercaseSearch);
-        });
-        
-        if (filteredUserSchedule.length > 0) {
-          filtered[Number(userId)] = filteredUserSchedule;
+        if (nameMatch) {
+          filtered[Number(userId)] = userSchedule;
         }
       });
     }
@@ -1639,16 +1628,29 @@ const EventList = () => {
   const filterPins = (search: string) => {
     if (!search || search.trim() === '') {
       setFilteredPins(attendeePins);
-    } else {
-      const lowercaseSearch = search.toLowerCase();
-      const filtered = attendeePins.filter(attendee => 
-        attendee.name?.toLowerCase().includes(lowercaseSearch) || 
-        attendee.email?.toLowerCase().includes(lowercaseSearch) ||
-        // Assume pin is always a string, but add check just in case
-        attendee.pin?.includes(lowercaseSearch) 
-      );
-      setFilteredPins(filtered);
+      return;
     }
+
+    const lowercaseSearch = search.toLowerCase().trim();
+    const isPinSearch = /^\d{4}$/.test(search);
+
+    const filtered = attendeePins.filter(attendee => {
+      if (isPinSearch) {
+        return attendee.pin === search;
+      } else {
+        // Split name into words and check if any word starts with the search
+        const nameWords = (attendee.name || '').toLowerCase().split(/\s+/);
+        const nameMatch = nameWords.some(word => word.startsWith(lowercaseSearch));
+
+        // For email, only match the username part (before @)
+        const emailUsername = (attendee.email || '').toLowerCase().split('@')[0];
+        const emailMatch = emailUsername.startsWith(lowercaseSearch);
+
+        return nameMatch || emailMatch;
+      }
+    });
+
+    setFilteredPins(filtered);
   };
 
   // Effect to fetch user schedules for active, checked-in events
