@@ -303,8 +303,9 @@ const EventList = () => {
     // Calculate time difference in hours
     const timeDiff = (eventStart.getTime() - now.getTime()) / (1000 * 60 * 60);
     
-    // Return true if event starts in 2 hours or less
-    return timeDiff <= 2;
+    // Get rid of the limit of 2 hours
+    // TODO: Remove this once we have a better way to handle this
+    return timeDiff <= 0.01;
   };
 
   // Update handleSignUpClick to check registration close time
