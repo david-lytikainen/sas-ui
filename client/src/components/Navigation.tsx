@@ -118,7 +118,6 @@ const Navigation = () => {
                     transform: 'scale(1.05)',
                     transition: 'color 0.2s ease-in-out, transform 0.2s ease-in-out',
                   },
-                
                 }}
               >
                 S&S

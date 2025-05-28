@@ -30,13 +30,13 @@ const getDesignTokens = (mode: 'light' | 'dark') => ({
     ...(mode === 'light'
       ? {
           primary: {
-            main: '#D98B9C', // Soft Pink
+            main: '#D98B9C',
           },
           secondary: {
-            main: '#B0A1C4', // Lavender
+            main: '#B0A1C4',
           },
           background: {
-            default: '#FFF9F5', // Warm Off-White
+            default: '#FFF9F5',
             paper: '#FFFFFF',   
           },
           text: {
@@ -45,19 +45,16 @@ const getDesignTokens = (mode: 'light' | 'dark') => ({
           },
         }
       : {
-          primary: {
-            main: '#D98B9C', // Keep pink for dark mode too, or adjust
-          },
           secondary: {
-            main: '#B0A1C4', // Keep lavender for dark mode, or adjust
+            main: '#707070', // Darker gray secondary color
           },
           background: {
-            default: '#222222', 
-            paper: '#333333',   
+            default: '#222222', // Dark gray background
+            paper: '#333333',   // Slightly lighter gray for paper elements
           },
           text: {
-            primary: '#E0E0E0',
-            secondary: '#B0B0B0',
+            primary: '#E0E0E0', // Light gray text for good contrast
+            secondary: '#B0B0B0', // Slightly darker gray for secondary text
           },
         }),
   },
@@ -84,7 +81,7 @@ const getDesignTokens = (mode: 'light' | 'dark') => ({
       styleOverrides: {
         root: {
           borderRadius: 12,
-          textTransform: 'none' as const,
+          textTransform: 'none',
           fontWeight: 600,
           padding: '10px 20px',
           transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -97,22 +94,24 @@ const getDesignTokens = (mode: 'light' | 'dark') => ({
           '&:active': {
             transform: 'scale(0.98)',
           },
+          variants: [],
         },
       },
-      variants: [],
     },
     MuiPaper: {
       styleOverrides: {
         root: {
-          backgroundImage: 'none' as const,
+          backgroundImage: 'none',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           ...(mode === 'dark' && {
             backgroundColor: '#333333',
           }),
+           // Light mode paper background will be taken from palette.background.paper
           '&:hover': {
             transform: 'translateY(-2px)',
             boxShadow: mode === 'dark' 
               ? '0 6px 20px rgba(0, 0, 0, 0.4)' 
+              // Softer shadow for feminine light mode
               : '0 6px 15px rgba(217, 139, 156, 0.2)', 
           },
         },
@@ -122,32 +121,33 @@ const getDesignTokens = (mode: 'light' | 'dark') => ({
       styleOverrides: {
         root: {
           backgroundColor: mode === 'dark' 
-            ? 'rgba(34, 34, 34, 0.85)'  // Darker, less transparent for dark appBar
-            : 'rgba(255, 249, 245, 0.85)',
-          backdropFilter: 'blur(10px)',
+            ? 'rgba(19, 19, 19, 0.85)' 
+            // Light mode AppBar - using warm off-white with blur
+            : 'rgba(255, 249, 245, 0.85)', 
+          backdropFilter: 'blur(20px)',
           borderBottom: mode === 'dark' 
-            ? '1px solid rgba(255, 255, 255, 0.12)' 
+            ? '1px solid rgba(255, 255, 255, 0.1)' 
+            // Softer, themed border for light mode
             : '1px solid rgba(217, 139, 156, 0.25)', 
         },
       },
     },
-    MuiCssBaseline: {
-        styleOverrides: `
-        body {
-            transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
-        }
-        `
-    }
   },
 });
 
 // Global style definitions (remains an object)
 const globalStyleObject = {
   '*': {
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+    '@media (min-width: 600px)': {
+      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    },
   },
   body: {
-    transition: 'background-color 0.3s ease-in-out, color 0.3s ease-in-out',
+    transition: 'background-color 0.15s ease-in-out, color 0.15s ease-in-out',
+    '@media (min-width: 600px)': {
+      transition: 'background-color 0.2s ease-in-out, color 0.2s ease-in-out',
+    },
   },
   '.fade-enter': {
     opacity: 0,
@@ -156,16 +156,25 @@ const globalStyleObject = {
   '.fade-enter-active': {
     opacity: 1,
     transform: 'translateY(0)',
-    transition: 'opacity 500ms, transform 500ms cubic-bezier(0.4, 0, 0.2, 1)',
+    transition: 'opacity 300ms, transform 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+    '@media (min-width: 600px)': {
+      transition: 'opacity 400ms, transform 400ms cubic-bezier(0.4, 0, 0.2, 1)',
+    },
   },
   '.hover-scale': {
-    transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    transition: 'transform 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+    '@media (min-width: 600px)': {
+      transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+    },
     '&:hover': {
       transform: 'scale(1.02)',
     },
   },
   '.slide-in': {
-    animation: 'slideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+    animation: 'slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+    '@media (min-width: 600px)': {
+      animation: 'slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+    },
   },
   '@keyframes slideIn': {
     from: {
@@ -178,7 +187,10 @@ const globalStyleObject = {
     },
   },
   '.fade-up': {
-    animation: 'fadeUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+    animation: 'fadeUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+    '@media (min-width: 600px)': {
+      animation: 'fadeUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+    },
   },
   '@keyframes fadeUp': {
     from: {
@@ -191,7 +203,10 @@ const globalStyleObject = {
     },
   },
   '.scale-in': {
-    animation: 'scaleIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+    animation: 'scaleIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+    '@media (min-width: 600px)': {
+      animation: 'scaleIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+    },
   },
   '@keyframes scaleIn': {
     from: {
@@ -205,7 +220,10 @@ const globalStyleObject = {
   },
   '.stagger-in > *': {
     opacity: 0,
-    animation: 'staggerFade 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+    animation: 'staggerFade 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+    '@media (min-width: 600px)': {
+      animation: 'staggerFade 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+    },
   },
   '@keyframes staggerFade': {
     from: {
