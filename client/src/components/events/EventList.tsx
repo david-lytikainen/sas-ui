@@ -62,6 +62,9 @@ import {
   Download as DownloadIcon,
   Delete as DeleteIcon,
   People as PeopleIcon,
+  CheckBox as CheckBoxIcon,
+  RadioButtonChecked as RadioButtonCheckedIcon,
+  RadioButtonUnchecked as RadioButtonUncheckedIcon,
 } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
@@ -1276,7 +1279,7 @@ const EventList = () => {
                 <Button
                   variant="outlined"
                   size="small"
-                  color="success"
+                  color="primary"
                   startIcon={<StartIcon />}
                   onClick={() => handleStartEventClick(event)}
                   fullWidth
@@ -1290,7 +1293,7 @@ const EventList = () => {
                 <Button
                   variant="outlined"
                   size="small"
-                  color="error"
+                  color="primary"
                   startIcon={<EndIcon />}
                   onClick={() => handleEndEventClick(event)}
                   fullWidth
@@ -1306,7 +1309,7 @@ const EventList = () => {
             <Button
               variant="outlined"
               size="small"
-              color="secondary"
+              color="primary"
               startIcon={<ViewIcon />}
               onClick={() => handleViewPins(event.id)}
               fullWidth
@@ -1320,7 +1323,7 @@ const EventList = () => {
               <Button
                 variant="outlined"
                 size="small"
-                color="info"
+                color="primary"
                 startIcon={<ViewIcon />}
                 onClick={() => handleViewAllSchedules(event.id)}
                 fullWidth
@@ -1335,7 +1338,7 @@ const EventList = () => {
                 <Button
                   variant="outlined"
                   size="small"
-                  color="info"
+                  color="primary"
                   startIcon={<EditIcon />}
                   onClick={() => handleOpenEditEventDialog(event)}
                   fullWidth
@@ -1348,7 +1351,7 @@ const EventList = () => {
                 <Button
                   variant="outlined"
                   size="small"
-                  color="warning"
+                  color="primary"
                   startIcon={<DeleteIcon />}
                   onClick={() => handleOpenDeleteEventConfirm(event.id)}
                   fullWidth
@@ -2470,7 +2473,7 @@ const EventList = () => {
           {/* Event selection */}
           <Box sx={{ mb: 2 }}>
             <Typography variant="subtitle2" gutterBottom>
-              Select Event
+              Select Event to Check In
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {eventOptions.map((event: Event) => (
@@ -2481,14 +2484,24 @@ const EventList = () => {
                     p: 1, 
                     cursor: 'pointer',
                     bgcolor: selectedEventForCheckIn?.id === event.id ? 'action.selected' : 'background.paper',
-                    '&:hover': { bgcolor: 'action.hover' }
+                    '&:hover': { bgcolor: 'action.hover' },
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
                   }}
                   onClick={() => handleEventSelection(event.id)}
                 >
-                  <Typography variant="body1" fontWeight={500}>{event.name}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {formatDate(event.starts_at)}
-                  </Typography>
+                  {selectedEventForCheckIn?.id === event.id ? (
+                    <RadioButtonCheckedIcon color="primary" />
+                  ) : (
+                    <RadioButtonUncheckedIcon color="action" />
+                  )}
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="body1" fontWeight={500}>{event.name}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {formatDate(event.starts_at)}
+                    </Typography>
+                  </Box>
                 </Paper>
               ))}
               
@@ -2524,6 +2537,7 @@ const EventList = () => {
             color="primary" 
             variant="contained"
             disabled={!selectedEventForCheckIn || !checkInPin || checkInPin.length !== 4}
+            startIcon={<CheckBoxIcon />}
           >
             Check In
           </Button>
@@ -2638,82 +2652,35 @@ const EventList = () => {
                   {registeredUsers.map((user) => (
                     <TableRow key={user.id}>
                       {editingUserId === user.id ? (
-                        // Edit mode - Render all cells, including placeholders/read-only for non-editable data
                         <>
-                          <TableCell>
-                            {/* Name Input */}
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                              <TextField size="small" label="First Name" value={editFormData.first_name} onChange={(e) => handleEditFormChange(e.target.value, 'first_name')} sx={{ width: 'calc(50% - 4px)' }} />
-                              <TextField size="small" label="Last Name" value={editFormData.last_name} onChange={(e) => handleEditFormChange(e.target.value, 'last_name')} sx={{ width: 'calc(50% - 4px)' }} />
-                            </Box>
-                          </TableCell>
-                          <TableCell>
-                            {/* Email Input */}
-                            <TextField size="small" label="Email" value={editFormData.email} onChange={(e) => handleEditFormChange(e.target.value, 'email')} fullWidth />
-                          </TableCell>
-                          <TableCell>
-                            {/* Phone Input */}
-                            <TextField size="small" label="Phone" value={editFormData.phone} onChange={(e) => handleEditFormChange(e.target.value, 'phone')} fullWidth />
-                          </TableCell>
-                          <TableCell>
-                            {/* Gender Select */}
-                            <FormControl size="small" fullWidth>
-                              <InputLabel>Gender</InputLabel>
-                              <Select value={editFormData.gender || ''} label="Gender" onChange={(e) => handleEditFormChange(e.target.value, 'gender')}> <MenuItem value="Male">Male</MenuItem> <MenuItem value="Female">Female</MenuItem> </Select>
-                            </FormControl>
-                          </TableCell>
-                          <TableCell sx={{ textAlign: 'center' }}>
-                            {/* Age (Read-only) */}
-                            {editFormData.birthday ? calculateAge(new Date(editFormData.birthday)) : ''}
-                          </TableCell>
-                          <TableCell>
-                            {/* Birthday Input */}
-                            <TextField size="small" label="Birthday" type="date" value={editFormData.birthday || ''} onChange={(e) => handleEditFormChange(e.target.value, 'birthday')} InputLabelProps={{ shrink: true }} fullWidth />
-                          </TableCell>
-                          <TableCell>
-                            {/* Registered (Read-only) */}
-                            {user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'}
-                          </TableCell>
-                          <TableCell>
-                            {/* Status (Read-only Chip) */}
-                            <Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" />
-                          </TableCell>
-                          <TableCell>
-                            {/* Check-in Time (Read-only) */}
-                            {user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'}
-                          </TableCell>
-                          <TableCell sx={{ textAlign: 'center' }}>
-                            {/* PIN Input */}
-                            <TextField size="small" label="PIN" value={editFormData.pin || ''} onChange={(e) => handleEditFormChange(e.target.value, 'pin')} inputProps={{ maxLength: 4, pattern: '[0-9]*' }} sx={{ width: 65 }} />
-                          </TableCell>
-                          {(isAdmin() || isOrganizer()) && ( // Call isAdmin and isOrganizer as functions
-                            <TableCell sx={{ textAlign: 'center' }}>
-                              {/* Save/Cancel Actions */}
-                              <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                                <IconButton size="small" color="primary" onClick={() => handleSaveEdits(user.id)} title="Save"> <SaveIcon fontSize="small" /> </IconButton>
-                                <IconButton size="small" color="error" onClick={handleCancelEditing} title="Cancel"> <CancelEditIcon fontSize="small" /> </IconButton>
-                              </Box>
-                            </TableCell>
+                          <TableCell><Box sx={{ display: 'flex', gap: 1 }}><TextField size="small" label="First Name" value={editFormData.first_name} onChange={(e) => handleEditFormChange(e.target.value, 'first_name')} sx={{ width: 'calc(50% - 4px)' }} /><TextField size="small" label="Last Name" value={editFormData.last_name} onChange={(e) => handleEditFormChange(e.target.value, 'last_name')} sx={{ width: 'calc(50% - 4px)' }} /></Box></TableCell>
+                          <TableCell><TextField size="small" label="Email" value={editFormData.email} onChange={(e) => handleEditFormChange(e.target.value, 'email')} fullWidth /></TableCell>
+                          <TableCell><TextField size="small" label="Phone" value={editFormData.phone} onChange={(e) => handleEditFormChange(e.target.value, 'phone')} fullWidth /></TableCell>
+                          <TableCell><FormControl size="small" fullWidth><InputLabel>Gender</InputLabel><Select value={editFormData.gender || ''} label="Gender" onChange={(e) => handleEditFormChange(e.target.value, 'gender')}><MenuItem value="Male">Male</MenuItem><MenuItem value="Female">Female</MenuItem></Select></FormControl></TableCell>
+                          <TableCell sx={{ textAlign: 'center' }}>{editFormData.birthday ? calculateAge(new Date(editFormData.birthday)) : ''}</TableCell>
+                          <TableCell><TextField size="small" label="Birthday" type="date" value={editFormData.birthday || ''} onChange={(e) => handleEditFormChange(e.target.value, 'birthday')} InputLabelProps={{ shrink: true }} fullWidth /></TableCell>
+                          <TableCell>{user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'}</TableCell>
+                          <TableCell><Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /></TableCell>
+                          <TableCell>{user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'}</TableCell>
+                          <TableCell sx={{ textAlign: 'center' }}><TextField size="small" label="PIN" value={editFormData.pin || ''} onChange={(e) => handleEditFormChange(e.target.value, 'pin')} inputProps={{ maxLength: 4, pattern: '[0-9]*' }} sx={{ width: 65 }} /></TableCell>
+                          {(isAdmin() || isOrganizer()) && (
+                            <TableCell sx={{ textAlign: 'center' }}><Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}><IconButton size="small" color="primary" onClick={() => handleSaveEdits(user.id)} title="Save"><SaveIcon fontSize="small" /></IconButton><IconButton size="small" color="error" onClick={handleCancelEditing} title="Cancel"><CancelEditIcon fontSize="small" /></IconButton></Box></TableCell>
                           )}
                         </>
                       ) : (
-                        // View mode - Render all cells
                         <>
                           <TableCell>{user.name}</TableCell>
-                          <TableCell sx={{ wordBreak: 'break-all' }}>{user.email}</TableCell> {/* Added wordBreak for email */}
+                          <TableCell sx={{ wordBreak: 'break-all' }}>{user.email}</TableCell>
                           <TableCell>{user.phone}</TableCell>
                           <TableCell>{user.gender}</TableCell>
                           <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
-                          <TableCell> {user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'} </TableCell>
-                          <TableCell> {user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'} </TableCell>
-                          <TableCell> <Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /> </TableCell>
-                          <TableCell> {user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'} </TableCell>
+                          <TableCell>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</TableCell>
+                          <TableCell>{user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'}</TableCell>
+                          <TableCell><Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /></TableCell>
+                          <TableCell>{user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'}</TableCell>
                           <TableCell sx={{ textAlign: 'center' }}>{user.pin}</TableCell>
-                          {(isAdmin() || isOrganizer()) && ( // Call isAdmin and isOrganizer as functions
-                            <TableCell sx={{ textAlign: 'center' }}>
-                              {/* Edit Action */}
-                              <IconButton size="small" color="primary" onClick={() => handleStartEditing(user)} title="Edit"> <EditIcon fontSize="small" /> </IconButton>
-                            </TableCell>
+                          {(isAdmin() || isOrganizer()) && (
+                            <TableCell sx={{ textAlign: 'center' }}><IconButton size="small" color="primary" onClick={() => handleStartEditing(user)} title="Edit"><EditIcon fontSize="small" /></IconButton></TableCell>
                           )}
                         </>
                       )}
