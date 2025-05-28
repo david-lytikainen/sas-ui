@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React from 'react';
 // import { Link as RouterLink } from 'react-router-dom'; // No longer needed for AppBar items
 // import AppBar from '@mui/material/AppBar'; // Removed
 // import Toolbar from '@mui/material/Toolbar'; // Removed
