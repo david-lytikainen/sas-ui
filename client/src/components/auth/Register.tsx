@@ -34,6 +34,7 @@ const Register = () => {
     birthday: '',
     gender: '',
     phone: '',
+    current_church: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -118,6 +119,7 @@ const Register = () => {
         birthday: new Date(formData.birthday).toISOString().split('T')[0],
         gender: formData.gender,
         phone: formData.phone,
+        current_church: formData.current_church || 'Other',
       };
       
       await register(registrationData);
@@ -394,6 +396,24 @@ const Register = () => {
             >
               <MenuItem value="MALE">Male</MenuItem>
               <MenuItem value="FEMALE">Female</MenuItem>
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth margin="dense" size="small" sx={{ mt: 1 }}>
+            <InputLabel id="church-select-label">Current Church</InputLabel>
+            <Select
+              labelId="church-select-label"
+              id="church-select"
+              name="current_church"
+              value={formData.current_church}
+              label="Current Church"
+              onChange={handleSelectChange}
+            >
+              <MenuItem value="Calvary Chapel Delco">Calvary Chapel Delco</MenuItem>
+              <MenuItem value="Church of the Saviour">Church of the Saviour</MenuItem>
+              <MenuItem value="Providence">Providence</MenuItem>
+              <MenuItem value="Church of God">Church of God</MenuItem>
+              <MenuItem value="Other">Other</MenuItem>
             </Select>
           </FormControl>
 
