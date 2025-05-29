@@ -412,7 +412,8 @@ const Register = () => {
               <MenuItem value="Calvary Chapel Delco">Calvary Chapel Delco</MenuItem>
               <MenuItem value="Church of the Saviour">Church of the Saviour</MenuItem>
               <MenuItem value="Providence">Providence</MenuItem>
-              <MenuItem value="Church of God">Church of God</MenuItem>
+              <MenuItem value="Valley Creek">Valley Creek</MenuItem>
+              <MenuItem value="Covenant Fellowship">Covenant Fellowship</MenuItem>
               <MenuItem value="Other">Other</MenuItem>
             </Select>
           </FormControl>
