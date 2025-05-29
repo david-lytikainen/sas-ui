@@ -414,7 +414,14 @@ const Register = () => {
               <MenuItem value="Providence">Providence</MenuItem>
               <MenuItem value="Valley Creek">Valley Creek</MenuItem>
               <MenuItem value="Covenant Fellowship">Covenant Fellowship</MenuItem>
+              <MenuItem value="The Journey - Delaware">The Journey - Delaware</MenuItem>
+              <MenuItem value="Valley Point">Valley Point</MenuItem>
+              <MenuItem value="Tenth Presbyterian">Tenth Presbyterian</MenuItem>
+              <MenuItem value="The Block Church">The Block Church</MenuItem>
+              <MenuItem value="938">938</MenuItem>
+              <MenuItem value="Christ Community Church">Christ Community Church</MenuItem>
               <MenuItem value="Other">Other</MenuItem>
+
             </Select>
           </FormControl>
 
