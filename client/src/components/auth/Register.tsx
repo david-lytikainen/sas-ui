@@ -234,7 +234,7 @@ const Register = () => {
                 paddingLeft: '12px'
               }
             }}
-            helperText="Must be 18 or older"
+            helperText="Must be 20-30 years old"
             FormHelperTextProps={{ 
               sx: { 
                 fontSize: '0.75rem',
