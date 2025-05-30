@@ -39,6 +39,7 @@ import {
   Snackbar,
   SnackbarCloseReason,
   CircularProgress,
+  Autocomplete,
 } from '@mui/material';
 import {
   Event as EventIcon,
@@ -72,6 +73,7 @@ import { eventsApi } from '../../services/api';
 import { Event, EventStatus, ScheduleItem } from '../../types/event';
 import EventTimer from './EventTimer';
 import MatchesDialog from './MatchesDialog';
+import { churchOptions } from '../../constants/churchOptions';
 
 
 interface Match {
@@ -2682,7 +2684,33 @@ const EventList = () => {
                             <TableCell><FormControl size="small" fullWidth><InputLabel>Gender</InputLabel><Select value={editFormData.gender || ''} label="Gender" onChange={(e) => handleEditFormChange(e.target.value, 'gender')}><MenuItem value="Male">Male</MenuItem><MenuItem value="Female">Female</MenuItem></Select></FormControl></TableCell>
                             <TableCell sx={{ textAlign: 'center' }}>{editFormData.birthday ? calculateAge(new Date(editFormData.birthday)) : ''}</TableCell>
                             <TableCell><TextField size="small" label="Birthday" type="date" value={editFormData.birthday || ''} onChange={(e) => handleEditFormChange(e.target.value, 'birthday')} InputLabelProps={{ shrink: true }} fullWidth /></TableCell>
-                            <TableCell><TextField size="small" label="Church" value={editFormData.church || ''} onChange={(e) => handleEditFormChange(e.target.value, 'church')} fullWidth /></TableCell> 
+                            <TableCell>
+                              <Autocomplete
+                                fullWidth
+                                freeSolo
+                                size="small"
+                                options={churchOptions}
+                                value={editFormData.church || ''}
+                                onChange={(event, newValue) => {
+                                  handleEditFormChange(newValue || '', 'church');
+                                }}
+                                onInputChange={(event, newInputValue) => {
+                                  handleEditFormChange(newInputValue, 'church');
+                                }}
+                                ListboxProps={{
+                                  style: {
+                                    maxHeight: '200px',
+                                  },
+                                }}
+                                renderInput={(params) => (
+                                  <TextField 
+                                    {...params} 
+                                    label="Church" 
+                                    size="small"
+                                  />
+                                )}
+                              />
+                            </TableCell>
                             <TableCell>{user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'}</TableCell>
                             <TableCell><Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /></TableCell>
                             <TableCell>{user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'}</TableCell>
@@ -2954,23 +2982,10 @@ const EventList = () => {
                           )}
                         </Box>
                       </TableCell>
-                      <TableCell 
-                        onClick={() => handleSort('partnerAge')}
-                        sx={{ 
-                          cursor: 'pointer',
-                          backgroundColor: sortConfig?.key === 'partnerAge' ? 'rgba(0, 0, 0, 0.04)' : 'inherit',
-                          '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' }
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <strong>Partner Age</strong>
-                          {sortConfig?.key === 'partnerAge' && (
-                            <span style={{ marginLeft: '4px' }}>
-                              {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </Box>
-                      </TableCell>
+                      
+                      <TableCell><strong>User Church</strong></TableCell>
+                      <TableCell><strong>Partner Church</strong></TableCell>
+                      <TableCell><strong>Age Difference</strong></TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -2986,7 +3001,9 @@ const EventList = () => {
                           <TableCell>{item.round}</TableCell>
                           <TableCell>{item.table}</TableCell>
                           <TableCell>{item.partner_name}</TableCell>
-                          <TableCell>{item.partner_age || 'N/A'}</TableCell>
+                          <TableCell>{item.user_church || 'Other'}</TableCell>
+                          <TableCell>{item.partner_church || 'Other'}</TableCell>
+                          <TableCell>{typeof item.user_age === 'number' && typeof item.partner_age === 'number' ? Math.abs(item.user_age - item.partner_age) : 'N/A'}</TableCell>
                         </TableRow>
                       ));
                     })}

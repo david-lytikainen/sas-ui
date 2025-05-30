@@ -21,6 +21,7 @@ import {
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
+import { churchOptions } from '../../constants/churchOptions';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -41,36 +42,6 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Church options for autocomplete
-  const churchOptions = [
-    'Calvary Chapel Delco',
-    'Church of the Saviour',
-    'Providence',
-    'Valley Creek',
-    'Covenant Fellowship',
-    'The Journey - Delaware',
-    'Valley Point',
-    'Tenth Presbyterian',
-    'The Block Church',
-    '938',
-    'Christ Community Church',
-    'Faith Reformed Baptist',
-    'Aldan Union',
-    'Chichester Baptist',
-    'Goshen Baptist',
-    'Springfield Baptist',
-    'Grace Bible Fellowship',
-    'Faith Community',
-    'The Bridge',
-    'The Power Place',
-    'Blue Route Vineyard',
-    'The Blue Church',
-    'Springton Lake Presbyterian',
-    'Epic Church Roxborough',
-    'Christ Church',
-    'Legacy Church',
-    'Other',
-  ].sort()
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     
