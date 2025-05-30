@@ -549,7 +549,7 @@ const EventTimer = ({
     clearTimerInterval, 
     playRoundEndSound, 
     notifiedZero,
-    eventId
+    eventId, timerState?.timer.final_round
   ]);
 
   // Add a persistent session storage effect to preserve timer state on refresh
