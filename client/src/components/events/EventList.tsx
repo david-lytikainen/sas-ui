@@ -778,130 +778,14 @@ const EventList = () => {
         const isCurrentUserAttendee = user && !isAdmin() && !isOrganizer();
         return (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }}> 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start', mb: expandedUserSchedules[event.id] ? 1 : 0 }}> 
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}> 
               <Chip label="Checked In" color="success" icon={<CheckInIcon />} size="small" sx={{ alignSelf: 'flex-start' }}/>
-              <Button size="small" variant="outlined" onClick={() => toggleUserScheduleInline(event.id)} startIcon={expandedUserSchedules[event.id] ? <ExpandLessIcon /> : <ExpandMoreIcon />} sx={{ alignSelf: 'flex-start' }}>
-                My Schedule
-              </Button>
               {isCurrentUserAttendee && (
                 <Button size="small" variant="contained" color="primary" onClick={() => handleViewMatchesClick(event)} sx={{ mt: 0.5, alignSelf: 'flex-start' }}>
                   View My Matches
                 </Button>
               )}
             </Box>
-            <Collapse in={expandedUserSchedules[event.id]} timeout="auto" unmountOnExit sx={{ width: '100%'}}>
-              <Paper elevation={1} sx={{ p: 1.5, mt: 1, bgcolor: 'background.default' }}>
-                {userSchedules[event.id] && userSchedules[event.id].length > 0 ? (
-                  <>
-                    {/* Map through schedule items - existing code */}
-                    {userSchedules[event.id].map((item, index) => (
-                      <Box 
-                        key={item.event_speed_date_id || index} 
-                        sx={{ 
-                          mb: { xs: 0.5, sm: index === userSchedules[event.id].length - 1 ? 0 : 0.75 },
-                          p: { xs: 0.5, sm: 0.75 }, 
-                          borderLeft: '3px solid', 
-                          borderColor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
-                          borderRadius: '4px',
-                          backgroundColor: theme.palette.action.hover,
-                        }}
-                      >
-                        <Grid container spacing={1} alignItems="center">
-                          <Grid item xs={12}> 
-                            <Typography variant="subtitle2" component="div" gutterBottom={false} sx={{ fontWeight: 'bold', mb: 0.25 }}>
-                              Round {item.round}
-                            </Typography>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Box>
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.1 }}>
-                                  Table: {item.table}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0 }}>
-                                  Partner: {item.partner_name} (Age: {item.partner_age || 'N/A'})
-                                </Typography>
-                              </Box>
-                              {item.event_speed_date_id && (
-                                <Box sx={{ 
-                                  display: 'flex',
-                                  gap: 0.75,
-                                  ml: 2,
-                                  position: 'relative',
-                                  top: '-10px'
-                                }}> 
-                                  <Button
-                                    variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === true ? 'contained' : 'outlined'}
-                                    size="small"
-                                    color="success"
-                                    onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, true)}
-                                    sx={{ minWidth: '50px', px: 1.5, py: 0.5, fontSize: '0.85rem' }}
-                                  >
-                                    Yes
-                                  </Button>
-                                  <Button
-                                    variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === false ? 'contained' : 'outlined'}
-                                    size="small"
-                                    color="error"
-                                    onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, false)}
-                                    sx={{ minWidth: '50px', px: 1.5, py: 0.5, fontSize: '0.85rem' }}
-                                  >
-                                    No
-                                  </Button>
-                                </Box>
-                              )}
-                            </Box>
-                          </Grid>
-                        </Grid>
-                      </Box>
-                    ))}
-                    {attendeeSelectionError[event.id] && (
-                      <Alert severity="error" sx={{ mt: 1.5 }} onClose={() => setAttendeeSelectionError(prev => ({...prev, [event.id]: null}))}>
-                        {attendeeSelectionError[event.id]}
-                      </Alert>
-                    )}
-                    {/* Horizontal Save and Submit buttons */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, mt: 1.5 }}> {/* MODIFIED: justifyContent to flex-end */}
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Button
-                          variant="outlined"
-                          color="inherit" // Changed from secondary to inherit
-                          size="small"
-                          onClick={() => handleSaveAttendeeSelections(event.id)}
-                          disabled={isSaveDisabled(event.id)}
-                        >
-                          Save Selections {/* MODIFIED TEXT */}
-                        </Button>
-                        {saveIndicator[event.id] && (
-                          <Typography variant="body2" color="success.main">Saved!</Typography>
-                        )}
-                      </Box>
-                      {/* REMOVED SUBMIT BUTTON
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        size="small"
-                        onClick={() => handleAttendeeSubmitSelections(event.id)}
-                        disabled={ // Logic for Completed events
-                          (!userSchedules[event.id] || userSchedules[event.id].length === 0) ||
-                          submittedEventIds.has(event.id) ||
-                          selectionWindowClosedError[event.id]
-                        }
-                      >
-                        {submittedEventIds.has(event.id) ? 'Selections Submitted' : 'Submit My Selections'}
-                      </Button>
-                      */}
-                    </Box>
-                    {/* ADDED: Display specific message if window is closed */}
-                    {selectionWindowClosedError[event.id] && (
-                      <Typography variant="caption" color="error" sx={{ display: 'block', textAlign: 'center', mt: 0.5 }}>
-                        Selection window closed (24 hours after event end).
-                      </Typography>
-                    )}
-                  </>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">Your schedule for this event is not yet available or you were not checked in.</Typography> // Adjusted text slightly
-                )}
-              </Paper>
-            </Collapse>
           </Box>
         );
       } else if (isUserRegistered) {
@@ -938,8 +822,8 @@ const EventList = () => {
           variant="contained" 
           color="primary" 
           startIcon={<SignUpIcon />} 
-          onClick={() => handleSignUpClick(event.id)} // Assuming same handler, or it could be specific
-          disabled={isRegistrationClosed(event)} // Assuming same disabled logic
+          onClick={() => handleSignUpClick(event.id)}
+          disabled={isRegistrationClosed(event)}
           sx={{ width: { xs: '100%', sm: 'auto' }, alignSelf: {xs: 'stretch', sm: 'flex-start'} }}
         >
           Join Waitlist
@@ -1091,40 +975,8 @@ const EventList = () => {
             >
               View Registered Users
             </Button>
-            
-            {/* Event status management buttons */}
-            <Grid container spacing={1} sx={{ mt: 0.5 }}>
-              <Grid item xs={6}>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  color="primary"
-                  startIcon={<StartIcon />}
-                  onClick={() => handleStartEventClick(event)}
-                  fullWidth
-                  disabled={event.status === 'In Progress' || event.status === 'Completed'}
-                  sx={{ borderRadius: 1 }}
-                >
-                  Start
-                </Button>
-              </Grid>
-              <Grid item xs={6}>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  color="primary"
-                  startIcon={<EndIcon />}
-                  onClick={() => handleEndEventClick(event)}
-                  fullWidth
-                  disabled={event.status !== 'In Progress'}
-                  sx={{ borderRadius: 1 }}
-                >
-                  End
-                </Button>
-              </Grid>
-            </Grid>
-            
-            {/* View attendee pins button */}
+
+            {/* View attendee pins button - moved here */}
             <Button
               variant="outlined"
               size="small"
@@ -1135,6 +987,34 @@ const EventList = () => {
               sx={{ borderRadius: 1 }}
             >
               View Pins
+            </Button>
+            
+            {/* Generate Schedules button - now on its own row */}
+            <Button
+              variant="outlined"
+              size="small"
+              color="primary"
+              startIcon={<StartIcon />}
+              onClick={() => handleStartEventClick(event)}
+              fullWidth
+              disabled={event.status === 'In Progress' || event.status === 'Completed'}
+              sx={{ borderRadius: 1 }}
+            >
+              Generate Schedules
+            </Button>
+
+            {/* End button - now on its own row */}
+            <Button
+              variant="outlined"
+              size="small"
+              color="primary"
+              startIcon={<EndIcon />}
+              onClick={() => handleEndEventClick(event)}
+              fullWidth
+              disabled={event.status !== 'In Progress'}
+              sx={{ borderRadius: 1 }}
+            >
+              End
             </Button>
 
             {/* View all schedules button - only visible when event is in progress or completed */}
@@ -1202,7 +1082,6 @@ const EventList = () => {
     );
   };
 
-  // In the handleStartEditing function, add birthday and pin to editFormData
   const handleStartEditing = (user: any) => {
     setEditingUserId(user.id);
     setEditFormData({
@@ -2145,6 +2024,8 @@ const EventList = () => {
                       sx={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}
                     />
                   </Box>
+
+                  {event.status !== 'In Progress' && (
                   <Box sx={{ mb: { xs: 1.5, sm: 2 } }}>
                     <Typography 
                       variant="body1" 
@@ -2157,6 +2038,7 @@ const EventList = () => {
                     {event.description}
                   </Typography>
                   </Box>
+                  )}
                   
                 {(event.status === 'In Progress') && (
                   <Box sx={{ mb: { xs: 1, sm: 3 } }}> 
@@ -2185,6 +2067,7 @@ const EventList = () => {
                   </Box>
                 )}
                 
+                {event.status !== 'In Progress' && (
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1, sm: 2 } }}> 
                   <Typography 
                     variant="body2" 
@@ -2256,9 +2139,132 @@ const EventList = () => {
                   {event.address}
                 </Typography>
                 </Box>
+                )}
                 
                 {/* Event admin controls */}
                 {renderEventControls(event)}
+
+                {/* My Schedule */}
+                {isRegisteredForEvent(event.id) && event.registration?.status === 'Checked In' && (
+                  <>
+                    <Box 
+                      sx={{ 
+                        mt: 1, 
+                        pt: 1, 
+                        borderTop: `1px dashed ${theme.palette.divider}`,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                      }}
+                      onClick={() => toggleUserScheduleInline(event.id)}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <ListIcon fontSize="small" color="action" />
+                        <Typography variant="subtitle2" color="text.secondary">
+                          My Schedule
+                        </Typography>
+                      </Box>
+                      {expandedUserSchedules[event.id] ? <ExpandLessIcon color="action" /> : <ExpandMoreIcon color="action" />}
+                    </Box>
+                    
+                    <Collapse in={expandedUserSchedules[event.id]} timeout="auto" unmountOnExit sx={{ width: '100%'}}>
+                      <Paper elevation={1} sx={{ p: 1.5, mt: 1, bgcolor: 'background.default' }}>
+                        {userSchedules[event.id] && userSchedules[event.id].length > 0 ? (
+                          <>
+                            {userSchedules[event.id].map((item, index) => (
+                              <Box 
+                                key={item.event_speed_date_id || index} 
+                                sx={{ 
+                                  mb: { xs: 0.5, sm: index === userSchedules[event.id].length - 1 ? 0 : 0.75 },
+                                  p: { xs: 0.5, sm: 0.75 }, 
+                                  borderLeft: '3px solid', 
+                                  borderColor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
+                                  borderRadius: '4px',
+                                  backgroundColor: theme.palette.action.hover,
+                                }}
+                              >
+                                <Grid container spacing={1} alignItems="center">
+                                  <Grid item xs={12}> 
+                                    <Typography variant="subtitle2" component="div" gutterBottom={false} sx={{ fontWeight: 'bold', mb: 0.25 }}>
+                                      Round {item.round}
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <Box>
+                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.1 }}>
+                                          Table: {item.table}
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0 }}>
+                                          Partner: {item.partner_name} (Age: {item.partner_age || 'N/A'})
+                                        </Typography>
+                                      </Box>
+                                      {item.event_speed_date_id && (
+                                        <Box sx={{ 
+                                          display: 'flex',
+                                          gap: 0.75,
+                                          ml: 2,
+                                          position: 'relative',
+                                          top: '-10px'
+                                        }}> 
+                                          <Button
+                                            variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === true ? 'contained' : 'outlined'}
+                                            size="small"
+                                            color="success"
+                                            onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, true)}
+                                            sx={{ minWidth: '50px', px: 1.5, py: 0.5, fontSize: '0.85rem' }}
+                                          >
+                                            Yes
+                                          </Button>
+                                          <Button
+                                            variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === false ? 'contained' : 'outlined'}
+                                            size="small"
+                                            color="error"
+                                            onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, false)}
+                                            sx={{ minWidth: '50px', px: 1.5, py: 0.5, fontSize: '0.85rem' }}
+                                          >
+                                            No
+                                          </Button>
+                                        </Box>
+                                      )}
+                                    </Box>
+                                  </Grid>
+                                </Grid>
+                              </Box>
+                            ))}
+                            {attendeeSelectionError[event.id] && (
+                              <Alert severity="error" sx={{ mt: 1.5 }} onClose={() => setAttendeeSelectionError(prev => ({...prev, [event.id]: null}))}>
+                                {attendeeSelectionError[event.id]}
+                              </Alert>
+                            )}
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, mt: 1.5 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Button
+                                  variant="outlined"
+                                  color="inherit"
+                                  size="small"
+                                  onClick={() => handleSaveAttendeeSelections(event.id)}
+                                  disabled={isSaveDisabled(event.id)}
+                                >
+                                  Save Selections
+                                </Button>
+                                {saveIndicator[event.id] && (
+                                  <Typography variant="body2" color="success.main">Saved!</Typography>
+                                )}
+                              </Box>
+                            </Box>
+                            {selectionWindowClosedError[event.id] && (
+                              <Typography variant="caption" color="error" sx={{ display: 'block', textAlign: 'center', mt: 0.5 }}>
+                                Selection window closed (24 hours after event end).
+                              </Typography>
+                            )}
+                          </>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">Your schedule for this event is not yet available or you were not checked in.</Typography>
+                        )}
+                      </Paper>
+                    </Collapse>
+                  </>
+                )}
               </CardContent>
               <CardActions sx={{ 
                 p: { xs: 1, sm: 2 }, 
@@ -2613,10 +2619,10 @@ const EventList = () => {
         open={startEventDialogOpen}
         onClose={() => setStartEventDialogOpen(false)}
       >
-        <DialogTitle>Start Event</DialogTitle>
+        <DialogTitle>Generate Schedules</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to start "{selectedEventForStarting?.name}"?
+            Are you sure you want to generate schedules for "{selectedEventForStarting?.name}"?
           </DialogContentText>
           <Typography variant="body1" sx={{ mt: 1, fontWeight: 'bold' }}>
             This will use {numTables} tables and {numRounds} rounds.
@@ -2625,7 +2631,7 @@ const EventList = () => {
         <DialogActions>
           <Button onClick={() => setStartEventDialogOpen(false)}>Cancel</Button>
           <Button onClick={handleStartEvent} color="success" variant="contained">
-            Yes, Start Event
+            Generate Schedules
           </Button>
         </DialogActions>
       </Dialog>
