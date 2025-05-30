@@ -26,5 +26,6 @@ export const churchOptions = [
   'Epic Church Roxborough',
   'Christ Church',
   'Legacy Church',
+  'Lifehouse Church',
   'Other',
 ].sort(); 
