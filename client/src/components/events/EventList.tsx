@@ -140,7 +140,8 @@ const EventList = () => {
     registration_date: string | null,
     check_in_date: string | null,
     status: string,
-    pin: string
+    pin: string,
+    church?: string,
   }[]>([]);
 
   const [endEventDialogOpen, setEndEventDialogOpen] = useState(false);
@@ -234,15 +235,41 @@ const EventList = () => {
   const [allEventMatchesLoading, setAllEventMatchesLoading] = useState<boolean>(false);
   const [allEventMatchesError, setAllEventMatchesError] = useState<string | null>(null);
 
+  // Add search state for matches dialog
+  const [matchesSearchTerm, setMatchesSearchTerm] = useState<string>('');
+  const [filteredMatches, setFilteredMatches] = useState<MatchPair[]>([]);
+
+  // Add search state for registered users dialog  
+  const [registeredUsersSearchTerm, setRegisteredUsersSearchTerm] = useState<string>('');
+  const [filteredRegisteredUsers, setFiltereredRegisteredUsers] = useState<{
+    id: number,
+    name: string,
+    email: string,
+    first_name: string,
+    last_name: string,
+    birthday: string | null,
+    age: number,
+    church?: string,
+    gender: string | null,
+    phone: string,
+    registration_date: string | null,
+    check_in_date: string | null,
+    status: string,
+    pin: string,
+  }[]>([]);
+
   const handleExportAllMatches = () => {
-    if (!selectedEventForAllEventMatches || allEventMatches.length === 0) {
+    // Use filtered matches if search is active, otherwise use all matches
+    const matchesToExport = matchesSearchTerm.trim() ? filteredMatches : allEventMatches;
+    
+    if (!selectedEventForAllEventMatches || matchesToExport.length === 0) {
       setErrorMessage('No matches available to export.');
       return;
     }
 
     try {
       let csvContent = 'User 1 Name,User 1 Email,User 2 Name,User 2 Email\n';
-      allEventMatches.forEach(match => {
+      matchesToExport.forEach(match => {
         const row = [
           `"${match.user1_name}"`,
           `"${match.user1_email}"`,
@@ -256,7 +283,10 @@ const EventList = () => {
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
-      link.setAttribute('download', `${selectedEventForAllEventMatches.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_all_matches.csv`);
+      const filename = matchesSearchTerm.trim() 
+        ? `${selectedEventForAllEventMatches.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_filtered_matches.csv`
+        : `${selectedEventForAllEventMatches.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_all_matches.csv`;
+      link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -852,8 +882,12 @@ const EventList = () => {
       const event = filteredEvents.find(e => e.id === eventId) || null; // Use filteredEvents
       setSelectedEventForRegisteredUsers(event);
       
+      // Reset search term and initialize filtered data
+      setRegisteredUsersSearchTerm('');
+      
       const response = await eventsApi.getEventAttendees(eventId.toString());
       setRegisteredUsers(response.data);
+      setFiltereredRegisteredUsers(response.data); // Initialize filtered data
       setViewRegisteredUsersDialogOpen(true);
     } catch (error: any) {
       console.error('Error fetching registered users:', error);
@@ -1038,12 +1072,12 @@ const EventList = () => {
                 variant="outlined"
                 size="small"
                 color="primary"
-                startIcon={<PeopleIcon />} // Using PeopleIcon as an example
+                startIcon={<PeopleIcon />}
                 onClick={() => handleViewAllMatchesClick(event)}
                 fullWidth
-                sx={{ borderRadius: 1, mt: 1 }}
+                sx={{ borderRadius: 1 }}
               >
-                View All Event Matches
+                Show Matches
               </Button>
             )}
 
@@ -1337,7 +1371,7 @@ const EventList = () => {
     filterPins(value);
   };
 
-  // Add a function to filter pins
+  // Function to filter pins
   const filterPins = (search: string) => {
     if (!search || search.trim() === '') {
       setFilteredPins(attendeePins);
@@ -1364,6 +1398,83 @@ const EventList = () => {
     });
 
     setFilteredPins(filtered);
+  };
+
+  // Add function to handle matches search
+  const handleMatchesSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setMatchesSearchTerm(value);
+    filterMatches(value);
+  };
+
+  // Add function to filter matches
+  const filterMatches = (search: string) => {
+    if (!search || search.trim() === '') {
+      // Sort matches alphabetically by user1 name, then user2 name
+      const sorted = [...allEventMatches].sort((a: MatchPair, b: MatchPair) => {
+        const comparison = a.user1_name.localeCompare(b.user1_name);
+        if (comparison === 0) {
+          return a.user2_name.localeCompare(b.user2_name);
+        }
+        return comparison;
+      });
+      setFilteredMatches(sorted);
+      return;
+    }
+
+    const lowercaseSearch = search.toLowerCase().trim();
+    const filtered = allEventMatches.filter(match => {
+      const user1Name = match.user1_name.toLowerCase();
+      const user2Name = match.user2_name.toLowerCase();
+      const user1Email = match.user1_email.toLowerCase();
+      const user2Email = match.user2_email.toLowerCase();
+      
+      return user1Name.includes(lowercaseSearch) || 
+             user2Name.includes(lowercaseSearch) ||
+             user1Email.includes(lowercaseSearch) ||
+             user2Email.includes(lowercaseSearch);
+    });
+
+    // Sort filtered results
+    filtered.sort((a, b) => {
+      const comparison = a.user1_name.localeCompare(b.user1_name);
+      if (comparison === 0) {
+        return a.user2_name.localeCompare(b.user2_name);
+      }
+      return comparison;
+    });
+
+    setFilteredMatches(filtered);
+  };
+
+  // Add function to handle registered users search
+  const handleRegisteredUsersSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setRegisteredUsersSearchTerm(value);
+    filterRegisteredUsers(value);
+  };
+
+  // Add function to filter registered users
+  const filterRegisteredUsers = (search: string) => {
+    if (!search || search.trim() === '') {
+      setFiltereredRegisteredUsers([...registeredUsers]);
+      return;
+    }
+
+    const searchWords = search.toLowerCase().trim().split(/\s+/).filter(word => word.length > 0);
+    
+    const filtered = registeredUsers.filter(user => {
+      const firstName = user.first_name.toLowerCase();
+      const lastName = user.last_name.toLowerCase();
+      
+      // Check if ALL search words are found in the user's data
+      return searchWords.every(word => {
+        return firstName.startsWith(word) ||
+               lastName.startsWith(word);
+      });
+    });
+
+    setFiltereredRegisteredUsers(filtered);
   };
 
   // Effect to fetch user schedules for active, checked-in events
@@ -1586,7 +1697,10 @@ const EventList = () => {
   };
 
   const handleExportRegisteredUsers = () => {
-    if (!selectedEventForRegisteredUsers || !registeredUsers || registeredUsers.length === 0) {
+    // Use filtered users if search is active, otherwise use all users
+    const usersToExport = registeredUsersSearchTerm.trim() ? filteredRegisteredUsers : registeredUsers;
+    
+    if (!selectedEventForRegisteredUsers || !usersToExport || usersToExport.length === 0) {
       setErrorMessage('No registered users available to export');
       return;
     }
@@ -1594,7 +1708,7 @@ const EventList = () => {
     try {
       let csvContent = 'Name,Email,Phone,Gender,Age,Birthday,Registration Date,Check-in Time,Status,PIN\n';
 
-      registeredUsers.forEach((user) => {
+      usersToExport.forEach((user) => {
         const birthday = user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A';
         const registrationDate = user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A';
         const checkInDate = user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in';
@@ -1611,7 +1725,10 @@ const EventList = () => {
       const url = URL.createObjectURL(blob);
       
       link.setAttribute('href', url);
-      link.setAttribute('download', `${selectedEventForRegisteredUsers.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_registered_users.csv`);
+      const filename = registeredUsersSearchTerm.trim()
+        ? `${selectedEventForRegisteredUsers.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_filtered_users.csv`
+        : `${selectedEventForRegisteredUsers.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_registered_users.csv`;
+      link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1692,9 +1809,21 @@ const EventList = () => {
     setAllEventMatchesLoading(true);
     setAllEventMatchesError(null);
     setAllEventMatches([]);
+    
+    // Reset search term
+    setMatchesSearchTerm('');
+    
     try {
       const response = await eventsApi.getAllMatchesForEvent(event.id.toString());
-      setAllEventMatches(response.matches);
+      const sortedMatches = response.matches.sort((a: MatchPair, b: MatchPair) => {
+        const comparison = a.user1_name.localeCompare(b.user1_name);
+        if (comparison === 0) {
+          return a.user2_name.localeCompare(b.user2_name);
+        }
+        return comparison;
+      });
+      setAllEventMatches(sortedMatches);
+      setFilteredMatches(sortedMatches); // Initialize filtered data
     } catch (err: any) {
       setAllEventMatchesError(err.message || 'Failed to load all event matches.');
     } finally {
@@ -2487,66 +2616,92 @@ const EventList = () => {
         </DialogTitle>
         <DialogContent dividers sx={{ p: { xs: 0, sm: 1 } }}> {/* Remove padding on xs */}
           {registeredUsers.length > 0 ? (
-            <TableContainer component={Paper} sx={{ maxHeight: 500, overflowX: 'auto' }}>
-              <Table stickyHeader size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ width: '15%', minWidth: 150 }}><strong>Name</strong></TableCell>
-                    <TableCell sx={{ width: '20%', minWidth: 180 }}><strong>Email</strong></TableCell>
-                    <TableCell sx={{ width: 130, minWidth: 120 }}><strong>Phone</strong></TableCell>
-                    <TableCell sx={{ width: 80, minWidth: 70 }}><strong>Gender</strong></TableCell>
-                    <TableCell sx={{ width: 60, minWidth: 50, textAlign: 'center' }}><strong>Age</strong></TableCell>
-                    <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Birthday</strong></TableCell>
-                    <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Registered</strong></TableCell>
-                    <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Status</strong></TableCell>
-                    <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Check-in Time</strong></TableCell>
-                    <TableCell sx={{ width: 70, minWidth: 60, textAlign: 'center' }}><strong>PIN</strong></TableCell>
-                    {(isAdmin() || isOrganizer()) && (
-                      <TableCell sx={{ width: 100, minWidth: 90, textAlign: 'center' }}><strong>Actions</strong></TableCell>
-                    )}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {registeredUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      {editingUserId === user.id ? (
-                        <>
-                          <TableCell><Box sx={{ display: 'flex', gap: 1 }}><TextField size="small" label="First Name" value={editFormData.first_name} onChange={(e) => handleEditFormChange(e.target.value, 'first_name')} sx={{ width: 'calc(50% - 4px)' }} /><TextField size="small" label="Last Name" value={editFormData.last_name} onChange={(e) => handleEditFormChange(e.target.value, 'last_name')} sx={{ width: 'calc(50% - 4px)' }} /></Box></TableCell>
-                          <TableCell><TextField size="small" label="Email" value={editFormData.email} onChange={(e) => handleEditFormChange(e.target.value, 'email')} fullWidth /></TableCell>
-                          <TableCell><TextField size="small" label="Phone" value={editFormData.phone} onChange={(e) => handleEditFormChange(e.target.value, 'phone')} fullWidth /></TableCell>
-                          <TableCell><FormControl size="small" fullWidth><InputLabel>Gender</InputLabel><Select value={editFormData.gender || ''} label="Gender" onChange={(e) => handleEditFormChange(e.target.value, 'gender')}><MenuItem value="Male">Male</MenuItem><MenuItem value="Female">Female</MenuItem></Select></FormControl></TableCell>
-                          <TableCell sx={{ textAlign: 'center' }}>{editFormData.birthday ? calculateAge(new Date(editFormData.birthday)) : ''}</TableCell>
-                          <TableCell><TextField size="small" label="Birthday" type="date" value={editFormData.birthday || ''} onChange={(e) => handleEditFormChange(e.target.value, 'birthday')} InputLabelProps={{ shrink: true }} fullWidth /></TableCell>
-                          <TableCell>{user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'}</TableCell>
-                          <TableCell><Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /></TableCell>
-                          <TableCell>{user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'}</TableCell>
-                          <TableCell sx={{ textAlign: 'center' }}><TextField size="small" label="PIN" value={editFormData.pin || ''} onChange={(e) => handleEditFormChange(e.target.value, 'pin')} inputProps={{ maxLength: 4, pattern: '[0-9]*' }} sx={{ width: 65 }} /></TableCell>
-                          {(isAdmin() || isOrganizer()) && (
-                            <TableCell sx={{ textAlign: 'center' }}><Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}><IconButton size="small" color="primary" onClick={() => handleSaveEdits(user.id)} title="Save"><SaveIcon fontSize="small" /></IconButton><IconButton size="small" color="error" onClick={handleCancelEditing} title="Cancel"><CancelEditIcon fontSize="small" /></IconButton></Box></TableCell>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <TableCell>{user.name}</TableCell>
-                          <TableCell sx={{ wordBreak: 'break-all' }}>{user.email}</TableCell>
-                          <TableCell>{user.phone}</TableCell>
-                          <TableCell>{user.gender}</TableCell>
-                          <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
-                          <TableCell>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</TableCell>
-                          <TableCell>{user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'}</TableCell>
-                          <TableCell><Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /></TableCell>
-                          <TableCell>{user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'}</TableCell>
-                          <TableCell sx={{ textAlign: 'center' }}>{user.pin}</TableCell>
-                          {(isAdmin() || isOrganizer()) && (
-                            <TableCell sx={{ textAlign: 'center' }}><IconButton size="small" color="primary" onClick={() => handleStartEditing(user)} title="Edit"><EditIcon fontSize="small" /></IconButton></TableCell>
-                          )}
-                        </>
+            <>
+              <Box sx={{ mb: 2, px: { xs: 1, sm: 0 } }}>
+                <TextField
+                  label="Search Users"
+                  placeholder="Search by name or email..."
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  value={registeredUsersSearchTerm}
+                  onChange={handleRegisteredUsersSearchChange}
+                  InputProps={{
+                    startAdornment: (
+                      <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>
+                        🔍
+                      </Box>
+                    ),
+                  }}
+                />
+              </Box>
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, px: { xs: 1, sm: 0 } }}>
+                Showing {filteredRegisteredUsers.length} of {registeredUsers.length} users
+              </Typography>
+              <TableContainer component={Paper} sx={{ maxHeight: 500, overflowX: 'auto' }}>
+                <Table stickyHeader size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ width: '15%', minWidth: 150 }}><strong>Name</strong></TableCell>
+                      <TableCell sx={{ width: '20%', minWidth: 180 }}><strong>Email</strong></TableCell>
+                      <TableCell sx={{ width: 130, minWidth: 120 }}><strong>Phone</strong></TableCell>
+                      <TableCell sx={{ width: 80, minWidth: 70 }}><strong>Gender</strong></TableCell>
+                      <TableCell sx={{ width: 60, minWidth: 50, textAlign: 'center' }}><strong>Age</strong></TableCell>
+                      <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Birthday</strong></TableCell>
+                      <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Church</strong></TableCell> {/* Added church column */}
+                      <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Registered</strong></TableCell>
+                      <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Status</strong></TableCell>
+                      <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Check-in Time</strong></TableCell>
+                      <TableCell sx={{ width: 70, minWidth: 60, textAlign: 'center' }}><strong>PIN</strong></TableCell>
+                      {(isAdmin() || isOrganizer()) && (
+                        <TableCell sx={{ width: 100, minWidth: 90, textAlign: 'center' }}><strong>Actions</strong></TableCell>
                       )}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {filteredRegisteredUsers.map((user) => (
+                      <TableRow key={user.id}>
+                        {editingUserId === user.id ? (
+                          <>
+                            <TableCell><Box sx={{ display: 'flex', gap: 1 }}><TextField size="small" label="First Name" value={editFormData.first_name} onChange={(e) => handleEditFormChange(e.target.value, 'first_name')} sx={{ width: 'calc(50% - 4px)' }} /><TextField size="small" label="Last Name" value={editFormData.last_name} onChange={(e) => handleEditFormChange(e.target.value, 'last_name')} sx={{ width: 'calc(50% - 4px)' }} /></Box></TableCell>
+                            <TableCell><TextField size="small" label="Email" value={editFormData.email} onChange={(e) => handleEditFormChange(e.target.value, 'email')} fullWidth /></TableCell>
+                            <TableCell><TextField size="small" label="Phone" value={editFormData.phone} onChange={(e) => handleEditFormChange(e.target.value, 'phone')} fullWidth /></TableCell>
+                            <TableCell><FormControl size="small" fullWidth><InputLabel>Gender</InputLabel><Select value={editFormData.gender || ''} label="Gender" onChange={(e) => handleEditFormChange(e.target.value, 'gender')}><MenuItem value="Male">Male</MenuItem><MenuItem value="Female">Female</MenuItem></Select></FormControl></TableCell>
+                            <TableCell sx={{ textAlign: 'center' }}>{editFormData.birthday ? calculateAge(new Date(editFormData.birthday)) : ''}</TableCell>
+                            <TableCell><TextField size="small" label="Birthday" type="date" value={editFormData.birthday || ''} onChange={(e) => handleEditFormChange(e.target.value, 'birthday')} InputLabelProps={{ shrink: true }} fullWidth /></TableCell>
+                            <TableCell>{user.church || 'Other'}</TableCell> {/* Show church */}
+                            <TableCell>{user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'}</TableCell>
+                            <TableCell><Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /></TableCell>
+                            <TableCell>{user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'}</TableCell>
+                            <TableCell sx={{ textAlign: 'center' }}><TextField size="small" label="PIN" value={editFormData.pin || ''} onChange={(e) => handleEditFormChange(e.target.value, 'pin')} inputProps={{ maxLength: 4, pattern: '[0-9]*' }} sx={{ width: 65 }} /></TableCell>
+                            {(isAdmin() || isOrganizer()) && (
+                              <TableCell sx={{ textAlign: 'center' }}><Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}><IconButton size="small" color="primary" onClick={() => handleSaveEdits(user.id)} title="Save"><SaveIcon fontSize="small" /></IconButton><IconButton size="small" color="error" onClick={handleCancelEditing} title="Cancel"><CancelEditIcon fontSize="small" /></IconButton></Box></TableCell>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <TableCell>{user.name}</TableCell>
+                            <TableCell sx={{ wordBreak: 'break-all' }}>{user.email}</TableCell>
+                            <TableCell>{user.phone}</TableCell>
+                            <TableCell>{user.gender}</TableCell>
+                            <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
+                            <TableCell>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</TableCell>
+                            <TableCell>{user.church || 'Other'}</TableCell> {/* Show church */}
+                            <TableCell>{user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'}</TableCell>
+                            <TableCell><Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /></TableCell>
+                            <TableCell>{user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'}</TableCell>
+                            <TableCell sx={{ textAlign: 'center' }}>{user.pin}</TableCell>
+                            {(isAdmin() || isOrganizer()) && (
+                              <TableCell sx={{ textAlign: 'center' }}><IconButton size="small" color="primary" onClick={() => handleStartEditing(user)} title="Edit"><EditIcon fontSize="small" /></IconButton></TableCell>
+                            )}
+                          </>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </>
           ) : (
             <Typography variant="body1" sx={{ p: 2, textAlign: 'center' }}>
               No registered users found for this event.
@@ -3108,9 +3263,28 @@ const EventList = () => {
             <Alert severity="error" sx={{ m: 2 }}>{allEventMatchesError}</Alert>
           ) : allEventMatches.length > 0 ? (
             <Box sx={{ mt: 1 }}>
+              <Box sx={{ mb: 2 }}>
+                <TextField
+                  label="Search Matches"
+                  placeholder="Search by name or email..."
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  value={matchesSearchTerm}
+                  onChange={handleMatchesSearchChange}
+                  InputProps={{
+                    startAdornment: (
+                      <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>
+                        🔍
+                      </Box>
+                    ),
+                  }}
+                  sx={{ mb: 2 }}
+                />
+              </Box>
               <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography variant="subtitle1">
-                  Total Match Pairs: {allEventMatches.length}
+                  Showing {filteredMatches.length} of {allEventMatches.length} match pairs
                 </Typography>
                 {(isAdmin() || isOrganizer()) && (
                   <Button
@@ -3135,8 +3309,8 @@ const EventList = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {allEventMatches.map((match, index) => (
-                      <TableRow key={index} hover>
+                    {filteredMatches.map((match, index) => (
+                      <TableRow key={index}>
                         <TableCell>{match.user1_name}</TableCell>
                         <TableCell>{match.user1_email}</TableCell>
                         <TableCell>{match.user2_name}</TableCell>

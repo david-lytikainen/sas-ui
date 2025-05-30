@@ -17,6 +17,7 @@ import {
   SelectChangeEvent,
   useTheme,
   Link as MuiLink,
+  Autocomplete,
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
@@ -39,6 +40,22 @@ const Register = () => {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Church options for autocomplete
+  const churchOptions = [
+    'Calvary Chapel Delco',
+    'Church of the Saviour',
+    'Providence',
+    'Valley Creek',
+    'Covenant Fellowship',
+    'The Journey - Delaware',
+    'Valley Point',
+    'Tenth Presbyterian',
+    'The Block Church',
+    '938',
+    'Christ Community Church',
+    'Other',
+  ];
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -399,31 +416,39 @@ const Register = () => {
             </Select>
           </FormControl>
 
-          <FormControl fullWidth margin="dense" size="small" sx={{ mt: 1 }}>
-            <InputLabel id="church-select-label">Current Church</InputLabel>
-            <Select
-              labelId="church-select-label"
-              id="church-select"
-              name="current_church"
-              value={formData.current_church}
-              label="Current Church"
-              onChange={handleSelectChange}
-            >
-              <MenuItem value="Calvary Chapel Delco">Calvary Chapel Delco</MenuItem>
-              <MenuItem value="Church of the Saviour">Church of the Saviour</MenuItem>
-              <MenuItem value="Providence">Providence</MenuItem>
-              <MenuItem value="Valley Creek">Valley Creek</MenuItem>
-              <MenuItem value="Covenant Fellowship">Covenant Fellowship</MenuItem>
-              <MenuItem value="The Journey - Delaware">The Journey - Delaware</MenuItem>
-              <MenuItem value="Valley Point">Valley Point</MenuItem>
-              <MenuItem value="Tenth Presbyterian">Tenth Presbyterian</MenuItem>
-              <MenuItem value="The Block Church">The Block Church</MenuItem>
-              <MenuItem value="938">938</MenuItem>
-              <MenuItem value="Christ Community Church">Christ Community Church</MenuItem>
-              <MenuItem value="Other">Other</MenuItem>
-
-            </Select>
-          </FormControl>
+          <Autocomplete
+            fullWidth
+            freeSolo
+            size="small"
+            options={churchOptions}
+            value={formData.current_church}
+            onChange={(event, newValue) => {
+              setFormData(prev => ({
+                ...prev,
+                current_church: newValue || ''
+              }));
+            }}
+            onInputChange={(event, newInputValue) => {
+              setFormData(prev => ({
+                ...prev,
+                current_church: newInputValue
+              }));
+            }}
+            ListboxProps={{
+              style: {
+                maxHeight: '200px', // Limits to approximately 5 options
+              },
+            }}
+            renderInput={(params) => (
+              <TextField 
+                {...params} 
+                label="Current Church" 
+                margin="dense"
+                sx={{ mt: 1 }}
+              />
+            )}
+            sx={{ mt: 1 }}
+          />
 
           {/* WILL ADD THIS BACK MAYBE LATER 
           <FormControl component="fieldset" margin="dense" required sx={{ mt: 1}}>
