@@ -244,8 +244,25 @@ interface EventsApi {
     email?: string,
     phone?: string,
     gender?: string,
-    birthday?: string
-  }) => Promise<{ message: string, updated_fields: string[] }>;
+    birthday?: string,
+    church?: string
+  }) => Promise<{ 
+    message: string, 
+    updated_fields: string[],
+    attendee?: {
+      id: number,
+      name: string,
+      email: string,
+      first_name: string,
+      last_name: string,
+      birthday: string | null,
+      age: number,
+      gender: string | null,
+      phone: string,
+      church: string,
+      pin: string
+    }
+  }>;
   getSchedule: (eventId: string) => Promise<{ 
     schedule: Array<ScheduleItem> 
   }>;
@@ -367,7 +384,16 @@ const realEventsApi: EventsApi = {
     return { data: response.data };
   },
   
-  updateAttendeeDetails: async (eventId: string, attendeeId: string, data: any) => {
+  updateAttendeeDetails: async (eventId: string, attendeeId: string, data: {
+    pin?: string,
+    first_name?: string,
+    last_name?: string,
+    email?: string,
+    phone?: string,
+    gender?: string,
+    birthday?: string,
+    church?: string
+  }) => {
     try {
       const response = await api.patch(`/events/${eventId}/attendees/${attendeeId}`, data);
       return response.data;

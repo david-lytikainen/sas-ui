@@ -249,7 +249,7 @@ const EventList = () => {
     last_name: string,
     birthday: string | null,
     age: number,
-    church?: string,
+    church?: string
     gender: string | null,
     phone: string,
     registration_date: string | null,
@@ -1125,6 +1125,7 @@ const EventList = () => {
       phone: user.phone,
       gender: user.gender,
       birthday: user.birthday ? user.birthday.substring(0, 10) : '', // Format as YYYY-MM-DD
+      church: user.church,
       pin: user.pin
     });
   };
@@ -1151,26 +1152,38 @@ const EventList = () => {
       }
       
       // Call API to update user details
-      await eventsApi.updateAttendeeDetails(
+      const response = await eventsApi.updateAttendeeDetails(
         selectedEventForRegisteredUsers.id.toString(), 
         attendee.id.toString(), 
         editFormData
       );
       
-      // Update the user in the local state
-      setRegisteredUsers(users => 
+      // Update the user in the local state with the response data
+      const updateUserData = (users: any[]) => 
         users.map(user => {
           if (user.id === userId) {
-            return {
-              ...user,
-              ...editFormData,
-              name: `${editFormData.first_name} ${editFormData.last_name}`,
-              age: editFormData.birthday ? calculateAge(new Date(editFormData.birthday)) : user.age
-            };
+            // Use the attendee data from the API response if available
+            if (response.attendee) {
+              return {
+                ...user,
+                ...response.attendee
+              };
+            } else {
+              // Fallback to manual update if response doesn't include attendee data
+              return {
+                ...user,
+                ...editFormData,
+                name: `${editFormData.first_name} ${editFormData.last_name}`,
+                age: editFormData.birthday ? calculateAge(new Date(editFormData.birthday)) : user.age
+              };
+            }
           }
           return user;
-        })
-      );
+        });
+      
+      // Update both the main and filtered user lists
+      setRegisteredUsers(updateUserData);
+      setFiltereredRegisteredUsers(updateUserData);
       
       // Exit edit mode
       setEditingUserId(null);
@@ -2669,7 +2682,7 @@ const EventList = () => {
                             <TableCell><FormControl size="small" fullWidth><InputLabel>Gender</InputLabel><Select value={editFormData.gender || ''} label="Gender" onChange={(e) => handleEditFormChange(e.target.value, 'gender')}><MenuItem value="Male">Male</MenuItem><MenuItem value="Female">Female</MenuItem></Select></FormControl></TableCell>
                             <TableCell sx={{ textAlign: 'center' }}>{editFormData.birthday ? calculateAge(new Date(editFormData.birthday)) : ''}</TableCell>
                             <TableCell><TextField size="small" label="Birthday" type="date" value={editFormData.birthday || ''} onChange={(e) => handleEditFormChange(e.target.value, 'birthday')} InputLabelProps={{ shrink: true }} fullWidth /></TableCell>
-                            <TableCell>{user.church || 'Other'}</TableCell> {/* Show church */}
+                            <TableCell><TextField size="small" label="Church" value={editFormData.church || ''} onChange={(e) => handleEditFormChange(e.target.value, 'church')} fullWidth /></TableCell> 
                             <TableCell>{user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'}</TableCell>
                             <TableCell><Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /></TableCell>
                             <TableCell>{user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'}</TableCell>
