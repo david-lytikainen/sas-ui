@@ -23,6 +23,7 @@ interface AuthContextType {
     phone?: string;
     birthday: string;
     gender: string;
+    current_church?: string;
   }) => Promise<void>;
   logout: () => void;
   isAdmin: () => boolean;
@@ -132,6 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     phone?: string;
     birthday: string;
     gender: string;
+    current_church?: string;
   }) => {
     setLoading(true);
     setError(null);

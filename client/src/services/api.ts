@@ -102,6 +102,7 @@ const realAuthApi = {
     phone?: string;
     birthday: string;
     gender: string;
+    current_church?: string;
   }): Promise<AuthResponse> => {
     // Prepare data for backend format
     const backendUserData = {
@@ -113,8 +114,7 @@ const realAuthApi = {
       phone: userData.phone || "",
       gender: userData.gender, 
       birthday: userData.birthday,
-      church_id: null, // This would need to be populated if you have church IDs
-      denomination_id: null // This would need to be populated if you have denomination IDs
+      current_church: userData.current_church || 'Other',
     };
     
     try {
