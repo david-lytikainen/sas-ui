@@ -150,15 +150,24 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Memoized filtered events
   const filteredEvents = useMemo(() => {
-    if (!user) return []; // Or handle as appropriate if no user is logged in
+    if (!user) return [];
 
+    if (!isAdmin() && !isOrganizer()) {
+      const checkedInEvent = events.find(event =>
+        event.registration?.status === 'Checked In' &&
+        event.status === 'In Progress'
+      );
+      if (checkedInEvent) {
+        return [checkedInEvent];
+      }
+    }
+
+    // Otherwise, use the original filtering logic
     return events.filter(event => {
       const eventNameLower = event.name.toLowerCase();
       if (eventNameLower.includes('mock event')) {
-        // If it's a mock event, only show to admin or event_organizer
         return isAdmin() || isOrganizer();
       }
-      // If not a mock event, show to everyone
       return true;
     });
   }, [events, user, isAdmin, isOrganizer]);
