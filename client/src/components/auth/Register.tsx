@@ -290,8 +290,8 @@ const Register = () => {
               ),
             }}
             sx={{
-              mt: 0.5,
-              mb: .5,
+              mt: 1,
+              mb: -0.25,
               '& .MuiInputBase-root': {
                 marginBottom: '0px',
                 height: '40px',
