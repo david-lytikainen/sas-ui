@@ -54,9 +54,23 @@ const Register = () => {
     'The Block Church',
     '938',
     'Christ Community Church',
+    'Faith Reformed Baptist',
+    'Aldan Union',
+    'Chichester Baptist',
+    'Goshen Baptist',
+    'Springfield Baptist',
+    'Grace Bible Fellowship',
+    'Faith Community',
+    'The Bridge',
+    'The Power Place',
+    'Blue Route Vineyard',
+    'The Blue Church',
+    'Springton Lake Presbyterian',
+    'Epic Church Roxborough',
+    'Christ Church',
+    'Legacy Church',
     'Other',
-  ];
-
+  ].sort()
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     
@@ -401,7 +415,7 @@ const Register = () => {
             }}
           />
 
-          <FormControl fullWidth margin="dense" required size="small">
+          <FormControl fullWidth margin="dense" required size="small" sx={{ mb: -0.5 }}>
             <InputLabel id="gender-select-label">Gender</InputLabel>
             <Select
               labelId="gender-select-label"
