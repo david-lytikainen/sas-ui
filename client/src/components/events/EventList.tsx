@@ -1088,7 +1088,7 @@ const EventList = () => {
                   startIcon={<DeleteIcon />}
                   onClick={() => handleOpenDeleteEventConfirm(event.id)}
                   fullWidth
-                  sx={{ borderRadius: 1 }}
+                  sx={{ borderRadius: 1, whiteSpace: 'nowrap' }}
                   disabled={event.status === 'In Progress' || event.status === 'Completed'}
                 >
                   Delete Event
