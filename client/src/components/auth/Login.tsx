@@ -30,7 +30,7 @@ const Login = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [e.target.name]: e.target.name === 'email' ? e.target.value.toLowerCase() : e.target.value
     });
     // Clear error when user starts typing
     if (error) {
@@ -43,7 +43,7 @@ const Login = () => {
     setLoading(true);
     setError(null);
     try {
-      await login(formData.email, formData.password);
+      await login(formData.email.toLowerCase(), formData.password);
       navigate('/events');
     } catch (err: any) {
       setError(err.message || 'Invalid email or password');

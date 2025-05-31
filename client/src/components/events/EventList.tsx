@@ -1854,8 +1854,8 @@ const EventList = () => {
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', ml: { xs: 2, sm: 0 } }}>
             {user && (
               <Button
-                variant="outlined"
-                color="secondary"
+                variant="contained"
+                color="primary"
                 onClick={handleGlobalCheckInClick}
                 startIcon={<CheckInIcon />}
                 sx={{
@@ -2451,9 +2451,6 @@ const EventList = () => {
       <Dialog open={globalCheckInDialogOpen} onClose={() => setGlobalCheckInDialogOpen(false)}>
         <DialogTitle>Event Check-In</DialogTitle>
         <DialogContent>
-          <Typography sx={{ mb: 2 }}>
-            Select the event you're attending and enter your 4-digit PIN to check in.
-          </Typography>
           
           {/* Event selection */}
           <Box sx={{ mb: 2 }}>
@@ -2504,16 +2501,22 @@ const EventList = () => {
             </Alert>
           )}
           
-          <TextField
-            label="PIN"
-            type="password"
-            value={checkInPin}
-            onChange={(e) => setCheckInPin(e.target.value)}
-            inputProps={{ maxLength: 4, pattern: '[0-9]*' }}
-            fullWidth
-            margin="dense"
-            disabled={!selectedEventForCheckIn}
-          />
+          <Box>
+            <Typography variant="subtitle2" gutterBottom>
+              Enter the 4-digit PIN given to you by an admin
+            </Typography>
+            <TextField
+              sx={{ mt: 0, mb: 0 }}
+              label="PIN"
+              type="password"
+              value={checkInPin}
+              onChange={(e) => setCheckInPin(e.target.value)}
+              inputProps={{ maxLength: 4, pattern: '[0-9]*' }}
+              fullWidth
+              margin="dense"
+              disabled={!selectedEventForCheckIn}
+            />
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setGlobalCheckInDialogOpen(false)}>Cancel</Button>

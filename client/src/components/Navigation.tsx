@@ -182,7 +182,7 @@ const Navigation = () => {
             )}
           </Box>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <AnimatedIconButton 
               onClick={colorMode.toggleColorMode} 
               sx={{ 
@@ -193,27 +193,33 @@ const Navigation = () => {
               }}
               style={toggleButtonProps}
             >
-              {theme.palette.mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+              {theme.palette.mode === 'dark' ? <Brightness4Icon /> : <Brightness7Icon />}
             </AnimatedIconButton>
             
             {user ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 1 : 2 }}>
-                <Button
+              <Box sx={{ display: 'flex', alignItems: 'center'}}>
+                <Typography
+                  variant="body1"
                   sx={{
-                    color: theme.palette.mode === 'light' 
+                    fontWeight: 500,
+                    color: theme.palette.mode === 'light' ? theme.palette.text.primary : 'inherit',
+                    fontSize: '0.95rem',
+                    mr: 0
+                  }}
+                  noWrap
+                >
+                  Hi, {user.first_name}
+                </Typography>
+                <IconButton
+                  onClick={logout}
+                  sx={{
+                    color: theme.palette.mode === 'light'
                       ? theme.palette.primary.dark
                       : 'inherit',
-                    '&:hover': {
-                      color: theme.palette.primary.main,
-                    },
-                    pl: isMobile ? 1.5 : undefined,
-                    pr: isMobile ? 1.5 : undefined,
                   }}
-                  onClick={logout}
-                  startIcon={isMobile ? undefined : <ExitIcon />}
                 >
-                  {isMobile ? <ExitIcon /> : 'Logout'}
-                </Button>
+                  <ExitIcon />
+                </IconButton>
               </Box>
             ) : (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 1 }}>
