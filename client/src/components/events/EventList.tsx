@@ -118,15 +118,10 @@ const EventList = () => {
   const [selectedEventForCheckIn, setSelectedEventForCheckIn] = useState<Event | null>(null);
   const [checkInPin, setCheckInPin] = useState('');
   const [checkInError, setCheckInError] = useState<string | null>(null);
-
-  // Expanded event controls state
   const [expandedEventControls, setExpandedEventControls] = useState<number | null>(null);
-  
- 
   const [viewPinsDialogOpen, setViewPinsDialogOpen] = useState(false);
   const [selectedEventForPins, setSelectedEventForPins] = useState<Event | null>(null);
   const [attendeePins, setAttendeePins] = useState<{name: string, email: string, pin: string}[]>([]);
-
   const [viewRegisteredUsersDialogOpen, setViewRegisteredUsersDialogOpen] = useState(false);
   const [selectedEventForRegisteredUsers, setSelectedEventForRegisteredUsers] = useState<Event | null>(null);
   const [registeredUsers, setRegisteredUsers] = useState<{
@@ -148,38 +143,26 @@ const EventList = () => {
 
   const [endEventDialogOpen, setEndEventDialogOpen] = useState(false);
   const [selectedEventForEnding, setSelectedEventForEnding] = useState<Event | null>(null);
-
   const [startEventDialogOpen, setStartEventDialogOpen] = useState(false);
   const [selectedEventForStarting, setSelectedEventForStarting] = useState<Event | null>(null);
-
-
-  // Add new state variables for editing
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [editFormData, setEditFormData] = useState<any>(null);
 
 
-  // Add new state variables for all schedules functionality
   const [viewAllSchedulesDialogOpen, setViewAllSchedulesDialogOpen] = useState(false);
   const [selectedEventForAllSchedules, setSelectedEventForAllSchedules] = useState<Event | null>(null);
   const [allSchedules, setAllSchedules] = useState<Record<number, any[]>>({});
   const [loadingAllSchedules, setLoadingAllSchedules] = useState(false);
-
-  // Define a mapping of user IDs to user objects to be used for displaying schedules
   const [usersMap, setUsersMap] = useState<Record<number, {id: number, first_name: string, last_name: string}>>({});
 
-  // Add new state variables for sorting and filtering
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{key: string, direction: 'ascending' | 'descending'} | null>(null);
   const [filteredSchedules, setFilteredSchedules] = useState<Record<number, any[]>>({});
 
-  // Add a new state variable for pin search
+
   const [pinSearchTerm, setPinSearchTerm] = useState('');
   const [filteredPins, setFilteredPins] = useState<{name: string, email: string, pin: string}[]>([]);
-
-  // State to hold fetched user schedules keyed by eventId
   const [userSchedules, setUserSchedules] = useState<Record<number, ScheduleItem[]>>({});
-
-  // ADD State for notification permission
   const [showNotificationSnackbar, setShowNotificationSnackbar] = useState<boolean>(false);
 
   // ADD State for speed date selections (organizer/admin making selections on behalf of users)
@@ -259,6 +242,7 @@ const EventList = () => {
     status: string,
     pin: string,
   }[]>([]);
+  const [waitlistReason, setWaitlistReason] = useState<string>('');
 
   const handleExportAllMatches = () => {
     // Use filtered matches if search is active, otherwise use all matches
@@ -429,7 +413,6 @@ const EventList = () => {
   const handleSignUpConfirm = async () => {
     if (signUpEventId) {
       try {
-        // Ensure API call is made without join_waitlist initially
         await eventsApi.registerForEvent(signUpEventId, { join_waitlist: false }); 
         
         setSignUpDialogOpen(false);
@@ -448,16 +431,17 @@ const EventList = () => {
       } catch (registrationError: any) {
         console.error('Failed to register for event:', registrationError);
         const backendError = registrationError.response?.data?.error;
-        const backendMsg = registrationError.response?.data?.message; // Renamed to avoid conflict
+        const backendMsg = registrationError.response?.data?.message;
         const waitlistAvailable = registrationError.response?.data?.waitlist_available === true;
 
-        if ((backendError === "Event is full, cannot register" 
-                || backendError === "Event is full for this gender, cannot register") 
+        if ((backendError === "Event is currently full" 
+                || backendError === "Event is currently full for this gender") 
               && waitlistAvailable) {
-          const event = filteredEvents.find(e => e.id.toString() === signUpEventId); // Use filteredEvents
+          const event = filteredEvents.find(e => e.id.toString() === signUpEventId);
           if (event) {
             setEventForWaitlist(event);
-            setWaitlistDialogOpen(true); // Open the dialog to ASK to join waitlist
+            setWaitlistReason(backendError);
+            setWaitlistDialogOpen(true); 
           } else {
             setErrorMessage("This event is currently full. Waitlist option available, but event details could not be found.");
           }
@@ -469,7 +453,6 @@ const EventList = () => {
     }
   };
 
-  // New function to handle confirming to join the waitlist
   const handleJoinWaitlistConfirm = async () => {
     if (eventForWaitlist) {
       try {
@@ -3251,7 +3234,7 @@ const EventList = () => {
         <DialogTitle>Join Waitlist for "{eventForWaitlist?.name}"?</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            This event is currently full. Would you like to be added to the waitlist?
+            {waitlistReason}. Would you like to be added to the waitlist?
           </DialogContentText>
           <DialogContentText variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             If a spot opens up, you may be automatically registered.

@@ -55,7 +55,7 @@ const Navigation = () => {
 
     const items = [
       {
-        label: 'Home',
+        label: 'Events',
         icon: <HomeIcon />,
         to: '/events',
         show: true,
