@@ -243,6 +243,7 @@ const EventList = () => {
     pin: string,
   }[]>([]);
   const [waitlistReason, setWaitlistReason] = useState<string>('');
+  const hasInProgressEvent = filteredEvents.some(event => event.status === 'In Progress');
 
   const handleExportAllMatches = () => {
     // Use filtered matches if search is active, otherwise use all matches
@@ -1852,7 +1853,7 @@ const EventList = () => {
             Events
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', ml: { xs: 2, sm: 0 } }}>
-            {user && (
+            {user && !hasInProgressEvent && (
               <Button
                 variant="contained"
                 color="primary"
@@ -1861,7 +1862,8 @@ const EventList = () => {
                 sx={{
                   minWidth: { xs: 'auto', sm: 'inherit' }, 
                   p: { xs: '6px 10px', sm: '6px 16px' }, 
-                  fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  whiteSpace: 'nowrap'
                 }}
               >
                   Check-In
@@ -1876,7 +1878,8 @@ const EventList = () => {
                 sx={{
                   minWidth: { xs: 'auto', sm: 'inherit' }, 
                   p: { xs: '6px 10px', sm: '6px 16px' }, 
-                  fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  whiteSpace: 'nowrap'
                 }}
               >
                   Create Event
@@ -2170,16 +2173,29 @@ const EventList = () => {
                 {(event.status === 'In Progress') && (
                   <Box sx={{ mb: { xs: 1, sm: 3 } }}> 
                     <Divider sx={{ mb: { xs: 0.5, sm: 2 } }} /> 
-                    <Typography 
-                      variant="h6" 
-                      gutterBottom 
-                      sx={{ 
-                        fontSize: { xs: '0.875rem', sm: '1.25rem' },
-                        mb: { xs: 0.5, sm: 2}
-                      }}
+                    <Box 
+                      sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                     >
-                      Round Timer
-                    </Typography>
+                      <Typography 
+                        variant="h6" 
+                        gutterBottom 
+                        sx={{ 
+                          fontSize: { xs: '0.875rem', sm: '1.25rem' },
+                          mb: { xs: 0.5, sm: 2}
+                        }}
+                      >
+                        Round Timer
+                      </Typography>
+                      {event.num_rounds && event.num_tables && (
+                        <Typography 
+                          variant="body2" 
+                          color="text.secondary"
+                          sx={{ fontWeight: 500, fontSize:  { xs: '0.675rem', sm: '1rem' }}}
+                        >
+                          Rounds: {event.num_rounds}, Tables: {event.num_tables}
+                        </Typography>
+                      )}
+                    </Box>
                     {(() => {
                       const scheduleForTimer = isRegisteredForEvent(event.id) && event.registration?.status === 'Checked In' ? userSchedules[event.id] : undefined;
                       return (
@@ -2752,19 +2768,19 @@ const EventList = () => {
         </DialogActions>
       </Dialog>
       
-      {/* Table and Round Configuration Dialog */}
+      {/* Generate Schedules Dialog */}
       <Dialog 
         open={isTableConfigOpen} 
         onClose={() => setIsTableConfigOpen(false)}
         maxWidth="xs"
         fullWidth
       >
-        <DialogTitle>Configure Speed Dating</DialogTitle>
+        <DialogTitle>Generate Schedules</DialogTitle>
         <DialogContent>
           <DialogContentText>
             Please specify how many tables and rounds you want for this event.
           </DialogContentText>
-          <Box sx={{ mt: 2 }}>
+          <Box sx={{ mt: 2, mb: 2 }}>
             <TextField
               fullWidth
               margin="dense"
@@ -2787,6 +2803,10 @@ const EventList = () => {
               inputProps={{ min: 1 }}
             />
           </Box>
+          <DialogContentText sx={{ fontSize: '0.8rem' }}>
+              Note: The Algorithm will try to use the inputted values, but it may bump these numbers down
+              (e.g. 10 tables are inputted but there are only 9 males).
+          </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setIsTableConfigOpen(false)}>Cancel</Button>

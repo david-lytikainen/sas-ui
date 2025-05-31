@@ -435,13 +435,13 @@ const realEventsApi: EventsApi = {
         num_tables: numTables,
         num_rounds: numRounds
       };
-      const response = await api.post(`/events/${eventId}/start`, payload);
+      const response = await api.post(`/events/${eventId}/generate/schedules`, payload);
       return response.data;
     } catch (error: any) {
       if (error.response?.data?.error) {
         throw new Error(error.response.data.error);
       }
-      throw new Error('Failed to start event');
+      throw new Error('Failed to generate schedules');
     }
   },
   

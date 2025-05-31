@@ -18,6 +18,8 @@ export interface Event {
     registration_date?: string;
     check_in_date?: string;
   };
+  num_rounds?: string;
+  num_tables?: string;
 }
 
 export interface ScheduleItem {

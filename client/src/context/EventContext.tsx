@@ -152,7 +152,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const filteredEvents = useMemo(() => {
     if (!user) return [];
 
-    if (!isAdmin() && !isOrganizer()) {
+    if (!isAdmin()) {
       const checkedInEvent = events.find(event =>
         event.registration?.status === 'Checked In' &&
         event.status === 'In Progress'
@@ -162,7 +162,6 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     }
 
-    // Otherwise, use the original filtering logic
     return events.filter(event => {
       const eventNameLower = event.name.toLowerCase();
       if (eventNameLower.includes('mock event')) {

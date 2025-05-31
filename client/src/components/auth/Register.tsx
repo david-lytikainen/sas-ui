@@ -429,6 +429,7 @@ const Register = () => {
                 {...params} 
                 label="Current Church" 
                 margin="dense"
+                helperText="If not listed, input it and we will add it :)."
                 sx={{ mt: 1 }}
               />
             )}
