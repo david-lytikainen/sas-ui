@@ -829,7 +829,7 @@ const EventTimer = ({
               <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.8rem' } }}>Event Finished - Save your selections!</Typography>
             ) : currentRound > 0 ? (
               <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2, fontSize: { xs: '0.65rem', sm: '0.8rem' } }}> 
-                {currentRoundSchedule ? `Round ${currentRound} starting shortly...` : 'Break Round - grab a snack :)'} 
+                {currentRoundSchedule ? `Round ${currentRound}` : 'Break Round - grab a snack :)'} 
                 {isActive && currentRoundSchedule ? formatTime(timeRemaining) : (timerStatus === 'paused' && currentRoundSchedule ? ' (Paused)' : '')}
               </Typography>
             ) : timerStatus === 'inactive' ? (

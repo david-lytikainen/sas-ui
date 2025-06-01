@@ -872,8 +872,13 @@ const EventList = () => {
       setRegisteredUsersSearchTerm('');
       
       const response = await eventsApi.getEventAttendees(eventId.toString());
-      setRegisteredUsers(response.data);
-      setFiltereredRegisteredUsers(response.data); // Initialize filtered data
+      const sortedData = [...response.data].sort((a, b) => {
+        if (!a.registration_date) return -1;
+        if (!b.registration_date) return 1;
+        return new Date(b.registration_date).getTime() - new Date(a.registration_date).getTime();
+      });
+      setRegisteredUsers(sortedData);
+      setFiltereredRegisteredUsers(sortedData);
       setViewRegisteredUsersDialogOpen(true);
     } catch (error: any) {
       console.error('Error fetching registered users:', error);
