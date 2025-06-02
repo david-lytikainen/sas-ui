@@ -59,7 +59,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ type }) => {
                 color: theme.palette.primary.main,
                 fontSize: '2.5rem',
                 fontWeight: 600,
-                marginRight: chars[index] === ' ' ? '0.5em' : '0.1em',
+                marginRight: chars[index] === ' ' ? '0.25em' : '0',
                 fontFamily: theme.typography.h3.fontFamily,
               }}
             >
