@@ -277,6 +277,7 @@ interface EventsApi {
   ) => Promise<any>;
   getMyMatches: (eventId: string) => Promise<{ matches: Match[] }>;
   getAllMatchesForEvent: (eventId: string) => Promise<{ matches: MatchPair[] }>;
+  getEventWaitlist: (eventId: string) => Promise<{ data: any[] }>;
 }
 
 interface MatchPair {
@@ -487,6 +488,18 @@ const realEventsApi: EventsApi = {
         throw new Error(error.response.data.error);
       }
       throw new Error('Failed to fetch all matches for this event.');
+    }
+  },
+  getEventWaitlist: async (eventId: string) => {
+    try {
+      const response = await api.get(`/events/${eventId}/waitlist`);
+      return { data: response.data }; // Assuming response.data is the array of waitlisted users
+    } catch (error: any) {
+      console.error(`Error fetching waitlist for event ${eventId}:`, error);
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error('Failed to fetch waitlist for this event.');
     }
   }
 };

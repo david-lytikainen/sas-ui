@@ -245,6 +245,12 @@ const EventList = () => {
   const [waitlistReason, setWaitlistReason] = useState<string>('');
   const hasInProgressEvent = filteredEvents.some(event => event.status === 'In Progress');
 
+  const [viewWaitlistDialogOpen, setViewWaitlistDialogOpen] = useState<boolean>(false);
+  const [selectedEventForWaitlistUsers, setSelectedEventForWaitlistUsers] = useState<Event | null>(null);
+  const [waitlistedUsers, setWaitlistedUsers] = useState<any[]>([]);
+  const [filteredWaitlistedUsers, setFilteredWaitlistedUsers] = useState<any[]>([]);
+  const [waitlistedUsersSearchTerm, setWaitlistedUsersSearchTerm] = useState<string>('');
+
   const handleExportAllMatches = () => {
     // Use filtered matches if search is active, otherwise use all matches
     const matchesToExport = matchesSearchTerm.trim() ? filteredMatches : allEventMatches;
@@ -1012,6 +1018,19 @@ const EventList = () => {
               sx={{ borderRadius: 1 }}
             >
               View Pins
+            </Button>
+
+            {/* View Waitlist Button */}
+            <Button
+                variant="outlined"
+                size="small"
+                color="primary"
+                startIcon={<ListIcon />}
+                onClick={() => handleViewWaitlistClick(event)} // New handler
+                fullWidth
+                sx={{ borderRadius: 1 }}
+            >
+                View Waitlist
             </Button>
             
             {/* Generate Schedules button - now on its own row */}
@@ -1833,6 +1852,95 @@ const EventList = () => {
     } finally {
       setAllEventMatchesLoading(false);
       setViewAllEventMatchesDialogOpen(true);
+    }
+  };
+
+  // Handler to open waitlist dialog and fetch data
+  const handleViewWaitlistClick = async (event: Event) => {
+    try {
+      setSelectedEventForWaitlistUsers(event);
+      setWaitlistedUsersSearchTerm(''); // Reset search term
+      const response = await eventsApi.getEventWaitlist(event.id.toString());
+      // Sort by waitlisted_at date, most recent first
+      const sortedData = [...response.data].sort((a, b) => {
+        if (!a.waitlisted_at) return 1; // a comes after b if a.waitlisted_at is null
+        if (!b.waitlisted_at) return -1; // b comes after a if b.waitlisted_at is null
+        return new Date(b.waitlisted_at).getTime() - new Date(a.waitlisted_at).getTime();
+      });
+      setWaitlistedUsers(sortedData);
+      setFilteredWaitlistedUsers(sortedData);
+      setViewWaitlistDialogOpen(true);
+    } catch (error: any) {
+      console.error('Error fetching event waitlist:', error);
+      setErrorMessage(error.message || 'Failed to fetch event waitlist');
+    }
+  };
+
+  // Function to filter waitlisted users
+  const filterWaitlistedUsers = (search: string) => {
+    if (!search || search.trim() === '') {
+      setFilteredWaitlistedUsers([...waitlistedUsers]);
+      return;
+    }
+    const searchWords = search.toLowerCase().trim().split(/\s+/).filter(word => word.length > 0);
+    const filtered = waitlistedUsers.filter(user => {
+      const firstName = (user.first_name || '').toLowerCase();
+      const lastName = (user.last_name || '').toLowerCase();
+      const email = (user.email || '').toLowerCase();
+
+      return searchWords.every(word => {
+        return firstName.startsWith(word) ||
+               lastName.startsWith(word) ||
+               email.startsWith(word);
+      });
+    });
+    setFilteredWaitlistedUsers(filtered);
+  };
+
+  // Handle search change for waitlisted users
+  const handleWaitlistedUsersSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setWaitlistedUsersSearchTerm(value);
+    filterWaitlistedUsers(value);
+  };
+
+  // Function to export waitlisted users to CSV
+  const handleExportWaitlistedUsers = () => {
+    const usersToExport = waitlistedUsersSearchTerm.trim() ? filteredWaitlistedUsers : waitlistedUsers;
+    if (!selectedEventForWaitlistUsers || usersToExport.length === 0) {
+      setErrorMessage('No waitlisted users available to export.');
+      return;
+    }
+
+    try {
+      let csvContent = 'Name,Email,Phone,Gender,Age,Birthday,Church,Waitlisted At\n';
+      usersToExport.forEach(user => {
+        const birthday = user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A';
+        const waitlistedAt = user.waitlisted_at ? formatUTCToLocal(user.waitlisted_at, true) : 'N/A';
+        const church = user.church || 'Other';
+
+        const escapedName = `"${user.name}"`;
+        const escapedEmail = `"${user.email}"`;
+        const escapedPhone = `"${user.phone || 'N/A'}"`;
+        
+        csvContent += `${escapedName},${escapedEmail},${escapedPhone},${user.gender || 'N/A'},${user.age || 'N/A'},${birthday},${church},${waitlistedAt}\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      const filename = waitlistedUsersSearchTerm.trim()
+        ? `${selectedEventForWaitlistUsers.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_filtered_waitlist.csv`
+        : `${selectedEventForWaitlistUsers.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_waitlist.csv`;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting waitlisted users:', error);
+      setErrorMessage('Failed to export waitlisted users.');
     }
   };
 
@@ -3375,6 +3483,94 @@ const EventList = () => {
             setAllEventMatches([]);
             setAllEventMatchesError(null);
           }}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* View Waitlist Dialog */}
+      <Dialog
+        open={viewWaitlistDialogOpen}
+        onClose={() => setViewWaitlistDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>
+          {selectedEventForWaitlistUsers?.name} - Waitlisted Users
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: { xs: 0, sm: 1 } }}>
+          {waitlistedUsers.length > 0 ? (
+            <>
+              <Box sx={{ mb: 2, px: { xs: 1, sm: 0 } }}>
+                <TextField
+                  label="Search Waitlist"
+                  placeholder="Search by name or email..."
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  value={waitlistedUsersSearchTerm}
+                  onChange={handleWaitlistedUsersSearchChange}
+                  InputProps={{
+                    startAdornment: (
+                      <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>
+                        🔍
+                      </Box>
+                    ),
+                  }}
+                />
+              </Box>
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, px: { xs: 1, sm: 0 } }}>
+                Showing {filteredWaitlistedUsers.length} of {waitlistedUsers.length} users on waitlist
+              </Typography>
+              <TableContainer component={Paper} sx={{ maxHeight: 500, overflowX: 'auto' }}>
+                <Table stickyHeader size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ width: '15%', minWidth: 150 }}><strong>Name</strong></TableCell>
+                      <TableCell sx={{ width: '20%', minWidth: 180 }}><strong>Email</strong></TableCell>
+                      <TableCell sx={{ width: 130, minWidth: 120 }}><strong>Phone</strong></TableCell>
+                      <TableCell sx={{ width: 80, minWidth: 70 }}><strong>Gender</strong></TableCell>
+                      <TableCell sx={{ width: 60, minWidth: 50, textAlign: 'center' }}><strong>Age</strong></TableCell>
+                      <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Birthday</strong></TableCell>
+                      <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Church</strong></TableCell>
+                      <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Waitlisted At</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {filteredWaitlistedUsers.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>{user.name}</TableCell>
+                        <TableCell sx={{ wordBreak: 'break-all' }}>{user.email}</TableCell>
+                        <TableCell>{user.phone || 'N/A'}</TableCell>
+                        <TableCell>{user.gender}</TableCell>
+                        <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
+                        <TableCell>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</TableCell>
+                        <TableCell>{user.church || 'Other'}</TableCell>
+                        <TableCell>{user.waitlisted_at ? formatUTCToLocal(user.waitlisted_at, true) : 'N/A'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </>
+          ) : (
+            <Typography variant="body1" sx={{ p: 2, textAlign: 'center' }}>
+              No users currently on the waitlist for this event.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ display: 'flex', justifyContent: 'space-between', px: 2, py: 1.5 }}>
+          <Box>
+            { (isAdmin() || isOrganizer()) && waitlistedUsers.length > 0 && (
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={handleExportWaitlistedUsers}
+                startIcon={<DownloadIcon />}
+              >
+                Export CSV
+              </Button>
+            )}
+          </Box>
+          <Button onClick={() => setViewWaitlistDialogOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Container>
