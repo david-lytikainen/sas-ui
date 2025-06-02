@@ -45,7 +45,6 @@ import {
   Event as EventIcon,
   HowToReg as SignUpIcon, 
   Cancel as CancelIcon, 
-  Person as PersonIcon, 
   LocationOn as LocationOnIcon,
   AttachMoney as AttachMoneyIcon,
   CheckCircle as CheckInIcon,

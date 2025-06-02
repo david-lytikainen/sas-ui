@@ -10,18 +10,17 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import EventList from './components/events/EventList';
-import EventDetail from './components/events/EventDetail';
 import PrivateRoute from './components/routing/PrivateRoute';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 import { EventProvider } from './context/EventContext';
 import Navigation from './components/Navigation';
 import { ColorModeContext } from './context/ColorModeContext';
-import SystemSettings from './components/profile/SystemSettings';
 import AnimatedWrapper from './components/common/AnimatedWrapper';
-import EventAttendees from './components/admin/EventAttendees';
 import PrivacyPolicy from './components/legal/PrivacyPolicy';
 import LandingPage from './components/landing/LandingPage';
 import Footer from './components/common/Footer'; // Assuming you have/want a global footer
+import SplashScreen from './components/common/SplashScreen';
+import { SplashProvider, useSplash } from './context/SplashContext';
 
 // ADDED getDesignTokens function
 const getDesignTokens = (mode: 'light' | 'dark') => ({
@@ -237,44 +236,13 @@ const globalStyleObject = {
   },
 };
 
-// Create a separate component for the protected routes
 const ProtectedRoutes = () => {
-  const { isAdmin, isOrganizer } = useAuth();
-  
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
       <Route path="/" element={<LandingPage />} />
-
-      {/* Settings Route */}
-      <Route
-        path="/settings"
-        element={
-          <PrivateRoute>
-            <AnimatedWrapper>
-              <SystemSettings />
-            </AnimatedWrapper>
-          </PrivateRoute>
-        }
-      />
-      
-      {/* Admin/Organizer routes - use isAdmin() or isOrganizer() from context */}
-      {(isAdmin() || isOrganizer()) && (
-        <>
-          <Route
-            path="/admin/events/:eventId/attendees"
-            element={
-              <PrivateRoute>
-                <AnimatedWrapper>
-                  <EventAttendees />
-                </AnimatedWrapper>
-              </PrivateRoute>
-            }
-          />
-        </>
-      )}
       
       {/* Routes available to all user roles */}
       <Route
@@ -287,40 +255,46 @@ const ProtectedRoutes = () => {
           </PrivateRoute>
         }
       />
-      
-      <Route
-        path="/events/:id"
-        element={
-          <PrivateRoute>
-            <AnimatedWrapper>
-              <EventDetail />
-            </AnimatedWrapper>
-          </PrivateRoute>
-        }
-      />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };
 
-// Component to conditionally render Navigation - now always renders
 const AppNavigation = () => {
-  // const location = useLocation(); // No longer needed
-  // const noNavRoutes = ['/', '/login', '/register', '/privacy-policy']; // No longer needed
-  // if (noNavRoutes.includes(location.pathname)) { // No longer needed
-  //   return null; // No longer needed
-  // }
   return <Navigation />;
 };
 
-// Helper to determine if main navigation is visible (REMOVED)
-// const useIsNavVisible = () => { ... };
-
-// Main layout component
 const AppLayout = () => {
-  // const isNavVisible = useIsNavVisible(); // No longer needed
   const theme = useTheme();
+  const { 
+    showLoginSplash, 
+    setShowLoginSplash,
+    showLogoutSplash,
+    setShowLogoutSplash 
+  } = useSplash();
+
+  useEffect(() => {
+    if (showLoginSplash) {
+      const timer = setTimeout(() => {
+        setShowLoginSplash(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [showLoginSplash, setShowLoginSplash]);
+
+  useEffect(() => {
+    if (showLogoutSplash) {
+      const timer = setTimeout(() => {
+        setShowLogoutSplash(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [showLogoutSplash, setShowLogoutSplash]);
+
+  if (showLoginSplash || showLogoutSplash) {
+    return <SplashScreen type={showLoginSplash ? 'login' : 'logout'} />;
+  }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -331,8 +305,7 @@ const AppLayout = () => {
           flexGrow: 1, 
           py: theme.spacing(3),
           px: theme.spacing(2),
-          paddingTop: '64px', // Always apply padding, adjust if nav height is different
-          // paddingTop: isNavVisible ? '64px' : theme.spacing(3), // Old logic
+          paddingTop: '64px', 
           backgroundColor: theme.palette.background.default,
           [theme.breakpoints.up('sm')]: {
             px: theme.spacing(3),
@@ -341,7 +314,7 @@ const AppLayout = () => {
       >
         <ProtectedRoutes /> 
       </Box>
-      <Footer /> {/* Added Footer here */}
+      <Footer />
     </Box>
   );
 };
@@ -361,33 +334,34 @@ function App() {
       toggleColorMode: () => {
         setMode((prevMode: 'light' | 'dark') => {
           const newMode = prevMode === 'light' ? 'dark' : 'light';
-          // No need to explicitly save here, the useEffect handles it
           return newMode;
         });
       },
       mode,
     }),
-    [mode] // Keep mode as dependency
+    [mode]
   );
 
   const theme = useMemo(() => createTheme(getDesignTokens(mode)), [mode]);
 
   return (
-    <AuthProvider>
-      <EventProvider> {/* Ensure EventProvider wraps ColorModeContext */}
-        <ColorModeContext.Provider value={colorMode}>
-          <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <GlobalStyles styles={globalStyleObject} />
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <Router>
-                <AppLayout /> {/* AppLayout now contains Navigation and ProtectedRoutes */}
-              </Router>
-            </LocalizationProvider>
-          </ThemeProvider>
-        </ColorModeContext.Provider>
-      </EventProvider>
-    </AuthProvider>
+    <SplashProvider>
+      <AuthProvider>
+        <EventProvider>
+          <ColorModeContext.Provider value={colorMode}>
+            <ThemeProvider theme={theme}>
+              <CssBaseline />
+              <GlobalStyles styles={globalStyleObject} />
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <Router>
+                  <AppLayout />
+                </Router>
+              </LocalizationProvider>
+            </ThemeProvider>
+          </ColorModeContext.Provider>
+        </EventProvider>
+      </AuthProvider>
+    </SplashProvider>
   );
 }
 

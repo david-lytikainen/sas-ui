@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useSplash } from '../../context/SplashContext';
 import {
   Container,
   Box,
@@ -19,6 +20,7 @@ import { Visibility, VisibilityOff } from '@mui/icons-material';
 const Login = () => {
   const navigate = useNavigate();
   const { login, user } = useAuth();
+  const { setShowLoginSplash } = useSplash();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -44,7 +46,8 @@ const Login = () => {
     setError(null);
     try {
       await login(formData.email.toLowerCase(), formData.password);
-      navigate('/events');
+      setShowLoginSplash(true);
+      navigate('/events', { replace: true });
     } catch (err: any) {
       setError(err.message || 'Invalid email or password');
     } finally {
@@ -56,16 +59,8 @@ const Login = () => {
     setShowPassword(!showPassword);
   };
 
-  useEffect(() => {
-    if (user) {
-      navigate('/events', { replace: true });
-    }
-  }, [user, navigate]);
-
-  // If user is already logged in, render nothing or a loading indicator
-  // while redirecting to prevent brief flash of login form.
   if (user) {
-    return null; // Or <CircularProgress /> if you have it imported and prefer a loader
+    return null; 
   }
 
   return (

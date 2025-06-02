@@ -82,6 +82,11 @@ const Navigation = () => {
     config: { tension: 280, friction:10 },
   });
 
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true });
+  };
+
   return (
     <AppBar 
       position="sticky" 
@@ -211,7 +216,7 @@ const Navigation = () => {
                   Hi, {user.first_name}
                 </Typography>
                 <IconButton
-                  onClick={logout}
+                  onClick={handleLogout}
                   sx={{
                     color: theme.palette.mode === 'light'
                       ? theme.palette.primary.dark
