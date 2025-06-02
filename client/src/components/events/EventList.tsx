@@ -2230,19 +2230,6 @@ const EventList = () => {
                   <EventIcon fontSize="small" />
                   {formatDate(event.starts_at)}
                 </Typography>
-                  <Typography 
-                    variant="body2" 
-                    color="text.secondary" 
-                    sx={{ 
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.5,
-                      fontSize: isMobile ? '0.75rem' : '0.875rem' 
-                    }}
-                  >
-                    <PersonIcon fontSize="small" />
-                    {event.max_capacity} attendees max
-                  </Typography>
                   {/* Add Spots Filled Display START */} 
                   {typeof event.registered_attendee_count === 'number' && event.max_capacity && (
                     <Typography 
