@@ -1,8 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { authApi } from '../services/api';
 import { User, TokenValidationResponse } from '../types/user';
+import { useSplash } from './SplashContext';
 
-// Role constants to match the mockApi
 export const ROLES = {
   ADMIN: { id: 3, name: 'admin' },
   ORGANIZER: { id: 2, name: 'organizer' },
@@ -51,6 +51,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Default to true unless explicitly set to false
     return localStorage.getItem('persistLogin') !== 'false';
   });
+  const { setShowLogoutSplash } = useSplash();
 
   const isAdmin = () => user?.role_id === ROLES.ADMIN.id;
   const isOrganizer = () => user?.role_id === ROLES.ORGANIZER.id;
@@ -153,7 +154,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    setShowLogoutSplash(true);
     setUser(null);
     localStorage.removeItem('token');
   };
