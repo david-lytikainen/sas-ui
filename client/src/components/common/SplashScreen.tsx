@@ -20,10 +20,10 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ type }) => {
     config: { 
       tension: 280,
       friction: 14,
-      mass: .5,
+      mass: .05,
     },
     delay: 0,
-    trail: 50,
+    trail: 0,
   });
 
   const fadeIn = useSpring({
