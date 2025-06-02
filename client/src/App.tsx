@@ -278,7 +278,7 @@ const AppLayout = () => {
     if (showLoginSplash) {
       const timer = setTimeout(() => {
         setShowLoginSplash(false);
-      }, 2000);
+      }, 1100);
       return () => clearTimeout(timer);
     }
   }, [showLoginSplash, setShowLoginSplash]);
@@ -287,7 +287,7 @@ const AppLayout = () => {
     if (showLogoutSplash) {
       const timer = setTimeout(() => {
         setShowLogoutSplash(false);
-      }, 2000);
+      }, 1100);
       return () => clearTimeout(timer);
     }
   }, [showLogoutSplash, setShowLogoutSplash]);
