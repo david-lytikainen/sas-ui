@@ -18,8 +18,8 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ type }) => {
     from: { opacity: 0, transform: 'translateY(0px)' },
     to: { opacity: 1, transform: 'translateY(0px)' },
     config: { 
-      tension: 320,
-      friction: 15,
+      tension: 400,
+      friction: 17,
       mass: 0.5,
     },
     delay: 0,

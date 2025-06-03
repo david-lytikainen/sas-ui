@@ -129,7 +129,7 @@ const LandingPage: React.FC = () => {
     <Box sx={{ flexGrow: 1, backgroundColor: 'background.default' }}> 
       {/* Hero Section */}
       <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 }, textAlign: 'center' }}>
-        <Box sx={{ position: 'relative', width: '100%', textAlign: 'center', minHeight: { xs: '120px', sm: '140px', md: '120px', lg: '120px' }, mb: { xs: 1, md: -10} }}>
+        <Box sx={{ position: 'relative', width: '100%', textAlign: 'center', minHeight: { xs: '120px', sm: '140px', md: '120px', lg: '120px' }, mb: { xs: 0, md: -10} }}>
           {/* Invisible full text to reserve space */}
           <Typography
             variant="h2"
@@ -170,12 +170,24 @@ const LandingPage: React.FC = () => {
               display: 'block',
               whiteSpace: 'normal',
               textAlign: 'center',
+              fontSize: { xs: '3.5rem', sm: '3.75rem' }
             }}
           >
             {displayedText}
           </Typography>
         </Box>
-        <Typography variant="h5" component="p" color="text.secondary" sx={{ mb: 4, maxWidth: '750px', mx: 'auto', alignContent: 'center' }}>
+        <Typography 
+          variant="h5" 
+          component="p" 
+          color="text.secondary" 
+          sx={{ 
+            mb: { xs: 2, sm: 4 }, 
+            maxWidth: '750px', 
+            mx: 'auto', 
+            alignContent: 'center',
+            fontSize: { xs: '1rem', sm: '1.5rem' }
+          }}
+        >
           Tired of endless swiping? Saved & Single hosts cross-church speed-dating events for Christian singles (ages 20-30) in PA, DE, & NJ to connect authentically, in person.
         </Typography>
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'center', alignItems: 'center', gap: { xs: 2, sm: 2 } }}>
@@ -205,10 +217,29 @@ const LandingPage: React.FC = () => {
       {/* About Section */}
       <Box sx={{ backgroundColor: 'background.paper', py: { xs: 4, md: 8 } }}>
         <Container maxWidth="md">
-          <Typography variant="h4" component="h2" gutterBottom align="center" sx={{ fontWeight: 600, mb: 4, color: theme.palette.primary.main }}>
+          <Typography 
+            variant="h4" 
+            component="h2" 
+            gutterBottom 
+            align="center" 
+            sx={{ 
+              fontWeight: 600, 
+              mb: 4, 
+              color: theme.palette.primary.main,
+              fontSize: { xs: '1.75rem', sm: '2.125rem' }
+            }}
+          >
             Why Saved & Single?
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 2, fontSize: '1.1rem', textAlign: 'center' }}>
+          <Typography 
+            variant="body1" 
+            color="text.secondary" 
+            sx={{ 
+              mb: 2, 
+              fontSize: { xs: '0.95rem', sm: '1.1rem' }, 
+              textAlign: 'center' 
+            }}
+          >
             Christian dating can be wild. Online dating might lead to exhaustion or dead ends and it can be challenging to meet other Christians outside of your church community. Saved and Single is a cross-church speed-dating event that helps Christian singles from PA, DE, and NJ intentionally connect in person at a stunning private barn in Berwyn, PA.
           </Typography>
         </Container>
@@ -216,7 +247,19 @@ const LandingPage: React.FC = () => {
 
       {/* Photos Carousel Section */}
       <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
-        <Typography variant="h4" component="h2" gutterBottom align="center" sx={{ fontWeight: 600, mb: 4, border: 'none', background: 'none' }}>
+        <Typography 
+          variant="h4" 
+          component="h2" 
+          gutterBottom 
+          align="center" 
+          sx={{ 
+            fontWeight: 600, 
+            mb: 4, 
+            border: 'none', 
+            background: 'none',
+            fontSize: { xs: '1.75rem', sm: '2.125rem' }
+          }}
+        >
           Glimpses From Our 2024 Event
         </Typography>
         <Box sx={{ position: 'relative', maxWidth: '1000px', mx: 'auto' }}>
