@@ -11,6 +11,7 @@ import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import EventList from './components/events/EventList';
 import PrivateRoute from './components/routing/PrivateRoute';
+import AuthRedirect from './components/routing/AuthRedirect';
 import { AuthProvider } from './context/AuthContext';
 import { EventProvider } from './context/EventContext';
 import Navigation from './components/Navigation';
@@ -239,10 +240,31 @@ const globalStyleObject = {
 const ProtectedRoutes = () => {
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      {/* Auth pages - redirect authenticated users to /events */}
+      <Route 
+        path="/login" 
+        element={
+          <AuthRedirect>
+            <Login />
+          </AuthRedirect>
+        } 
+      />
+      <Route 
+        path="/register" 
+        element={
+          <AuthRedirect>
+            <Register />
+          </AuthRedirect>
+        } 
+      />
+      
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-      <Route path="/" element={<LandingPage />} />
+      
+      {/* Home route is now accessible to everyone */}
+      <Route 
+        path="/" 
+        element={<LandingPage />}
+      />
       
       {/* Routes available to all user roles */}
       <Route

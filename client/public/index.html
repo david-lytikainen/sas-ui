@@ -2,30 +2,55 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.svg" type="image/svg+xml" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
+    
+    <!-- SEO: Canonical URL for duplicate content prevention -->
+    <link rel="canonical" href="https://savedandsingle.com/" />
+    
+    <!-- SEO: Enhanced title with strategic keywords -->
+    <title>Saved and Single - Christian Speed Dating Events | Find Love with Faith</title>
+    
+    <!-- SEO: Enhanced meta description with strategic keywords and call-to-action -->
     <meta
       name="description"
-      content="Saved and Single - Speed Dating Events"
+      content="Join Saved and Single for Christian speed dating events. Meet like-minded singles who share your faith. Find meaningful connections at our fun, safe dating events across the country. Book your spot today!"
     />
+    
+    <!-- SEO: Additional meta tags for better search visibility -->
+    <meta name="keywords" content="Christian speed dating, Christian singles, faith-based dating, Christian events, single Christians, dating for Christians, Christian community, meet Christians" />
+    <meta name="author" content="Saved and Single" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    
+    <!-- SEO: Geographic targeting -->
+    <meta name="geo.region" content="US" />
+    <meta name="geo.placename" content="United States" />
+    
+    <!-- Favicon and Icons -->
+    <link rel="icon" href="%PUBLIC_URL%/favicon.svg" type="image/svg+xml" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#FF4081" />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/apple-touch-icon.png" sizes="180x180" />
     
-    <!-- Open Graph / Social Media Meta Tags -->
+    <!-- Enhanced Open Graph / Social Media Meta Tags -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://savedandsingle.com/" />
-    <meta property="og:title" content="Saved and Single" />
-    <meta property="og:description" content="Saved and Single - Speed Dating Events for Christians" />
+    <meta property="og:site_name" content="Saved and Single" />
+    <meta property="og:title" content="Saved and Single - Christian Speed Dating Events" />
+    <meta property="og:description" content="Join Christian speed dating events with Saved and Single. Meet like-minded singles who share your faith in fun, safe environments. Find meaningful connections today!" />
     <meta property="og:image" content="https://savedandsingle.com/favicon.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Saved and Single Logo" />
+    <meta property="og:image:alt" content="Saved and Single - Christian Speed Dating Events Logo" />
     <meta property="og:image:type" content="image/png" />
-    <!-- Twitter Card data -->
+    <meta property="og:locale" content="en_US" />
+    
+    <!-- Enhanced Twitter Card data -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Saved and Single" />
-    <meta name="twitter:description" content="Saved and Single - Speed Dating Events for Christians" />
+    <meta name="twitter:site" content="@savedandsingle" />
+    <meta name="twitter:creator" content="@savedandsingle" />
+    <meta name="twitter:title" content="Saved and Single - Christian Speed Dating Events" />
+    <meta name="twitter:description" content="Join Christian speed dating events with Saved and Single. Meet like-minded singles who share your faith. Find love with purpose!" />
     <meta name="twitter:image" content="https://savedandsingle.com/favicon.png" />
+    <meta name="twitter:image:alt" content="Saved and Single Logo" />
     
     <!-- iOS specific meta tags -->
     <meta name="mobile-web-app-capable" content="yes" />
@@ -36,38 +61,89 @@
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/apple-touch-icon-167x167.png" sizes="167x167" />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/apple-touch-icon-180x180.png" sizes="180x180" />
     
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
+    <!-- PWA Manifest -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <!--
-      Notice the use of %PUBLIC_URL% in the tags above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
-
-      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-      work correctly both with client-side routing and a non-root public URL.
-      Learn how to configure a non-root public URL by running `npm run build`.
-    -->
+    
+    <!-- SEO: Structured Data for Organization and Events (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://savedandsingle.com/#organization",
+          "name": "Saved and Single",
+          "url": "https://savedandsingle.com/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://savedandsingle.com/favicon.png",
+            "width": 512,
+            "height": 512
+          },
+          "description": "Christian speed dating events connecting singles who share their faith",
+          "sameAs": [
+            "https://www.facebook.com/savedandsingle",
+            "https://www.instagram.com/savedandsingle",
+            "https://twitter.com/savedandsingle"
+          ],
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "customer service",
+            "email": "info@savedandsingle.com"
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://savedandsingle.com/#website",
+          "url": "https://savedandsingle.com/",
+          "name": "Saved and Single",
+          "description": "Christian speed dating events for singles seeking meaningful connections",
+          "publisher": {
+            "@id": "https://savedandsingle.com/#organization"
+          },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://savedandsingle.com/search?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "Service",
+          "@id": "https://savedandsingle.com/#service",
+          "name": "Christian Speed Dating Events",
+          "description": "Faith-based speed dating events for Christian singles",
+          "provider": {
+            "@id": "https://savedandsingle.com/#organization"
+          },
+          "serviceType": "Dating Events",
+          "audience": {
+            "@type": "Audience",
+            "audienceType": "Christian Singles"
+          }
+        }
+      ]
+    }
+    </script>
+    
+    <!-- SEO: Performance optimization - preconnect to external domains -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="//www.google-analytics.com" />
+    
+    <!-- SEO: Language and location hints -->
+    <link rel="alternate" hreflang="en-us" href="https://savedandsingle.com/" />
+    <link rel="alternate" hreflang="x-default" href="https://savedandsingle.com/" />
+    
     <script>
       window.REACT_APP_API_URL = 'http://localhost:5001/api';
       localStorage.setItem('apiBaseUrl', 'http://localhost:5001/api');
     </script>
-    <title>Saved and Single</title>
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <noscript>
+      <p>You need to enable JavaScript to run this app.</p>
+      <p>Saved and Single offers Christian speed dating events for singles seeking meaningful connections based on faith. Visit our website to learn more about upcoming events.</p>
+    </noscript>
     <div id="root"></div>
-    <!--
-      This HTML file is a template.
-      If you open it directly in the browser, you will see an empty page.
-
-      You can add webfonts, meta tags, or analytics to this file.
-      The build step will place the bundled scripts into the <body> tag.
-
-      To begin the development, run `npm start` or `yarn start`.
-      To create a production bundle, use `npm run build` or `yarn build`.
-    -->
   </body>
 </html>

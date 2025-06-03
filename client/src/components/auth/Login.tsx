@@ -19,7 +19,7 @@ import { Visibility, VisibilityOff } from '@mui/icons-material';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, user } = useAuth();
+  const { login } = useAuth();
   const { setShowLoginSplash } = useSplash();
   const [formData, setFormData] = useState({
     email: '',
@@ -58,10 +58,6 @@ const Login = () => {
   const handleTogglePassword = () => {
     setShowPassword(!showPassword);
   };
-
-  if (user) {
-    return null; 
-  }
 
   return (
     <Container component="main" maxWidth="xs" sx={{ mt: 15, mb: 15}}>
