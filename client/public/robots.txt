@@ -1,3 +1,35 @@
+# Robots.txt for Saved and Single - Christian Speed Dating Events
 # https://www.robotstxt.org/robotstxt.html
+
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /private/
+Disallow: /*.json$
+Disallow: /*?*
+Allow: /*?page=*
+Allow: /*?category=*
+
+# Crawl-delay for non-Google bots to prevent overloading
+User-agent: *
+Crawl-delay: 1
+
+# Google specific rules
+User-agent: Googlebot
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+
+# Social media crawlers
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+# Sitemap location
+Sitemap: https://savedandsingle.com/sitemap.xml
+
+# Cache directive
+Cache-delay: 86400

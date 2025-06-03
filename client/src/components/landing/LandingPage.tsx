@@ -6,6 +6,7 @@ import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import { Link as RouterLink } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 export const ColorModeContext = createContext({ toggleColorMode: () => {} });
 
@@ -43,6 +44,7 @@ export const ColorModeProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 };
 
 const LandingPage: React.FC = () => {
+  const { user } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -84,8 +86,6 @@ const LandingPage: React.FC = () => {
 
     return () => clearInterval(timer);
   }, );
-
-
 
   const handleNext = () => {
     if (isTransitioning) return;
@@ -194,10 +194,10 @@ const LandingPage: React.FC = () => {
             color="primary" 
             size="large" 
             component={RouterLink} 
-            to="/login"
+            to={user ? '/events' : '/login'}
             sx={{ width: { xs: '80%', sm: 'auto' } }}
           >
-            Member Login
+            {user ? 'Go to Events' : 'Member Login'}
           </Button>
         </Box>
       </Container>
