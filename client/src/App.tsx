@@ -23,6 +23,10 @@ import Footer from './components/common/Footer'; // Assuming you have/want a glo
 import SplashScreen from './components/common/SplashScreen';
 import { SplashProvider, useSplash } from './context/SplashContext';
 
+// Define the actual default background colors for the page
+const ACTUAL_LIGHT_MODE_PAGE_BACKGROUND = '#FFF9F5'; 
+const ACTUAL_DARK_MODE_PAGE_BACKGROUND = '#222222';  
+
 // ADDED getDesignTokens function
 const getDesignTokens = (mode: 'light' | 'dark') => ({
   palette: {
@@ -36,7 +40,7 @@ const getDesignTokens = (mode: 'light' | 'dark') => ({
             main: '#B0A1C4',
           },
           background: {
-            default: '#FFF9F5',
+            default: ACTUAL_LIGHT_MODE_PAGE_BACKGROUND,
             paper: '#FFFFFF',   
           },
           text: {
@@ -45,11 +49,14 @@ const getDesignTokens = (mode: 'light' | 'dark') => ({
           },
         }
       : {
+          primary: {
+            main: '#A6C0FE',
+          },
           secondary: {
             main: '#707070', // Darker gray secondary color
           },
           background: {
-            default: '#222222', // Dark gray background
+            default: ACTUAL_DARK_MODE_PAGE_BACKGROUND, // Use actual dark page background
             paper: '#333333',   // Slightly lighter gray for paper elements
           },
           text: {
@@ -136,14 +143,20 @@ const getDesignTokens = (mode: 'light' | 'dark') => ({
 });
 
 // Global style definitions (remains an object)
-const globalStyleObject = {
+const globalStyleObject = (theme: any) => ({
   '*': {
     transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
     '@media (min-width: 600px)': {
       transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
     },
   },
+  html: {
+    backgroundColor: theme.palette.background.default,
+    height: '100%',
+  },
   body: {
+    backgroundColor: theme.palette.background.default,
+    height: '100%',
     transition: 'background-color 0.15s ease-in-out, color 0.15s ease-in-out',
     '@media (min-width: 600px)': {
       transition: 'background-color 0.2s ease-in-out, color 0.2s ease-in-out',
@@ -235,7 +248,7 @@ const globalStyleObject = {
       transform: 'translateY(0)',
     },
   },
-};
+});
 
 const ProtectedRoutes = () => {
   return (
@@ -349,6 +362,13 @@ function App() {
 
   useEffect(() => {
     localStorage.setItem('themeMode', mode);
+    let themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (!themeColorMeta) {
+      themeColorMeta = document.createElement('meta');
+      themeColorMeta.setAttribute('name', 'theme-color');
+      document.head.appendChild(themeColorMeta);
+    }
+    themeColorMeta.setAttribute('content', mode === 'light' ? ACTUAL_LIGHT_MODE_PAGE_BACKGROUND : ACTUAL_DARK_MODE_PAGE_BACKGROUND);
   }, [mode]);
 
   const colorMode = useMemo(
@@ -373,7 +393,7 @@ function App() {
           <ColorModeContext.Provider value={colorMode}>
             <ThemeProvider theme={theme}>
               <CssBaseline />
-              <GlobalStyles styles={globalStyleObject} />
+              <GlobalStyles styles={globalStyleObject(theme)} />
               <LocalizationProvider dateAdapter={AdapterDateFns}>
                 <Router>
                   <AppLayout />
