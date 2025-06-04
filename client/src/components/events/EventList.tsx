@@ -250,6 +250,23 @@ const EventList = () => {
   const [filteredWaitlistedUsers, setFilteredWaitlistedUsers] = useState<any[]>([]);
   const [waitlistedUsersSearchTerm, setWaitlistedUsersSearchTerm] = useState<string>('');
 
+  const breakMessages = [
+    "Break round - grab a snack! 🍎",
+    "No match this round. Take a break! 🛋️",
+    "Time to stretch your legs! 🤸‍♂️",
+    "Enjoy a quick rest! 😌",
+    "Refill your drink and relax! 🥤",
+    "Chat with someone new! 💬",
+    "Take a breather, next round soon! 🌬️",
+    "Perfect time for a bathroom break! 🚻",
+  ];
+
+  function getRandomBreakMessage(roundNum: number) {
+    // Optionally, use roundNum to make it deterministic per round
+    // For true randomness each render, use Math.random()
+    return breakMessages[roundNum % breakMessages.length];
+  }
+
   const handleExportAllMatches = () => {
     // Use filtered matches if search is active, otherwise use all matches
     const matchesToExport = matchesSearchTerm.trim() ? filteredMatches : allEventMatches;
@@ -2412,67 +2429,89 @@ const EventList = () => {
                     
                     <Collapse in={expandedUserSchedules[event.id]} timeout="auto" unmountOnExit sx={{ width: '100%'}}>
                       <Paper elevation={1} sx={{ p: 1.5, mt: 1, bgcolor: 'background.default' }}>
-                        {userSchedules[event.id] && userSchedules[event.id].length > 0 ? (
+                        {userSchedules[event.id] && userSchedules[event.id].length > 0 && event.num_rounds ? (
                           <>
-                            {userSchedules[event.id].map((item, index) => (
-                              <Box 
-                                key={item.event_speed_date_id || index} 
-                                sx={{ 
-                                  mb: { xs: 0.5, sm: index === userSchedules[event.id].length - 1 ? 0 : 0.75 },
-                                  p: { xs: 0.5, sm: 0.75 }, 
-                                  borderLeft: '3px solid', 
-                                  borderColor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
-                                  borderRadius: '4px',
-                                  backgroundColor: theme.palette.action.hover,
-                                }}
-                              >
-                                <Grid container spacing={1} alignItems="center">
-                                  <Grid item xs={12}> 
-                                    <Typography variant="subtitle2" component="div" gutterBottom={false} sx={{ fontWeight: 'bold', mb: 0.25 }}>
-                                      Round {item.round}
-                                    </Typography>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                      <Box>
-                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.1 }}>
-                                          Table: {item.table}
+                            {Array.from({ length: Number(event.num_rounds) }, (_, i) => {
+                              const roundNum = i + 1;
+                              const item = userSchedules[event.id].find(si => si.round === roundNum);
+                              const isLast = i === Number(event.num_rounds) - 1;
+                              const cardSx = {
+                                mb: isLast ? 0 : 1, // theme.spacing(1) = 8px
+                                p: { xs: 0.5, sm: 0.75 },
+                                borderLeft: '3px solid',
+                                borderColor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
+                                borderRadius: '4px',
+                                backgroundColor: theme.palette.action.hover,
+                              };
+                              if (!item || !item.partner_id) {
+                                // Break round card
+                                return (
+                                  <Box key={`break-round-${roundNum}`} sx={cardSx}>
+                                    <Grid container spacing={1} alignItems="center">
+                                      <Grid item xs={12}>
+                                        <Typography variant="subtitle2" component="div" gutterBottom={false} sx={{ fontWeight: 'bold', mb: 0.25 }}>
+                                          Round {roundNum} — Break Round
                                         </Typography>
-                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0 }}>
-                                          Partner: {item.partner_name} (Age: {item.partner_age || 'N/A'})
+                                        <Typography variant="body2" color="text.secondary">
+                                          {getRandomBreakMessage(roundNum)}
                                         </Typography>
-                                      </Box>
-                                      {item.event_speed_date_id && (
-                                        <Box sx={{ 
-                                          display: 'flex',
-                                          gap: 0.75,
-                                          ml: 2,
-                                          position: 'relative',
-                                          top: '-10px'
-                                        }}> 
-                                          <Button
-                                            variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === true ? 'contained' : 'outlined'}
-                                            size="small"
-                                            color="success"
-                                            onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, true)}
-                                            sx={{ minWidth: '50px', px: 1.5, py: 0.5, fontSize: '0.85rem' }}
-                                          >
-                                            Yes
-                                          </Button>
-                                          <Button
-                                            variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === false ? 'contained' : 'outlined'}
-                                            size="small"
-                                            color="error"
-                                            onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, false)}
-                                            sx={{ minWidth: '50px', px: 1.5, py: 0.5, fontSize: '0.85rem' }}
-                                          >
-                                            No
-                                          </Button>
+                                      </Grid>
+                                    </Grid>
+                                  </Box>
+                                );
+                              } else {
+                                // Normal round card
+                                return (
+                                  <Box key={item.event_speed_date_id || `round-${roundNum}`} sx={cardSx}>
+                                    <Grid container spacing={1} alignItems="center">
+                                      <Grid item xs={12}>
+                                        <Typography variant="subtitle2" component="div" gutterBottom={false} sx={{ fontWeight: 'bold', mb: 0.25 }}>
+                                          Round {item.round}
+                                        </Typography>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                          <Box>
+                                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.1 }}>
+                                              Table: {item.table}
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0 }}>
+                                              Partner: {item.partner_name} (Age: {item.partner_age || 'N/A'})
+                                            </Typography>
+                                          </Box>
+                                          {item.event_speed_date_id && (
+                                            <Box sx={{
+                                              display: 'flex',
+                                              gap: 0.75,
+                                              ml: 2,
+                                              position: 'relative',
+                                              top: '-10px'
+                                            }}>
+                                              <Button
+                                                variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === true ? 'contained' : 'outlined'}
+                                                size="small"
+                                                color="success"
+                                                onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, true)}
+                                                sx={{ minWidth: '50px', px: 1.5, py: 0.5, fontSize: '0.85rem' }}
+                                              >
+                                                Yes
+                                              </Button>
+                                              <Button
+                                                variant={attendeeSpeedDateSelections[item.event_speed_date_id]?.interested === false ? 'contained' : 'outlined'}
+                                                size="small"
+                                                color="error"
+                                                onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, false)}
+                                                sx={{ minWidth: '50px', px: 1.5, py: 0.5, fontSize: '0.85rem' }}
+                                              >
+                                                No
+                                              </Button>
+                                            </Box>
+                                          )}
                                         </Box>
-                                      )}
-                                    </Box>
-                                  </Grid>
-                                </Grid>
-                              </Box>
-                            ))}
+                                      </Grid>
+                                    </Grid>
+                                  </Box>
+                                );
+                              }
+                            })}
                             {attendeeSelectionError[event.id] && (
                               <Alert severity="error" sx={{ mt: 1.5 }} onClose={() => setAttendeeSelectionError(prev => ({...prev, [event.id]: null}))}>
                                 {attendeeSelectionError[event.id]}
