@@ -278,6 +278,30 @@ interface EventsApi {
   getMyMatches: (eventId: string) => Promise<{ matches: Match[] }>;
   getAllMatchesForEvent: (eventId: string) => Promise<{ matches: MatchPair[] }>;
   getEventWaitlist: (eventId: string) => Promise<{ data: any[] }>;
+  updateWaitlistUserDetails: (eventId: string, userId: string, data: {
+    first_name?: string,
+    last_name?: string,
+    email?: string,
+    phone?: string,
+    gender?: string,
+    birthday?: string,
+    church?: string,
+  }) => Promise<{ 
+    message: string,
+    updated_fields: string[],
+    user?: {
+      id: number,
+      name: string,
+      email: string,
+      first_name: string,
+      last_name: string,
+      birthday: string | null,
+      age: number,
+      gender: string | null,
+      phone: string,
+      church: string
+    }
+  }>;
 }
 
 interface MatchPair {
@@ -500,6 +524,25 @@ const realEventsApi: EventsApi = {
         throw new Error(error.response.data.error);
       }
       throw new Error('Failed to fetch waitlist for this event.');
+    }
+  },
+  updateWaitlistUserDetails: async (eventId: string, userId: string, data: {
+    first_name?: string,
+    last_name?: string,
+    email?: string,
+    phone?: string,
+    gender?: string,
+    birthday?: string,
+    church?: string,
+  }) => {
+    try {
+      const response = await api.patch(`/events/${eventId}/waitlist/${userId}`, data);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error('Failed to update waitlist user details');
     }
   }
 };
