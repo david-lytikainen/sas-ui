@@ -250,6 +250,18 @@ const EventList = () => {
   const [filteredWaitlistedUsers, setFilteredWaitlistedUsers] = useState<any[]>([]);
   const [waitlistedUsersSearchTerm, setWaitlistedUsersSearchTerm] = useState<string>('');
 
+  // ADD State for editing waitlist users
+  const [editingWaitlistUserId, setEditingWaitlistUserId] = useState<number | null>(null);
+  const [editWaitlistFormData, setEditWaitlistFormData] = useState<any>({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    gender: '',
+    birthday: '',
+    church: '',
+  });
+
   const breakMessages = [
     "Break round - grab a snack! 🍎",
     "No match this round. Take a break! 🛋️",
@@ -1920,6 +1932,102 @@ const EventList = () => {
     filterWaitlistedUsers(value);
   };
 
+  // ADD Handlers for editing waitlist users
+  const handleStartEditingWaitlistUser = (user: any) => {
+    setEditingWaitlistUserId(user.id);
+    setEditWaitlistFormData({
+      first_name: user.first_name || '',
+      last_name: user.last_name || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      gender: user.gender || '',
+      // Correctly format birthday to YYYY-MM-DD for the date input
+      birthday: user.birthday ? new Date(user.birthday).toISOString().split('T')[0] : '',
+      church: user.church || '',
+    });
+  };
+
+  const handleCancelEditingWaitlistUser = () => {
+    setEditingWaitlistUserId(null);
+    setEditWaitlistFormData({
+      first_name: '',
+      last_name: '',
+      email: '',
+      phone: '',
+      gender: '',
+      birthday: '',
+      church: '',
+    });
+  };
+
+  const handleEditWaitlistFormChange = (value: any, field: string) => {
+    setEditWaitlistFormData((prev: any) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+  
+  const handleSaveWaitlistUserEdits = async (userId: number) => {
+    if (!selectedEventForWaitlistUsers || !editWaitlistFormData) {
+      setErrorMessage('Error: No event selected or no data to save for waitlist user.');
+      return;
+    }
+
+    // Ensure birthday is in YYYY-MM-DD format if provided
+    let dataToSave = { ...editWaitlistFormData };
+    if (dataToSave.birthday) {
+        try {
+            // Assuming editWaitlistFormData.birthday is already in or convertible to YYYY-MM-DD
+            // If it comes from a date picker that gives a Date object:
+            // dataToSave.birthday = new Date(dataToSave.birthday).toISOString().split('T')[0];
+            // If it's a string that needs reformatting, adjust here.
+            // For now, assume it's correctly formatted or directly usable by the API if it's a string.
+        } catch (e) {
+            setErrorMessage("Invalid birthday date format for saving.");
+            return;
+        }
+    }
+
+
+    try {
+      const response = await eventsApi.updateWaitlistUserDetails(
+        selectedEventForWaitlistUsers.id.toString(),
+        userId.toString(),
+        dataToSave
+      );
+
+      const updateUserInList = (users: any[]) =>
+        users.map(u => {
+          if (u.id === userId) {
+            if (response.user) { // Assuming backend returns the updated user object
+              return {
+                ...u, // Keep existing fields like waitlisted_at
+                ...response.user, // Apply updated fields
+                 name: `${response.user.first_name} ${response.user.last_name}`, // Recalculate name
+                 age: response.user.birthday ? calculateAge(new Date(response.user.birthday)) : u.age, // Recalculate age
+              };
+            }
+            // Fallback if backend doesn't return full user, less ideal
+            return {
+              ...u,
+              ...editWaitlistFormData,
+              name: `${editWaitlistFormData.first_name} ${editWaitlistFormData.last_name}`,
+              age: editWaitlistFormData.birthday ? calculateAge(new Date(editWaitlistFormData.birthday)) : u.age,
+            };
+          }
+          return u;
+        });
+
+      setWaitlistedUsers(prev => updateUserInList(prev));
+      setFilteredWaitlistedUsers(prev => updateUserInList(prev));
+
+      setEditingWaitlistUserId(null); // Exit edit mode
+      setErrorMessage(null); // Clear any previous errors
+    } catch (error: any) {
+      setErrorMessage(error.response?.data?.error || error.message || 'Failed to update waitlist user information.');
+    }
+  };
+
   // Function to export waitlisted users to CSV
   const handleExportWaitlistedUsers = () => {
     const usersToExport = waitlistedUsersSearchTerm.trim() ? filteredWaitlistedUsers : waitlistedUsers;
@@ -3557,19 +3665,85 @@ const EventList = () => {
                       <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Birthday</strong></TableCell>
                       <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Church</strong></TableCell>
                       <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Waitlisted At</strong></TableCell>
+                      {(isAdmin() || isOrganizer()) && (
+                        <TableCell sx={{ width: 100, minWidth: 90, textAlign: 'center' }}><strong>Actions</strong></TableCell>
+                      )}
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {filteredWaitlistedUsers.map((user) => (
                       <TableRow key={user.id}>
-                        <TableCell>{user.name}</TableCell>
-                        <TableCell sx={{ wordBreak: 'break-all' }}>{user.email}</TableCell>
-                        <TableCell>{user.phone || 'N/A'}</TableCell>
-                        <TableCell>{user.gender}</TableCell>
-                        <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
-                        <TableCell>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</TableCell>
-                        <TableCell>{user.church || 'Other'}</TableCell>
-                        <TableCell>{user.waitlisted_at ? formatUTCToLocal(user.waitlisted_at, true) : 'N/A'}</TableCell>
+                        {editingWaitlistUserId === user.id ? (
+                          <>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+                                <TextField size="small" label="First Name" value={editWaitlistFormData.first_name} onChange={(e) => handleEditWaitlistFormChange(e.target.value, 'first_name')} sx={{ width: '100%' }} />
+                                <TextField size="small" label="Last Name" value={editWaitlistFormData.last_name} onChange={(e) => handleEditWaitlistFormChange(e.target.value, 'last_name')} sx={{ width: '100%' }} />
+                              </Box>
+                            </TableCell>
+                            <TableCell><TextField size="small" label="Email" value={editWaitlistFormData.email} onChange={(e) => handleEditWaitlistFormChange(e.target.value, 'email')} fullWidth /></TableCell>
+                            <TableCell><TextField size="small" label="Phone" value={editWaitlistFormData.phone} onChange={(e) => handleEditWaitlistFormChange(e.target.value, 'phone')} fullWidth /></TableCell>
+                            <TableCell>
+                              <FormControl size="small" fullWidth>
+                                <InputLabel>Gender</InputLabel>
+                                <Select value={editWaitlistFormData.gender || ''} label="Gender" onChange={(e) => handleEditWaitlistFormChange(e.target.value, 'gender')}>
+                                  <MenuItem value="Male">Male</MenuItem>
+                                  <MenuItem value="Female">Female</MenuItem>
+                                </Select>
+                              </FormControl>
+                            </TableCell>
+                            <TableCell sx={{ textAlign: 'center' }}>{editWaitlistFormData.birthday ? calculateAge(new Date(editWaitlistFormData.birthday)) : ''}</TableCell>
+                            <TableCell><TextField size="small" label="Birthday" type="date" value={editWaitlistFormData.birthday || ''} onChange={(e) => handleEditWaitlistFormChange(e.target.value, 'birthday')} InputLabelProps={{ shrink: true }} fullWidth /></TableCell>
+                            <TableCell>
+                               <Autocomplete
+                                fullWidth
+                                freeSolo
+                                size="small"
+                                options={churchOptions}
+                                value={editWaitlistFormData.church || ''}
+                                onChange={(event, newValue) => {
+                                  handleEditWaitlistFormChange(newValue || '', 'church');
+                                }}
+                                onInputChange={(event, newInputValue) => {
+                                  handleEditWaitlistFormChange(newInputValue, 'church');
+                                }}
+                                ListboxProps={{ style: { maxHeight: '200px' } }}
+                                renderInput={(params) => (<TextField {...params} label="Church" size="small"/>)}
+                              />
+                            </TableCell>
+                            <TableCell>{user.waitlisted_at ? formatUTCToLocal(user.waitlisted_at, true) : 'N/A'}</TableCell>
+                            {(isAdmin() || isOrganizer()) && (
+                              <TableCell sx={{ textAlign: 'center' }}>
+                                <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                                  <IconButton size="small" color="primary" onClick={() => handleSaveWaitlistUserEdits(user.id)} title="Save">
+                                    <SaveIcon fontSize="small" />
+                                  </IconButton>
+                                  <IconButton size="small" color="default" onClick={handleCancelEditingWaitlistUser} title="Cancel">
+                                    <CancelEditIcon fontSize="small" />
+                                  </IconButton>
+                                </Box>
+                              </TableCell>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <TableCell>{user.name}</TableCell>
+                            <TableCell sx={{ wordBreak: 'break-all' }}>{user.email}</TableCell>
+                            <TableCell>{user.phone || 'N/A'}</TableCell>
+                            <TableCell>{user.gender}</TableCell>
+                            <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
+                            <TableCell>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</TableCell>
+                            <TableCell>{user.church || 'Other'}</TableCell>
+                            <TableCell>{user.waitlisted_at ? formatUTCToLocal(user.waitlisted_at, true) : 'N/A'}</TableCell>
+                            {(isAdmin() || isOrganizer()) && (
+                              <TableCell sx={{ textAlign: 'center' }}>
+                                <IconButton size="small" color="primary" onClick={() => handleStartEditingWaitlistUser(user)} title="Edit">
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              </TableCell>
+                            )}
+                          </>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>
