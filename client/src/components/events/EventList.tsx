@@ -175,7 +175,9 @@ const EventList = () => {
   const [attendeeSpeedDateSelections, setAttendeeSpeedDateSelections] = useState<Record<number, { eventId: number, interested: boolean }>>({});
   const [attendeeSelectionError, setAttendeeSelectionError] = useState<Record<number, string | null>>({});
   // ADD State to track successful submissions by the attendee
-  // const [submittedEventIds, setSubmittedEventIds] = useState<Set<number>>(new Set());
+  const [submittedEventIds, setSubmittedEventIds] = useState<Set<number>>(new Set());
+  const [submitConfirmOpen, setSubmitConfirmOpen] = useState(false);
+  const [eventToSubmitId, setEventToSubmitId] = useState<number | null>(null);
   // ADD State to track if the selection window is confirmed closed for an event
   const [selectionWindowClosedError, setSelectionWindowClosedError] = useState<Record<number, boolean>>({});
 
@@ -728,12 +730,12 @@ const EventList = () => {
     return true;
   };
 
-  const handleSaveAttendeeSelections = async (eventId: number) => {
+  const handleSaveAttendeeSelections = async (eventId: number): Promise<boolean> => {
     const event = filteredEvents.find(e => e.id === eventId);
     if (!event) {
       console.error("Event not found in handleSaveAttendeeSelections for eventId:", eventId);
       setAttendeeSelectionError(prev => ({ ...prev, [eventId]: 'Event details not found. Cannot save selections.' }));
-      return;
+      return false;
     }
 
     const currentPicks = getCurrentPicksForEvent(eventId);
@@ -752,7 +754,7 @@ const EventList = () => {
 
     if (schedule.length === 0) {
       setAttendeeSelectionError(prev => ({ ...prev, [eventId]: 'No schedule found to save selections for this event.' }));
-      return;
+      return false;
     }
     setSaveIndicator(prev => ({ ...prev, [eventId]: true }));
 
@@ -763,6 +765,7 @@ const EventList = () => {
 
         setTimeout(() => setSaveIndicator(prev => ({ ...prev, [eventId]: false })), 1200);
         setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: false })); // Reset this flag on successful submission
+        return true;
       } catch (error: any) {
         const specificErrorMessage = 'Speed date selections window closed 24 hours after event completion.';
         const backendErrorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
@@ -779,6 +782,7 @@ const EventList = () => {
         }
         // Ensure save indicator is turned off on error too
         setTimeout(() => setSaveIndicator(prev => ({ ...prev, [eventId]: false })), 1200);
+        return false;
       }
     } else {
       // For completed events, selections are saved locally. API submission is skipped.
@@ -787,9 +791,30 @@ const EventList = () => {
       setTimeout(() => setSaveIndicator(prev => ({ ...prev, [eventId]: false })), 1200);
       // No need to set specific errors here, as local save is successful.
       // Backend selectionWindowClosedError is not relevant as we didn't attempt submission.
+      return true;
     }
   };
 
+
+  const handleSubmitClick = (eventId: number) => {
+    setEventToSubmitId(eventId);
+    setSubmitConfirmOpen(true);
+  };
+
+  const handleSubmitConfirm = async () => {
+    if (eventToSubmitId) {
+      const savedSuccessfully = await handleSaveAttendeeSelections(eventToSubmitId);
+
+      if (savedSuccessfully) {
+        const newSubmittedEventIds = new Set(submittedEventIds);
+        newSubmittedEventIds.add(eventToSubmitId);
+        setSubmittedEventIds(newSubmittedEventIds);
+        localStorage.setItem('submittedEventIds', JSON.stringify(Array.from(newSubmittedEventIds)));
+      }
+      setSubmitConfirmOpen(false);
+      setEventToSubmitId(null);
+    }
+  };
 
   const renderActionButtons = (event: Event) => {
     const isUserRegistered = isRegisteredForEvent(event.id);
@@ -1623,6 +1648,11 @@ const EventList = () => {
     } else {
       setShowNotificationSnackbar(false); // Don't show if notifications not supported
     }
+
+    const storedSubmitted = localStorage.getItem('submittedEventIds');
+    if (storedSubmitted) {
+      setSubmittedEventIds(new Set(JSON.parse(storedSubmitted)));
+    }
   }, []);
 
 
@@ -2423,13 +2453,22 @@ const EventList = () => {
                       >
                         Round Timer
                       </Typography>
-                      {event.num_rounds && event.num_tables && (
+                      {isAdmin() && (
+                        <Typography 
+                          variant="body2" 
+                          color="text.secondary" 
+                          sx={{ fontWeight: 500, fontSize:  { xs: '0.675rem', sm: '1rem' }}}
+                        >
+                          Rounds: {event.num_rounds}, Tables: {event.num_tables}
+                        </Typography>
+                      )}
+                      {!isAdmin() && (
                         <Typography 
                           variant="body2" 
                           color="text.secondary"
                           sx={{ fontWeight: 500, fontSize:  { xs: '0.675rem', sm: '1rem' }}}
                         >
-                          Rounds: {event.num_rounds}, Tables: {event.num_tables}
+                          Rounds: {event.num_rounds}
                         </Typography>
                       )}
                     </Box>
@@ -2462,7 +2501,6 @@ const EventList = () => {
                   <EventIcon fontSize="small" />
                   {formatDate(event.starts_at)}
                 </Typography>
-                  {/* Add Spots Filled Display START */} 
                   {typeof event.registered_attendee_count === 'number' && event.max_capacity && (
                     <Typography 
                       variant="body2" 
@@ -2599,6 +2637,7 @@ const EventList = () => {
                                                 color="success"
                                                 onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, true)}
                                                 sx={{ minWidth: '50px', px: 1.5, py: 0.5, fontSize: '0.85rem' }}
+                                                disabled={submittedEventIds.has(event.id)}
                                               >
                                                 Yes
                                               </Button>
@@ -2608,6 +2647,7 @@ const EventList = () => {
                                                 color="error"
                                                 onClick={() => handleAttendeeSelectionChange(item.event_speed_date_id, event.id, false)}
                                                 sx={{ minWidth: '50px', px: 1.5, py: 0.5, fontSize: '0.85rem' }}
+                                                disabled={submittedEventIds.has(event.id)}
                                               >
                                                 No
                                               </Button>
@@ -2625,22 +2665,36 @@ const EventList = () => {
                                 {attendeeSelectionError[event.id]}
                               </Alert>
                             )}
-                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, mt: 1.5 }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {submittedEventIds.has(event.id) ? (
+                                <Typography variant="body2" color="success.main" sx={{ textAlign: 'center', mt: 1.5 }}>
+                                    Your selections have been submitted. Thank you for attending! 🎉
+                                </Typography>
+                            ) : (
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, mt: 1.5 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Button
+                                    variant="outlined"
+                                    color="inherit"
+                                    size="small"
+                                    onClick={() => handleSaveAttendeeSelections(event.id)}
+                                    disabled={isSaveDisabled(event.id)}
+                                    >
+                                    Save Selections
+                                    </Button>
+                                    {saveIndicator[event.id] && (
+                                    <Typography variant="body2" color="success.main">Saved!</Typography>
+                                    )}
+                                </Box>
                                 <Button
-                                  variant="outlined"
-                                  color="inherit"
-                                  size="small"
-                                  onClick={() => handleSaveAttendeeSelections(event.id)}
-                                  disabled={isSaveDisabled(event.id)}
+                                    variant="contained"
+                                    color="primary"
+                                    size="small"
+                                    onClick={() => handleSubmitClick(event.id)}
                                 >
-                                  Save Selections
+                                    Submit
                                 </Button>
-                                {saveIndicator[event.id] && (
-                                  <Typography variant="body2" color="success.main">Saved!</Typography>
-                                )}
-                              </Box>
-                            </Box>
+                                </Box>
+                            )}
                             {selectionWindowClosedError[event.id] && (
                               <Typography variant="caption" color="error" sx={{ display: 'block', textAlign: 'center', mt: 0.5 }}>
                                 Selection window closed (24 hours after event end).
@@ -3772,9 +3826,28 @@ const EventList = () => {
           <Button onClick={() => setViewWaitlistDialogOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Submit Selections Confirmation Dialog */}
+      <Dialog
+        open={submitConfirmOpen}
+        onClose={() => setSubmitConfirmOpen(false)}
+      >
+        <DialogTitle>Submit Final Selections?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Once you submit, you will not be able to change your selections. Are you sure?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSubmitConfirmOpen(false)}>Cancel</Button>
+          <Button onClick={handleSubmitConfirm} color="primary" variant="contained">
+            Submit
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   </>
   );
 };
 
-export default EventList; 
+export default EventList;
