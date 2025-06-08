@@ -63,8 +63,6 @@ import {
   Delete as DeleteIcon,
   People as PeopleIcon,
   CheckBox as CheckBoxIcon,
-  RadioButtonChecked as RadioButtonCheckedIcon,
-  RadioButtonUnchecked as RadioButtonUncheckedIcon,
 } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
@@ -93,7 +91,7 @@ interface MatchPair {
 }
 
 const EventList = () => {
-  const { events: contextEvents, createEvent, refreshEvents, isRegisteredForEvent, userRegisteredEvents, filteredEvents } = useEvents(); // Destructure filteredEvents
+  const { events: contextEvents, createEvent, refreshEvents, isRegisteredForEvent, filteredEvents } = useEvents(); // Destructure filteredEvents
   const { user, isAdmin, isOrganizer } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -244,8 +242,6 @@ const EventList = () => {
     pin: string,
   }[]>([]);
   const [waitlistReason, setWaitlistReason] = useState<string>('');
-  const hasInProgressEvent = filteredEvents.some(event => event.status === 'In Progress');
-
   const [viewWaitlistDialogOpen, setViewWaitlistDialogOpen] = useState<boolean>(false);
   const [selectedEventForWaitlistUsers, setSelectedEventForWaitlistUsers] = useState<Event | null>(null);
   const [waitlistedUsers, setWaitlistedUsers] = useState<any[]>([]);
@@ -406,12 +402,6 @@ const EventList = () => {
     } as Event;
   });
 
-  // Calculate eventOptions directly instead of storing in state
-  // Use filteredEvents for options available for check-in etc., if appropriate
-  const eventOptions = filteredEvents.filter(event => 
-    userRegisteredEvents.includes(event.id) && 
-    (event.status === 'Registration Open' || event.status === 'In Progress')
-  );
 
   const isRegistrationClosed = (event: Event) => {
     if (!event.starts_at) return false;
@@ -534,18 +524,6 @@ const EventList = () => {
     }
   };
   
-  // Global check-in handlers
-  const handleGlobalCheckInClick = () => {
-    setSelectedEventForCheckIn(null);
-    setCheckInPin('');
-    setCheckInError(null);
-    setGlobalCheckInDialogOpen(true);
-  };
-  
-  const handleEventSelection = (eventId: number) => {
-    const selectedEvent = filteredEvents.find(e => e.id === eventId) || null; // Use filteredEvents
-    setSelectedEventForCheckIn(selectedEvent);
-  };
   
   const handleGlobalCheckInConfirm = async () => {
     if (!selectedEventForCheckIn) {
@@ -1971,9 +1949,8 @@ const EventList = () => {
       email: user.email || '',
       phone: user.phone || '',
       gender: user.gender || '',
-      // Correctly format birthday to YYYY-MM-DD for the date input
-      birthday: user.birthday ? new Date(user.birthday).toISOString().split('T')[0] : '',
-      church: user.church || '',
+      birthday: user.birthday ? user.birthday.substring(0, 10) : '', // Format as YYYY-MM-DD
+      church: user.church,
     });
   };
 
@@ -2120,22 +2097,7 @@ const EventList = () => {
             Events
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', ml: { xs: 2, sm: 0 } }}>
-            {user && !hasInProgressEvent && (
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleGlobalCheckInClick}
-                startIcon={<CheckInIcon />}
-                sx={{
-                  minWidth: { xs: 'auto', sm: 'inherit' }, 
-                  p: { xs: '6px 10px', sm: '6px 16px' }, 
-                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                  Check-In
-              </Button>
-            )}
+            {/* Removed global Check-In button */}
             {(isAdmin() || isOrganizer()) && !showCreateCard && (
               <Button
                 variant="contained"
@@ -2415,11 +2377,38 @@ const EventList = () => {
                     >
                       {event.name}
                     </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Chip
                         label={event.status}
                         color={getStatusColor(event.status)}
-                      sx={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}
-                    />
+                        sx={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}
+                      />
+                      {/* Add per-event Check-In button if eligible, now top right */}
+                      {(() => {
+                        const isUserRegistered = isRegisteredForEvent(event.id);
+                        const registrationStatus = event.registration?.status;
+                        const canCheckIn = isUserRegistered && registrationStatus !== 'Checked In' && (event.status === 'Registration Open' || event.status === 'In Progress');
+                        if (canCheckIn) {
+                          return (
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              startIcon={<CheckInIcon />}
+                              sx={{ ml: 1, px: 2, py: 0.5, fontWeight: 600, fontSize: isMobile ? '0.8rem' : '1rem', borderRadius: 2, boxShadow: 1 }}
+                              onClick={() => {
+                                setSelectedEventForCheckIn(event);
+                                setCheckInPin('');
+                                setCheckInError(null);
+                                setGlobalCheckInDialogOpen(true);
+                              }}
+                            >
+                              Check-In
+                            </Button>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </Box>
                   </Box>
 
                   {event.status !== 'In Progress' && (
@@ -2763,60 +2752,25 @@ const EventList = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Global Check-in Dialog */}
+      {/* Global Check-in Dialog (now per-event) */}
       <Dialog open={globalCheckInDialogOpen} onClose={() => setGlobalCheckInDialogOpen(false)}>
         <DialogTitle>Event Check-In</DialogTitle>
         <DialogContent>
-          
-          {/* Event selection */}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" gutterBottom>
-              Select Event to Check In
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {eventOptions.map((event: Event) => (
-                <Paper 
-                  key={event.id}
-                  variant="outlined"
-                  sx={{ 
-                    p: 1, 
-                    cursor: 'pointer',
-                    bgcolor: selectedEventForCheckIn?.id === event.id ? 'action.selected' : 'background.paper',
-                    '&:hover': { bgcolor: 'action.hover' },
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1
-                  }}
-                  onClick={() => handleEventSelection(event.id)}
-                >
-                  {selectedEventForCheckIn?.id === event.id ? (
-                    <RadioButtonCheckedIcon color="primary" />
-                  ) : (
-                    <RadioButtonUncheckedIcon color="action" />
-                  )}
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="body1" fontWeight={500}>{event.name}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {formatDate(event.starts_at)}
-                    </Typography>
-                  </Box>
-                </Paper>
-              ))}
-              
-              {eventOptions.length === 0 && (
-                <Typography color="text.secondary" sx={{ py: 1 }}>
-                  You don't have any events to check in to.
-                </Typography>
-              )}
-            </Box>
-          </Box>
-          
+          {selectedEventForCheckIn && (
+            <>
+              <Typography variant="subtitle2" gutterBottom>
+                {selectedEventForCheckIn.name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                {formatDate(selectedEventForCheckIn.starts_at)}
+              </Typography>
+            </>
+          )}
           {checkInError && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {checkInError}
             </Alert>
           )}
-          
           <Box>
             <Typography variant="subtitle2" gutterBottom>
               Enter the 4-digit PIN given to you by an admin
