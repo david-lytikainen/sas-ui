@@ -1037,6 +1037,7 @@ const EventTimer = ({
                 zIndex: 2,
                 flex: '0 1 auto'
             }}>
+              {isPaused && (
               <Tooltip title="Settings">
                 <IconButton 
                   size="small" 
@@ -1053,6 +1054,7 @@ const EventTimer = ({
                   <Settings sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}/>
                 </IconButton>
               </Tooltip>
+              )}
             </Box>
           </Paper>
           

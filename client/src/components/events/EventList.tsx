@@ -854,8 +854,8 @@ const EventList = () => {
         return (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }}> 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}> 
-              <Chip label="Checked In" color="success" icon={<CheckInIcon />} size="small" sx={{ alignSelf: 'flex-start' }}/>
-              {isCurrentUserAttendee && (
+              <Chip label="Event Ended" color="success" icon={<CheckInIcon />} size="small" sx={{ alignSelf: 'flex-start' }}/>
+              {isCurrentUserAttendee &&  isAdmin() && (
                 <Button size="small" variant="contained" color="primary" onClick={() => handleViewMatchesClick(event)} sx={{ mt: 0.5, alignSelf: 'flex-start' }}>
                   View My Matches
                 </Button>
