@@ -63,12 +63,14 @@ const EventTimer = ({
   const [notifiedZero, setNotifiedZero] = useState<boolean>(false);
   const [showTimerEndAlert, setShowTimerEndAlert] = useState<boolean>(false);
   const [statusBeforePause, setStatusBeforePause] = useState<'active' | 'break_time' | null>(null);
+  const [breakTimeRemaining, setBreakTimeRemaining] = useState<number>(0);
   
   const lastFetchTimeRef = useRef<number>(Date.now());
   const timerAudioRef = useRef<HTMLAudioElement | null>(null);
   const timerIntervalRef = useRef<number | null>(null);
   const hasInitializedRef = useRef<boolean>(false);
   const fiveSecondIntervalRef = useRef<number | null>(null);
+  const breakTimerIntervalRef = useRef<number | null>(null);
   
   const clearTimerInterval = useCallback(() => {
     if (timerIntervalRef.current !== null) {
@@ -79,6 +81,16 @@ const EventTimer = ({
     }
     return false;
   }, []); 
+
+  const clearBreakTimerInterval = useCallback(() => {
+    if (breakTimerIntervalRef.current !== null) {
+      console.log(`Safely clearing break timer interval ID: ${breakTimerIntervalRef.current}`);
+      window.clearInterval(breakTimerIntervalRef.current);
+      breakTimerIntervalRef.current = null;
+      return true;
+    }
+    return false;
+  }, []);
 
   // Create audio element for notifications
   useEffect(() => {
@@ -114,6 +126,11 @@ const EventTimer = ({
     const fetchedStatus = data.status ?? (data.timer?.is_paused ? 'paused' : (data.timer?.round_start_time ? 'active' : 'inactive'));
     setTimerStatus(fetchedStatus);
   
+    if (timerStatus === 'break_time' && fetchedStatus !== 'break_time') {
+      clearBreakTimerInterval();
+      setBreakTimeRemaining(0);
+  }
+
     if (fetchedStatus === 'active' && data.timer?.round_start_time) {
       let remainingTime: number;
       const startTime = new Date(data.timer.round_start_time).getTime();
@@ -122,9 +139,14 @@ const EventTimer = ({
       const roundDuration = data.timer.round_duration || 180;
       remainingTime = Math.max(0, roundDuration - elapsedSeconds);
       
-      if (remainingTime === 0 && fetchedStatus === 'active') { //TODO - add final round handling here
+      if (remainingTime === 0 && fetchedStatus === 'active') {
         setTimerStatus('break_time');
-      } else if (timerIntervalRef.current === null || timerStatus !== 'active') {
+        // Calculate break time remaining based on when the round ended
+        const breakStartTime = startTime + (roundDuration * 1000); // When the round ended
+        const breakElapsedSeconds = Math.floor((now - breakStartTime) / 1000);
+        const breakDuration = data.timer?.break_duration || 90;
+        setBreakTimeRemaining(Math.max(0, breakDuration - breakElapsedSeconds));
+      } else {
         setTimeRemaining(remainingTime);
         setNotifiedZero(false);
       }
@@ -132,8 +154,21 @@ const EventTimer = ({
       const pausedTime = data.timer?.pause_time_remaining ?? 0;
       console.log(`Setting paused timer with remaining time: ${pausedTime}`);
       setTimeRemaining(pausedTime);
+      if (statusBeforePause === 'break_time') {
+        setBreakTimeRemaining(pausedTime);
+      }
+    } else if (fetchedStatus === 'break_time' && data.timer?.round_start_time) {
+      // Calculate break time remaining based on when the round ended
+      const startTime = new Date(data.timer.round_start_time).getTime();
+      const now = Date.now();
+      const roundDuration = data.timer.round_duration || 180;
+      const breakStartTime = startTime + (roundDuration * 1000); // When the round ended
+      const breakElapsedSeconds = Math.floor((now - breakStartTime) / 1000);
+      const breakDuration = data.timer?.break_duration || 90;
+      setBreakTimeRemaining(Math.max(0, breakDuration - breakElapsedSeconds));
     } else {
       setTimeRemaining(0);
+      setBreakTimeRemaining(0);
     }
     
     setCurrentRound(data.timer?.current_round ?? 0);
@@ -146,7 +181,7 @@ const EventTimer = ({
     }
     
     setIsLoading(false);
-  }, [timerStatus]);
+  }, [timerStatus, statusBeforePause, clearBreakTimerInterval]);
 
   // all timer related API requests funnelled here
   const makeApiRequest = useCallback(async (endpoint: string, method: string, data: any = {}) => {
@@ -259,7 +294,7 @@ const EventTimer = ({
 
   // called every 5 seconds:
   useEffect(() => {
-    if (isEventActive && timerStatus !== 'ended') {
+    if (isEventActive && timerState?.status !== 'ended') {
       fiveSecondIntervalRef.current = window.setInterval(() => { 
         const token = localStorage.getItem('token');
         if (token) {
@@ -284,17 +319,18 @@ const EventTimer = ({
         fiveSecondIntervalRef.current = null;
       }
     };
-  }, [isEventActive, API_URL, processTimerData, eventId, timerStatus]);
+  }, [isEventActive, API_URL, processTimerData, eventId, timerState?.status]);
 
   const handleStartRound = useCallback(() => {
     console.log("handleStartRound: Triggering API action...");
     
     clearTimerInterval();
+    clearBreakTimerInterval();
     setNotifiedZero(false);
     setTimerStatus('inactive'); 
+    setBreakTimeRemaining(0);
     
     if (timerStatus === 'break_time') {
-      console.log('is this ever hit?\n\n')
       console.log("Starting from break mode - advancing to next round first");
       
       handleApiAction('next round', 'next')
@@ -354,7 +390,7 @@ const EventTimer = ({
           console.error("Error starting round:", error);
         });
     }
-  }, [handleApiAction, nextRoundInfo, currentRound, roundDuration, clearTimerInterval, timerStatus]);
+  }, [handleApiAction, nextRoundInfo, currentRound, roundDuration, clearTimerInterval, clearBreakTimerInterval, timerStatus]);
 
   const handlePauseRound = useCallback(() => {
     if (timerStatus !== 'active') {
@@ -483,15 +519,19 @@ const EventTimer = ({
 
   const handleNextRound = useCallback(() => {
     clearTimerInterval();
+    clearBreakTimerInterval();
+    setBreakTimeRemaining(90)
 
     handleApiAction('End round', 'end')
       .then((result) => {
         if (result && currentRound >= result.final_round) {
           setTimerStatus('ended');
           setTimeRemaining(0);
+          setBreakTimeRemaining(0);
         } else {
           setTimerStatus('break_time');
           setTimeRemaining(0);
+          setBreakTimeRemaining(0);
           if (result && result.current_round) {
             setCurrentRound(Number(result.current_round));
           } else {
@@ -502,7 +542,7 @@ const EventTimer = ({
       .catch(error => {
         console.error('Error handling next round:', error);
       });
-  }, [clearTimerInterval, handleApiAction, currentRound]);
+  }, [clearTimerInterval, clearBreakTimerInterval, handleApiAction, currentRound]);
 
   // sets up the active browser timer
   useEffect(() => {
@@ -516,7 +556,7 @@ const EventTimer = ({
           if (prevTime <= 1) {
             clearTimerInterval();
             if (!notifiedZero) {
-              const isFinalRound = currentRound >= (timerState?.timer.final_round || 10);
+              const isFinalRound = currentRound >= (timerState?.timer.final_round || 0);
               
               console.log(`Round Timer reached zero. Current Round: ${currentRound}. Is Final: ${isFinalRound}`);
               playRoundEndSound(); 
@@ -533,8 +573,23 @@ const EventTimer = ({
                 setTimerStatus('break_time');
                 setTimeRemaining(0);
                 setNotifiedZero(true);
+                setBreakTimeRemaining(90);
               }
             }
+            return 0;
+          }
+          return prevTime - 1;
+        });
+      }, 1000);
+    } else if (timerStatus === 'break_time' && breakTimeRemaining > 0 && breakTimerIntervalRef.current === null) {
+      clearBreakTimerInterval();
+      
+      console.log(`Creating dedicated break timer interval with ${breakTimeRemaining}s remaining`);
+      breakTimerIntervalRef.current = window.setInterval(() => {
+        setBreakTimeRemaining(prevTime => {
+          console.log(`Break timer tick: ${prevTime}s remaining`);
+          if (prevTime <= 1) {
+            clearBreakTimerInterval();
             return 0;
           }
           return prevTime - 1;
@@ -545,69 +600,23 @@ const EventTimer = ({
     currentRound,
     timerState?.timer?.break_duration,
     timerStatus, 
-    timeRemaining, 
-    clearTimerInterval, 
+    timeRemaining,
+    breakTimeRemaining,
+    clearTimerInterval,
+    clearBreakTimerInterval,
     playRoundEndSound, 
     notifiedZero,
-    eventId, timerState?.timer.final_round
+    eventId, 
+    timerState?.timer.final_round,
+    timerState?.timer?.round_start_time
   ]);
 
-  // Add a persistent session storage effect to preserve timer state on refresh
+  // Add cleanup for break timer interval
   useEffect(() => {
-    // If we already have a timer state, try to restore from session storage
-    if (!timerState && !isLoading) {
-      try {
-        // Check for saved state in session storage
-        const savedTimerStatus = sessionStorage.getItem(`timer_status_${eventId}`);
-        const savedTimeRemaining = sessionStorage.getItem(`time_remaining_${eventId}`);
-        
-        if (savedTimerStatus) {
-          console.log("Restoring timer state from session storage on page refresh");
-          
-          // Restore timer status if valid
-          if (['active', 'paused', 'inactive', 'between_rounds'].includes(savedTimerStatus)) {
-            console.log(`Restoring status: ${savedTimerStatus}`);
-            setTimerStatus(savedTimerStatus as any);
-          }
-          
-          // Restore timer values if available
-          if (savedTimeRemaining) {
-            const savedTime = parseInt(savedTimeRemaining, 10);
-            if (!isNaN(savedTime) && savedTime > 0) {
-              console.log(`Restoring time remaining: ${savedTime}`);
-              setTimeRemaining(savedTime);
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Error restoring timer state:", err);
-      }
-    }
-  }, [eventId, timerState, isLoading]);
-
-  // Save current timer state to session storage
-  useEffect(() => {
-    if (!isEventActive) return;
-    
-    try {
-      if (timerStatus) {
-        sessionStorage.setItem(`timer_status_${eventId}`, timerStatus);
-      }
-      
-      if (timeRemaining > 0) {
-        sessionStorage.setItem(`time_remaining_${eventId}`, timeRemaining.toString());
-      }
-      
-      if (timerState) {
-        sessionStorage.setItem(`timer_state_${eventId}`, JSON.stringify({
-          current_round: currentRound,
-          has_timer: true
-        }));
-      }
-    } catch (err) {
-      console.error("Error saving timer state to session storage:", err);
-    }
-  }, [eventId, timerStatus, timeRemaining, currentRound, timerState, isEventActive]);
+    return () => {
+      clearBreakTimerInterval();
+    };
+  }, [clearBreakTimerInterval]);
 
   const handleUpdateDuration = useCallback(() => {
     // Prepare data object only with values that changed
@@ -634,7 +643,6 @@ const EventTimer = ({
           'PUT',
           updateData
         )
-        // Add .then() to handle successful API response
         .then(updatedTimerData => {
           if (updatedTimerData && updatedTimerData.timer) {
             console.log("Duration update successful, updating frontend state:", updatedTimerData);
@@ -654,13 +662,7 @@ const EventTimer = ({
                 status: updatedTimerData.status || 'inactive',
                 time_remaining: updatedTimerData.time_remaining || 0
               };
-              // Store the updated state in session storage immediately
-              try {
-                sessionStorage.setItem(`timer_data_${eventId}`, JSON.stringify(newState));
-                sessionStorage.setItem(`timer_data_timestamp_${eventId}`, Date.now().toString());
-              } catch (err) {
-                 console.error("Error saving updated timer state to session storage:", err);
-              }
+              
               return newState;
             });
              // Directly update roundDuration state used elsewhere
@@ -682,15 +684,7 @@ const EventTimer = ({
                // Clear the existing interval so the useEffect picks up the change
                // and restarts the countdown correctly.
                clearTimerInterval(); 
-             } else if (timerStatus === 'paused') {
-                // If paused, update the displayed time based on new duration?
-                // For simplicity, let's just update the underlying roundDuration.
-                // The new duration will apply when resumed.
-                // We already setRoundDuration above.
              }
-            // ------------------------------------------------
-            
-            // Update the display value in the settings dialog immediately for feedback
             
           } else {
             console.warn("Duration update API call succeeded but returned unexpected data:", updatedTimerData);
@@ -709,10 +703,7 @@ const EventTimer = ({
         // Close the dialog if no changes were made
         setIsSettingsOpen(false); 
     }
-    // Move setIsSettingsOpen(false) inside the .then() and .catch() blocks, 
-    // and the 'else' block, so it only closes after action or if no action needed.
-    //setIsSettingsOpen(false); // REMOVED FROM HERE
-  }, [handleApiAction, newDuration, newBreakDuration, timerState, eventId, clearTimerInterval, timerStatus]);
+  }, [handleApiAction, newDuration, newBreakDuration, timerState, clearTimerInterval, timerStatus]);
 
   const openSettingsDialog = () => {
     // Set initial slider values from current timer state
@@ -802,6 +793,13 @@ const EventTimer = ({
                 <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2, fontSize: { xs: '0.65rem', sm: '0.8rem' } }}> 
                   Break Time - Round {nextRoundInfo || '-'} starting soon.
                 </Typography>
+                <Typography 
+                  color="primary"
+                  variant="body2" 
+                  sx={{ fontWeight: 600, mt: 0, fontSize: { xs: '0.7rem', sm: '0.8rem' } }} 
+                >
+                  {formatTime(breakTimeRemaining)}
+                </Typography>
               </Box>
             ) : isActive && currentRoundSchedule ? (
               <Box>
@@ -827,13 +825,13 @@ const EventTimer = ({
               </Box>
             ) : isEnded ? (
               <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.8rem' } }}>Event Finished - Save your selections!</Typography>
+            ) : timerStatus === 'inactive' ? (
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.8rem' } }}>Event will be starting shortly</Typography>
             ) : currentRound > 0 ? (
               <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2, fontSize: { xs: '0.65rem', sm: '0.8rem' } }}> 
                 {currentRoundSchedule ? `Round ${currentRound}` : 'Break Round - grab a snack :)'} 
                 {isActive && currentRoundSchedule ? formatTime(timeRemaining) : (timerStatus === 'paused' && currentRoundSchedule ? ' (Paused)' : '')}
               </Typography>
-            ) : timerStatus === 'inactive' ? (
-              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.8rem' } }}>Waiting for event to start...</Typography>
             ) : (
               <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.8rem' } }}>Waiting for round...</Typography>
             )}
@@ -985,7 +983,7 @@ const EventTimer = ({
                       fontSize: { xs: '0.75rem', sm: '0.9rem'}
                     }}
                   >
-                    Round {currentRound || '-'}
+                    {isBreakTime ? 'Break Time' : `Round ${currentRound || '-'}`}
                   </Typography>
                 )}
               </Box>
@@ -1023,7 +1021,7 @@ const EventTimer = ({
                 transform: 'translateX(-50%)',
               }}
             >
-              {isEnded ? '--:--' : (isActive || isPaused ? formatTime(timeRemaining) : (isBreakTime ? 'Break Time' : '--:--'))}
+              {isEnded ? '--:--' : (isActive || isPaused ? formatTime(timeRemaining) : (isBreakTime ? formatTime(breakTimeRemaining) : '--:--'))}
             </Typography>
             
             {/* Box 3: Controls (Switch, Icons) (RIGHT) */}
@@ -1037,7 +1035,7 @@ const EventTimer = ({
                 zIndex: 2,
                 flex: '0 1 auto'
             }}>
-              {isPaused && (
+              {(!isActive || isBreakTime) && !isPaused && (
               <Tooltip title="Settings">
                 <IconButton 
                   size="small" 
@@ -1087,7 +1085,7 @@ const EventTimer = ({
               }}
             >
               {/* --- ACTIVE OR BETWEEN ROUNDS STATE --- */}
-              {(isActive || isBreakTime) && currentRound <= 10 && (
+              {(isActive || isBreakTime) && (
                 <>
                   {/* End Round Button: Show only if active */}
                   {isActive && (
@@ -1127,7 +1125,7 @@ const EventTimer = ({
               )}
                
                {/* --- PAUSED STATE --- */}
-               {isPaused && currentRound <= 10 && (
+               {isPaused && (
                  <Button
                    variant="contained"
                    color="primary"
@@ -1145,7 +1143,7 @@ const EventTimer = ({
                )}
                
                 {/* --- INACTIVE or BETWEEN ROUNDS STATE --- */}
-                {(timerStatus === 'inactive' || timerStatus === 'break_time') && currentRound < 10 && (
+                {(timerStatus === 'inactive' || timerStatus === 'break_time') && (
                   <Button
                     variant="contained"
                     color="primary"
@@ -1159,7 +1157,7 @@ const EventTimer = ({
                     }}
                   >
                     {timerStatus === 'break_time' ? 
-                      'Start Next Round' :  // Always show this text during break
+                      `Start Round ${currentRound + 1}` :
                       'Start Round'}
                   </Button>
                 )}
