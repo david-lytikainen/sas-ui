@@ -125,6 +125,8 @@ const EventTimer = ({
     
     const fetchedStatus = data.status ?? (data.timer?.is_paused ? 'paused' : (data.timer?.round_start_time ? 'active' : 'inactive'));
     setTimerStatus(fetchedStatus);
+
+    // console.log('top of processTimerData', fetchedStatus, data.timer?.round_start_time)
   
     if (timerStatus === 'break_time' && fetchedStatus !== 'break_time') {
       clearBreakTimerInterval();
@@ -520,7 +522,6 @@ const EventTimer = ({
   const handleNextRound = useCallback(() => {
     clearTimerInterval();
     clearBreakTimerInterval();
-    setBreakTimeRemaining(90)
 
     handleApiAction('End round', 'end')
       .then((result) => {
@@ -531,7 +532,7 @@ const EventTimer = ({
         } else {
           setTimerStatus('break_time');
           setTimeRemaining(0);
-          setBreakTimeRemaining(0);
+          setBreakTimeRemaining(90);
           if (result && result.current_round) {
             setCurrentRound(Number(result.current_round));
           } else {
@@ -573,7 +574,7 @@ const EventTimer = ({
                 setTimerStatus('break_time');
                 setTimeRemaining(0);
                 setNotifiedZero(true);
-                setBreakTimeRemaining(90);
+                // setBreakTimeRemaining(90);
               }
             }
             return 0;
@@ -793,13 +794,15 @@ const EventTimer = ({
                 <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2, fontSize: { xs: '0.65rem', sm: '0.8rem' } }}> 
                   Break Time - Round {nextRoundInfo || '-'} starting soon.
                 </Typography>
-                <Typography 
-                  color="primary"
-                  variant="body2" 
-                  sx={{ fontWeight: 600, mt: 0, fontSize: { xs: '0.7rem', sm: '0.8rem' } }} 
-                >
-                  {formatTime(breakTimeRemaining)}
-                </Typography>
+                {breakTimeRemaining !== 0 && (
+                  <Typography 
+                    color="primary"
+                    variant="body2" 
+                    sx={{ fontWeight: 600, mt: 0, fontSize: { xs: '0.7rem', sm: '0.8rem' } }} 
+                  >
+                    {formatTime(breakTimeRemaining)}
+                  </Typography>
+                )}
               </Box>
             ) : isActive && currentRoundSchedule ? (
               <Box>
