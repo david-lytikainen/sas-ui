@@ -259,23 +259,7 @@ const EventList = () => {
     birthday: '',
     church: '',
   });
-
-  const breakMessages = [
-    "Break round - grab a snack! 🍎",
-    "No match this round. Take a break! 🛋️",
-    "Time to stretch your legs! 🤸‍♂️",
-    "Enjoy a quick rest! 😌",
-    "Refill your drink and relax! 🥤",
-    "Chat with someone new! 💬",
-    "Take a breather, next round soon! 🌬️",
-    "Perfect time for a bathroom break! 🚻",
-  ];
-
-  function getRandomBreakMessage(roundNum: number) {
-    // Optionally, use roundNum to make it deterministic per round
-    // For true randomness each render, use Math.random()
-    return breakMessages[roundNum % breakMessages.length];
-  }
+  const [currentRounds, setCurrentRounds] = useState<Record<number, number>>({});
 
   const handleExportAllMatches = () => {
     // Use filtered matches if search is active, otherwise use all matches
@@ -2468,7 +2452,10 @@ const EventList = () => {
                           eventId={event.id} 
                           isAdmin={canManageEvent(event)} 
                           eventStatus={event.status} 
-                          userSchedule={scheduleForTimer} 
+                          userSchedule={scheduleForTimer}
+                          onRoundChange={(round) => {
+                            setCurrentRounds(prev => ({...prev, [event.id]: round }));
+                          }}
                         />
                       );
                     })()}
@@ -2570,13 +2557,17 @@ const EventList = () => {
                               const roundNum = i + 1;
                               const item = userSchedules[event.id].find(si => si.round === roundNum);
                               const isLast = i === Number(event.num_rounds) - 1;
+                              const isCurrentRound = currentRounds[event.id] === roundNum && event.status === 'In Progress';
                               const cardSx = {
                                 mb: isLast ? 0 : 1, // theme.spacing(1) = 8px
                                 p: { xs: 0.5, sm: 0.75 },
                                 borderLeft: '3px solid',
-                                borderColor: theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
+                                borderColor: isCurrentRound ? theme.palette.success.main : theme.palette.mode === 'dark' ? 'primary.dark' : 'primary.light',
                                 borderRadius: '4px',
-                                backgroundColor: theme.palette.action.hover,
+                                backgroundColor: isCurrentRound ? (theme.palette.mode === 'dark' ? theme.palette.success.dark + '33' : theme.palette.success.light + '33') : theme.palette.action.hover,
+                                transition: 'all 0.2s ease-in-out',
+                                transform: isCurrentRound ? 'scale(1.01)' : 'scale(1)',
+                                boxShadow: isCurrentRound ? theme.shadows[2] : 'none'
                               };
                               if (!item || !item.partner_id) {
                                 // Break round card
@@ -2588,7 +2579,7 @@ const EventList = () => {
                                           Round {roundNum} — Break Round
                                         </Typography>
                                         <Typography variant="body2" color="text.secondary">
-                                          {getRandomBreakMessage(roundNum)}
+                                          Break time - grab a snack!
                                         </Typography>
                                       </Grid>
                                     </Grid>
@@ -2691,7 +2682,7 @@ const EventList = () => {
                             )}
                           </>
                         ) : (
-                          <Typography variant="body2" color="text.secondary">Your schedule for this event is not yet available or you were not checked in.</Typography>
+                          <Typography variant="body2" color="text.secondary">Your schedule will be populated once the event starts.</Typography>
                         )}
                       </Paper>
                     </Collapse>

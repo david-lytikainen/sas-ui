@@ -27,11 +27,28 @@ import {
 import axios from 'axios';
 import { ScheduleItem, TimerState } from '../../types/event';
 
+const breakMessages = [
+    "Break round - grab a snack! 🍎",
+    "No match this round. Take a break! 🛋️",
+    "Time to stretch your legs! 🤸‍♂️",
+    "Enjoy a quick rest! 😌",
+    "Refill your drink and relax! 🥤",
+    "Chat with someone new! 💬",
+    "Take a breather, next round soon! 🌬️",
+    "Perfect time for a bathroom break! 🚻",
+];
+
+function getRandomBreakMessage(roundNum: number) {
+    if (roundNum <= 0) return breakMessages[0];
+    return breakMessages[Math.floor(Math.random() * breakMessages.length)];
+}
+
 interface EventTimerProps {
   eventId: number;
   isAdmin: boolean;
   eventStatus?: string;
   userSchedule?: ScheduleItem[];
+  onRoundChange?: (round: number) => void;
 }
 
 const formatTime = (seconds: number): string => {
@@ -44,7 +61,8 @@ const EventTimer = ({
   eventId, 
   isAdmin, 
   eventStatus = 'In Progress', 
-  userSchedule 
+  userSchedule,
+  onRoundChange
 }: EventTimerProps): React.ReactElement | null => {
   const theme = useTheme();
 
@@ -64,6 +82,7 @@ const EventTimer = ({
   const [showTimerEndAlert, setShowTimerEndAlert] = useState<boolean>(false);
   const [statusBeforePause, setStatusBeforePause] = useState<'active' | 'break_time' | null>(null);
   const [breakTimeRemaining, setBreakTimeRemaining] = useState<number>(0);
+  const [currentBreakMessage, setCurrentBreakMessage] = useState<string>('');
   
   const lastFetchTimeRef = useRef<number>(Date.now());
   const timerAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -117,6 +136,21 @@ const EventTimer = ({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (onRoundChange) {
+      onRoundChange(currentRound);
+    }
+  }, [currentRound, onRoundChange]);
+
+  useEffect(() => {
+    const isPersonalBreakRound = userSchedule && currentRound > 0 && !userSchedule.find(item => item.round === currentRound);
+    const isGlobalBreak = timerStatus === 'break_time';
+
+    if (isGlobalBreak || isPersonalBreakRound) {
+      setCurrentBreakMessage(getRandomBreakMessage(currentRound));
+    }
+  }, [currentRound, userSchedule, timerStatus]);
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
@@ -769,8 +803,8 @@ const EventTimer = ({
           sx={{ 
             display: 'flex',
             alignItems: 'center',
-            minHeight: { xs: '30px', sm: '36px'},
-            p: { xs: 0.5, sm: 1 }, 
+            minHeight: { xs: '40px', sm: '48px'},
+            p: { xs: 1, sm: 1.5 }, 
             ml: { xs: 0, sm: 0.5 }, 
             mr: { xs: 0, sm: 0.5 }, 
             borderRadius: '4px', 
@@ -784,21 +818,21 @@ const EventTimer = ({
             sx={{ 
               mr: { xs: 0.5, sm: 1 }, 
               color: isActive ? theme.palette.primary.main : isBreakTime ? theme.palette.info.main : theme.palette.text.secondary,
-              fontSize: { xs: '0.9rem', sm: '1.1rem' }, 
+              fontSize: { xs: '1.1rem', sm: '1.3rem' }, 
               flexShrink: 0,
             }} 
           />
           <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: 'center' }}>
             {isBreakTime ? (
               <Box>
-                <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2, fontSize: { xs: '0.65rem', sm: '0.8rem' } }}> 
-                  Break Time - Round {nextRoundInfo || '-'} starting soon.
+                <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2, fontSize: { xs: '0.8rem', sm: '0.95rem' } }}> 
+                  {currentBreakMessage}
                 </Typography>
                 {breakTimeRemaining !== 0 && (
                   <Typography 
                     color="primary"
                     variant="body2" 
-                    sx={{ fontWeight: 600, mt: 0, fontSize: { xs: '0.7rem', sm: '0.8rem' } }} 
+                    sx={{ fontWeight: 600, mt: 0, fontSize: { xs: '0.85rem', sm: '0.95rem' } }} 
                   >
                     {formatTime(breakTimeRemaining)}
                   </Typography>
@@ -806,10 +840,10 @@ const EventTimer = ({
               </Box>
             ) : isActive && currentRoundSchedule ? (
               <Box>
-                <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2, fontSize: { xs: '0.65rem', sm: '0.8rem' } }}> 
+                <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2, fontSize: { xs: '0.8rem', sm: '0.95rem' } }}> 
                   Round {currentRound}
                 </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: 'block', fontSize: { xs: '0.55rem', sm: '0.7rem' } }}> 
+                <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: 'block', fontSize: { xs: '0.7rem', sm: '0.85rem' } }}> 
                   {currentRoundSchedule ? 
                     `Table ${currentRoundSchedule.table} with ${currentRoundSchedule.partner_name}` : 
                     'Loading schedule...'
@@ -827,16 +861,16 @@ const EventTimer = ({
                 )} */}
               </Box>
             ) : isEnded ? (
-              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.8rem' } }}>Event Finished - Save your selections!</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', sm: '0.95rem' } }}>Event Finished - Submit your selections!</Typography>
             ) : timerStatus === 'inactive' ? (
-              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.8rem' } }}>Event will be starting shortly</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', sm: '0.95rem' } }}>Event will be starting shortly!</Typography>
             ) : currentRound > 0 ? (
-              <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2, fontSize: { xs: '0.65rem', sm: '0.8rem' } }}> 
-                {currentRoundSchedule ? `Round ${currentRound}` : 'Break Round - grab a snack :)'} 
+              <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2, fontSize: { xs: '0.8rem', sm: '0.95rem' } }}> 
+                {currentRoundSchedule ? `Round ${currentRound}` : currentBreakMessage} 
                 {isActive && currentRoundSchedule ? formatTime(timeRemaining) : (timerStatus === 'paused' && currentRoundSchedule ? ' (Paused)' : '')}
               </Typography>
             ) : (
-              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.65rem', sm: '0.8rem' } }}>Waiting for round...</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', sm: '0.95rem' } }}>Waiting for round...</Typography>
             )}
           </Box>
         </Box>
@@ -908,7 +942,7 @@ const EventTimer = ({
             sx={{
               display: 'flex',
               width: '100%',
-              py: { xs: 0.5, sm: 1 },
+              py: { xs: 1, sm: 1.5 },
               borderRadius: '6px',
               bgcolor: isAlmostDone ? theme.palette.error.light + '22' :
                       isActive ? theme.palette.primary.light + '22' :
@@ -925,7 +959,7 @@ const EventTimer = ({
               position: 'relative',
               overflow: 'hidden',
               transition: 'background-color 0.3s ease, border-color 0.3s ease',
-              px: { xs: 0.75, sm: 1 },
+              px: { xs: 1, sm: 1.5 },
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between'
@@ -967,12 +1001,12 @@ const EventTimer = ({
                         isPaused ? theme.palette.warning.main :
                         isBreakTime ? theme.palette.info.main :
                         theme.palette.text.secondary,
-                  fontSize: { xs: '1rem', sm: '1.2rem' }
+                  fontSize: { xs: '1.2rem', sm: '1.4rem' }
                 }}
               />
               <Box>
                 {isEnded ? (
-                  <Typography variant="h6" sx={{ fontWeight: 500, lineHeight: 1.2, color: theme.palette.text.primary, fontSize: { xs: '0.7rem', sm: '0.9rem'} }}>
+                  <Typography variant="h6" sx={{ fontWeight: 500, lineHeight: 1.2, color: theme.palette.text.primary, fontSize: { xs: '0.9rem', sm: '1.1rem'} }}>
                     Finished
                   </Typography>
                 ) : (
@@ -983,7 +1017,7 @@ const EventTimer = ({
                       lineHeight: 1.2,
                       color: theme.palette.text.primary,
                       textAlign: 'left',
-                      fontSize: { xs: '0.75rem', sm: '0.9rem'}
+                      fontSize: { xs: '0.9rem', sm: '1.1rem'}
                     }}
                   >
                     {isBreakTime ? 'Break Time' : `Round ${currentRound || '-'}`}
@@ -1010,8 +1044,8 @@ const EventTimer = ({
                   '100%': { opacity: 1 },
                 },
                 fontSize: isBreakTime
-                  ? { xs: '1.1rem', sm: '1.3rem', md: '1.5rem' } 
-                  : { xs: '1.5rem', sm: '2rem', md: '2.2rem' },
+                  ? { xs: '1.4rem', sm: '1.7rem', md: '1.9rem' } 
+                  : { xs: '1.8rem', sm: '2.4rem', md: '2.8rem' },
                 my: 0,
                 mx: 'auto',
                 flex: '0 0 auto',
@@ -1094,7 +1128,7 @@ const EventTimer = ({
                   {isActive && (
                     <Button
                       variant="outlined"
-                      color="secondary"
+                      color="primary"
                       startIcon={<SkipNext sx={{ fontSize: { xs: '0.8rem', sm: '0.9rem'}}}/>}
                       onClick={handleNextRound}
                       size="small" 
