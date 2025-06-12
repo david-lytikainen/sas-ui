@@ -1833,34 +1833,6 @@ const EventList = () => {
     }
   };
 
-  const handleViewAllMatchesClick = async (event: Event) => {
-    setSelectedEventForAllEventMatches(event);
-    setAllEventMatchesLoading(true);
-    setAllEventMatchesError(null);
-    setAllEventMatches([]);
-    
-    // Reset search term
-    setMatchesSearchTerm('');
-    
-    try {
-      const response = await eventsApi.getAllMatchesForEvent(event.id.toString());
-      const sortedMatches = response.matches.sort((a: MatchPair, b: MatchPair) => {
-        const comparison = a.user1_name.localeCompare(b.user1_name);
-        if (comparison === 0) {
-          return a.user2_name.localeCompare(b.user2_name);
-        }
-        return comparison;
-      });
-      setAllEventMatches(sortedMatches);
-      setFilteredMatches(sortedMatches); // Initialize filtered data
-    } catch (err: any) {
-      setAllEventMatchesError(err.message || 'Failed to load all event matches.');
-    } finally {
-      setAllEventMatchesLoading(false);
-      setViewAllEventMatchesDialogOpen(true);
-    }
-  };
-
   // Handler to open waitlist dialog and fetch data
   const handleViewWaitlistClick = async (event: Event) => {
     try {
