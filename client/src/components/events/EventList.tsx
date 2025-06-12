@@ -38,7 +38,6 @@ import {
   Divider,
   Snackbar,
   SnackbarCloseReason,
-  CircularProgress,
   Autocomplete,
 } from '@mui/material';
 import {
@@ -70,26 +69,7 @@ import { useAuth } from '../../context/AuthContext';
 import { eventsApi } from '../../services/api';
 import { Event, EventStatus, ScheduleItem } from '../../types/event';
 import EventTimer from './EventTimer';
-import MatchesDialog from './MatchesDialog';
 import { churchOptions } from '../../constants/churchOptions';
-
-
-interface Match {
-  id: number;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  age: number;
-  gender: string;
-}
-
-interface MatchPair {
-  user1_name: string;
-  user1_email: string;
-  user2_name: string;
-  user2_email: string;
-}
 
 const EventList = () => {
   const { events: contextEvents, createEvent, refreshEvents, isRegisteredForEvent, filteredEvents } = useEvents(); // Destructure filteredEvents
@@ -180,13 +160,6 @@ const EventList = () => {
   // ADD State to track if the selection window is confirmed closed for an event
   const [selectionWindowClosedError, setSelectionWindowClosedError] = useState<Record<number, boolean>>({});
 
-  const [viewMatchesDialogOpen, setViewMatchesDialogOpen] = useState<boolean>(false);
-  const [selectedEventIdForMatches, setSelectedEventIdForMatches] = useState<string | null>(null);
-  // Assuming Match interface is imported or defined above this component
-  const [currentMatches, setCurrentMatches] = useState<Match[]>([]);
-  const [matchesLoading, setMatchesLoading] = useState<boolean>(false);
-  const [matchesError, setMatchesError] = useState<string | null>(null);
-
   // Add state for tables and rounds input
   const [numTables, setNumTables] = useState<number>(10);
   const [numRounds, setNumRounds] = useState<number>(10);
@@ -212,9 +185,6 @@ const EventList = () => {
   // Add state for the waitlist confirmation dialog
   const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false);
   const [eventForWaitlist, setEventForWaitlist] = useState<Event | null>(null);
-
-  // Add search state for matches dialog
-  const [filteredMatches, setFilteredMatches] = useState<MatchPair[]>([]);
 
   // Add search state for registered users dialog  
   const [registeredUsersSearchTerm, setRegisteredUsersSearchTerm] = useState<string>('');
@@ -294,28 +264,6 @@ const EventList = () => {
   // Update the formatDate function
   const formatDate = (dateString: string) => {
     return formatUTCToLocal(dateString, true);
-  };
-
-  const fetchMatchesForEvent = async (eventId: string) => {
-    setMatchesLoading(true);
-    setMatchesError(null);
-    setCurrentMatches([]);
-    try {
-      const response = await eventsApi.getMyMatches(eventId);
-      setCurrentMatches(response.matches); 
-    } catch (err: any) {
-      setMatchesError(err.message || 'Failed to load matches.');
-    }
-    setMatchesLoading(false);
-  };
-
-  // ADDED: Handler for clicking the "View My Matches" button
-  const handleViewMatchesClick = (event: Event) => {
-    setSelectedEventIdForMatches(event.id.toString());
-    // It's better to store the whole event or just its name for the dialog title
-    // For simplicity, I'll assume we can find the event again from 'events' array or pass name
-    setViewMatchesDialogOpen(true);
-    fetchMatchesForEvent(event.id.toString());
   };
 
   contextEvents.map((contextEvent: any) => {
@@ -761,31 +709,6 @@ const EventList = () => {
           </Button>
         </Box>
       );
-    }
-    
-    // Logic for Completed events 
-    if (event.status === 'Completed') {
-      if (isUserRegistered && registrationStatus === 'Checked In') {
-        const isCurrentUserAttendee = user && !isAdmin() && !isOrganizer();
-        return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }}> 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start' }}> 
-              <Chip label="Event Ended" color="success" icon={<CheckInIcon />} size="small" sx={{ alignSelf: 'flex-start' }}/>
-              {isCurrentUserAttendee &&  isAdmin() && (
-                <Button size="small" variant="contained" color="primary" onClick={() => handleViewMatchesClick(event)} sx={{ mt: 0.5, alignSelf: 'flex-start' }}>
-                  View My Matches
-                </Button>
-              )}
-            </Box>
-          </Box>
-        );
-      } else if (isUserRegistered) {
-        return (
-            <Chip label="Registered (Event Ended)" size="small" sx={{ alignSelf: 'flex-start' }} />
-        );
-      } else {
-        return <Chip label="Event Ended" size="small" sx={{ alignSelf: 'flex-start' }} />;
-      }
     }
 
     // Standard Sign Up / Join Waitlist button logic refined
@@ -3287,23 +3210,6 @@ const EventList = () => {
            Enable browser notifications for event timer alerts
          </Alert>
        </Snackbar>
-
-      {/* ADDED: Matches Dialog */}
-      {selectedEventIdForMatches && (
-        <MatchesDialog
-          open={viewMatchesDialogOpen}
-          onClose={() => {
-            setViewMatchesDialogOpen(false);
-            setSelectedEventIdForMatches(null); // Reset when closing
-            setCurrentMatches([]);
-            setMatchesError(null);
-          }}
-          eventName={filteredEvents.find(e => e.id.toString() === selectedEventIdForMatches)?.name}
-          matches={currentMatches}
-          loading={matchesLoading}
-          error={matchesError}
-        />
-      )}
 
       {/* ADD: Edit Event Dialog */}
       <Dialog open={editEventDialogOpen} onClose={() => setEditEventDialogOpen(false)} maxWidth="sm" fullWidth>
