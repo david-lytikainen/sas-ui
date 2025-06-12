@@ -213,14 +213,7 @@ const EventList = () => {
   const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false);
   const [eventForWaitlist, setEventForWaitlist] = useState<Event | null>(null);
 
-  // State for "View All Matches"
-  const [viewAllEventMatchesDialogOpen, setViewAllEventMatchesDialogOpen] = useState<boolean>(false);
-  const [selectedEventForAllEventMatches, setSelectedEventForAllEventMatches] = useState<Event | null>(null);
-  const [allEventMatches, setAllEventMatches] = useState<MatchPair[]>([]);
-  const [allEventMatchesError, setAllEventMatchesError] = useState<string | null>(null);
-
   // Add search state for matches dialog
-  const [matchesSearchTerm, setMatchesSearchTerm] = useState<string>('');
   const [filteredMatches, setFilteredMatches] = useState<MatchPair[]>([]);
 
   // Add search state for registered users dialog  
@@ -260,45 +253,6 @@ const EventList = () => {
     church: '',
   });
   const [currentRounds, setCurrentRounds] = useState<Record<number, number>>({});
-
-  const handleExportAllMatches = () => {
-    // Use filtered matches if search is active, otherwise use all matches
-    const matchesToExport = matchesSearchTerm.trim() ? filteredMatches : allEventMatches;
-    
-    if (!selectedEventForAllEventMatches || matchesToExport.length === 0) {
-      setErrorMessage('No matches available to export.');
-      return;
-    }
-
-    try {
-      let csvContent = 'User 1 Name,User 1 Email,User 2 Name,User 2 Email\n';
-      matchesToExport.forEach(match => {
-        const row = [
-          `"${match.user1_name}"`,
-          `"${match.user1_email}"`,
-          `"${match.user2_name}"`,
-          `"${match.user2_email}"`,
-        ].join(',');
-        csvContent += row + '\n';
-      });
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      const filename = matchesSearchTerm.trim() 
-        ? `${selectedEventForAllEventMatches.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_filtered_matches.csv`
-        : `${selectedEventForAllEventMatches.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_all_matches.csv`;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error exporting all matches:', error);
-      setErrorMessage('Failed to export all matches.');
-    }
-  };
 
   // Helper functions for localStorage
   const getPersistedSelections = (eventId: number): Record<number, boolean> => {
@@ -1421,53 +1375,6 @@ const EventList = () => {
     });
 
     setFilteredPins(filtered);
-  };
-
-  // Add function to handle matches search
-  const handleMatchesSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
-    setMatchesSearchTerm(value);
-    filterMatches(value);
-  };
-
-  // Add function to filter matches
-  const filterMatches = (search: string) => {
-    if (!search || search.trim() === '') {
-      // Sort matches alphabetically by user1 name, then user2 name
-      const sorted = [...allEventMatches].sort((a: MatchPair, b: MatchPair) => {
-        const comparison = a.user1_name.localeCompare(b.user1_name);
-        if (comparison === 0) {
-          return a.user2_name.localeCompare(b.user2_name);
-        }
-        return comparison;
-      });
-      setFilteredMatches(sorted);
-      return;
-    }
-
-    const lowercaseSearch = search.toLowerCase().trim();
-    const filtered = allEventMatches.filter(match => {
-      const user1Name = match.user1_name.toLowerCase();
-      const user2Name = match.user2_name.toLowerCase();
-      const user1Email = match.user1_email.toLowerCase();
-      const user2Email = match.user2_email.toLowerCase();
-      
-      return user1Name.includes(lowercaseSearch) || 
-             user2Name.includes(lowercaseSearch) ||
-             user1Email.includes(lowercaseSearch) ||
-             user2Email.includes(lowercaseSearch);
-    });
-
-    // Sort filtered results
-    filtered.sort((a, b) => {
-      const comparison = a.user1_name.localeCompare(b.user1_name);
-      if (comparison === 0) {
-        return a.user2_name.localeCompare(b.user2_name);
-      }
-      return comparison;
-    });
-
-    setFilteredMatches(filtered);
   };
 
   // Add function to handle registered users search
