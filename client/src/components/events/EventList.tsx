@@ -217,7 +217,6 @@ const EventList = () => {
   const [viewAllEventMatchesDialogOpen, setViewAllEventMatchesDialogOpen] = useState<boolean>(false);
   const [selectedEventForAllEventMatches, setSelectedEventForAllEventMatches] = useState<Event | null>(null);
   const [allEventMatches, setAllEventMatches] = useState<MatchPair[]>([]);
-  const [allEventMatchesLoading, setAllEventMatchesLoading] = useState<boolean>(false);
   const [allEventMatchesError, setAllEventMatchesError] = useState<string | null>(null);
 
   // Add search state for matches dialog
@@ -3552,105 +3551,6 @@ const EventList = () => {
           <Button onClick={handleJoinWaitlistConfirm} color="primary" variant="contained">
             Yes, Join Waitlist
           </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* "View All Matches" Dialog */}
-      <Dialog
-        open={viewAllEventMatchesDialogOpen}
-        onClose={() => {
-          setViewAllEventMatchesDialogOpen(false);
-          setSelectedEventForAllEventMatches(null); // Reset event selection
-          setAllEventMatches([]); // Clear matches
-          setAllEventMatchesError(null); // Clear error
-        }}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>
-          {selectedEventForAllEventMatches?.name} - All Mutual Matches
-        </DialogTitle>
-        <DialogContent dividers sx={{ p: { xs: 1, sm: 2 } }}>
-          {allEventMatchesLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4, minHeight: '200px' }}>
-              <CircularProgress />
-              <Typography sx={{ ml: 2 }}>Loading all matches...</Typography>
-            </Box>
-          ) : allEventMatchesError ? (
-            <Alert severity="error" sx={{ m: 2 }}>{allEventMatchesError}</Alert>
-          ) : allEventMatches.length > 0 ? (
-            <Box sx={{ mt: 1 }}>
-              <Box sx={{ mb: 2 }}>
-                <TextField
-                  label="Search Matches"
-                  placeholder="Search by name or email..."
-                  variant="outlined"
-                  size="small"
-                  fullWidth
-                  value={matchesSearchTerm}
-                  onChange={handleMatchesSearchChange}
-                  InputProps={{
-                    startAdornment: (
-                      <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>
-                        🔍
-                      </Box>
-                    ),
-                  }}
-                  sx={{ mb: 2 }}
-                />
-              </Box>
-              <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="subtitle1">
-                  Showing {filteredMatches.length} of {allEventMatches.length} match pairs
-                </Typography>
-                {(isAdmin() || isOrganizer()) && (
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    onClick={handleExportAllMatches}
-                    startIcon={<DownloadIcon />}
-                    sx={{ whiteSpace: 'nowrap' }}
-                  >
-                    Export CSV
-                  </Button>
-                )}
-              </Box>
-              <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
-                <Table stickyHeader size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell><strong>User 1 Name</strong></TableCell>
-                      <TableCell><strong>User 1 Email</strong></TableCell>
-                      <TableCell><strong>User 2 Name</strong></TableCell>
-                      <TableCell><strong>User 2 Email</strong></TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredMatches.map((match, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{match.user1_name}</TableCell>
-                        <TableCell>{match.user1_email}</TableCell>
-                        <TableCell>{match.user2_name}</TableCell>
-                        <TableCell>{match.user2_email}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-          ) : (
-            <DialogContentText sx={{ textAlign: 'center', p: 3, minHeight: '100px' }}>
-              No mutual matches found for this event.
-            </DialogContentText>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ justifyContent: 'flex-end', p: 2 }}>
-          <Button onClick={() => {
-            setViewAllEventMatchesDialogOpen(false);
-            setSelectedEventForAllEventMatches(null);
-            setAllEventMatches([]);
-            setAllEventMatchesError(null);
-          }}>Close</Button>
         </DialogActions>
       </Dialog>
 
