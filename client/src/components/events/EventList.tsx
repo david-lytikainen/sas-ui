@@ -1092,21 +1092,6 @@ const EventList = () => {
               </Button>
             )}
 
-            {/* ADD "View All Event Matches" Button for Completed Events */}
-            {event.status === 'Completed' && (
-              <Button
-                variant="outlined"
-                size="small"
-                color="primary"
-                startIcon={<PeopleIcon />}
-                onClick={() => handleViewAllMatchesClick(event)}
-                fullWidth
-                sx={{ borderRadius: 1 }}
-              >
-                Show Matches
-              </Button>
-            )}
-
             <Grid container spacing={1} sx={{ mt: 0.5 }}>
               <Grid item xs={6}>
                 <Button
