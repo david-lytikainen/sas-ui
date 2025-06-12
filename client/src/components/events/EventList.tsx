@@ -793,9 +793,29 @@ const EventList = () => {
         </Box>
       );
     }
+
+    // Handle Cancelled status - allow re-registration
+    if (registrationStatus === 'Cancelled') {
+      if (event.status === 'Registration Open') {
+        return (
+          <Button 
+            variant="contained" 
+            color="primary" 
+            startIcon={<SignUpIcon />} 
+            onClick={() => handleSignUpClick(event.id)}
+            disabled={isRegistrationClosed(event)}
+            sx={{ width: { xs: '100%', sm: 'auto' }, alignSelf: {xs: 'stretch', sm: 'flex-start'} }}
+          >
+            Sign Up Again
+          </Button>
+        );
+      } else {
+        return <Chip label="Registration Cancelled" color="default" size="small" sx={{ alignSelf: 'flex-start' }} />;
+      }
+    }
     
-    // If registered (and not waitlisted) and event is not completed or in progress
-    if (isUserRegistered && registrationStatus !== 'Waitlisted' && event.status !== 'Completed' && event.status !== 'In Progress') {
+    // If registered (and not waitlisted or cancelled) and event is not completed or in progress
+    if (isUserRegistered && registrationStatus !== 'Waitlisted' && registrationStatus !== 'Cancelled' && event.status !== 'Completed' && event.status !== 'In Progress') {
       const chipLabel = registrationStatus === 'Checked In' ? 'Checked In' : 'Registered';
       const chipColor = registrationStatus === 'Checked In' ? 'success' : 'info';
       const chipIcon = registrationStatus === 'Checked In' ? <CheckInIcon /> : undefined;
@@ -825,17 +845,19 @@ const EventList = () => {
             </Box>
           </Box>
         );
-      } else if (isUserRegistered) {
+      } else if (isUserRegistered && registrationStatus !== 'Cancelled') {
         return (
             <Chip label="Registered (Event Ended)" size="small" sx={{ alignSelf: 'flex-start' }} />
         );
+      } else if (registrationStatus === 'Cancelled') {
+        return <Chip label="Registration Cancelled" color="default" size="small" sx={{ alignSelf: 'flex-start' }} />;
       } else {
         return <Chip label="Event Ended" size="small" sx={{ alignSelf: 'flex-start' }} />;
       }
     }
 
     // Standard Sign Up / Join Waitlist button logic refined
-    const isUserNotRegisteredOrWaitlisted = !isUserRegistered && registrationStatus !== 'Waitlisted';
+    const isUserNotRegisteredOrWaitlisted = !isUserRegistered && registrationStatus !== 'Waitlisted' && registrationStatus !== 'Cancelled';
 
     if (event.status === 'Registration Open' && isUserNotRegisteredOrWaitlisted) {
       return (
@@ -2371,7 +2393,7 @@ const EventList = () => {
                       {(() => {
                         const isUserRegistered = isRegisteredForEvent(event.id);
                         const registrationStatus = event.registration?.status;
-                        const canCheckIn = isUserRegistered && registrationStatus !== 'Checked In' && (event.status === 'Registration Open' || event.status === 'In Progress');
+                        const canCheckIn = isUserRegistered && registrationStatus !== 'Checked In' && registrationStatus !== 'Cancelled' && (event.status === 'Registration Open' || event.status === 'In Progress');
                         if (canCheckIn) {
                           return (
                             <Button
