@@ -141,7 +141,8 @@ const EventTimer = ({
     if (onRoundChange) {
       onRoundChange(currentRound);
     }
-  }, [currentRound, onRoundChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentRound]);
 
   useEffect(() => {
     const isPersonalBreakRound = userSchedule && currentRound > 0 && !userSchedule.find(item => item.round === currentRound);
