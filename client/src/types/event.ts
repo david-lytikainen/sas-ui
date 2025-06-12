@@ -28,7 +28,9 @@ export interface ScheduleItem {
   partner_id: number;
   partner_name: string;
   partner_age: number | null;
+  partner_email: string;
   event_speed_date_id: number;
+  match: boolean;
 }
 
 export interface TimerState {

@@ -63,6 +63,7 @@ import {
   Delete as DeleteIcon,
   People as PeopleIcon,
   CheckBox as CheckBoxIcon,
+  ContentCopy as ContentCopyIcon,
 } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
@@ -2059,6 +2060,41 @@ const EventList = () => {
     }
   };
 
+  const handleCopyEmail = async (email: string) => {
+    try {
+      await navigator.clipboard.writeText(email);
+    } catch (err) {
+      console.error('Failed to copy email:', err);
+    }
+  };
+
+  const getMatchMessage = (isMatch: boolean) => {
+    if (!user?.gender) return isMatch ? 'You matched! Reach out with:' : 'Not a match';
+    
+    if (isMatch) {
+      return 'You matched! Reach out with:';
+    }
+    
+    // No match messages
+    const messages = {
+      Male: [
+        'Not a match, head up king 👑',
+        'Not a match, stay royal 👑',
+        'Not a match, you shining tho 👑',
+        'Not a match, no problem 👑'
+      ],
+      Female: [
+        'Not a match, head up queen 👸',
+        'Not a match, stay royal 👸',
+        'Not a match, you shining tho 👸',
+        'Not a match, no problem 👸'
+      ]
+    };
+    
+    const genderMessages = messages[user.gender as 'Male' | 'Female'];
+    return genderMessages[Math.floor(Math.random() * genderMessages.length)];
+  };
+
   return (
     <>
       <Container maxWidth="lg" sx={{ pt: 4, pb: 14 }}>
@@ -2592,18 +2628,61 @@ const EventList = () => {
                                     <Grid container spacing={1} alignItems="center">
                                       <Grid item xs={12}>
                                         <Typography variant="subtitle2" component="div" gutterBottom={false} sx={{ fontWeight: 'bold', mb: 0.25 }}>
-                                          Round {item.round}
+                                          {event.status !== 'Completed' ? `Round ${item.round}` : item.partner_name}
                                         </Typography>
                                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                           <Box>
-                                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.1 }}>
-                                              Table: {item.table}
-                                            </Typography>
-                                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0 }}>
-                                              Partner: {item.partner_name} (Age: {item.partner_age || 'N/A'})
-                                            </Typography>
+                                            {event.status !== 'Completed' && (
+                                              <>
+                                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.1 }}>
+                                                  Table: {item.table}
+                                                </Typography>
+                                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0 }}>
+                                                  Partner: {item.partner_name} (Age: {item.partner_age || 'N/A'})
+                                                </Typography>
+                                              </>
+                                            )}
+                                            {event.status === 'Completed' && (
+                                              <Typography 
+                                                variant="body2" 
+                                                sx={{ 
+                                                  color: 'primary.main',
+                                                  mt: 0.5,
+                                                  fontWeight: 'medium'
+                                                }}
+                                              >
+                                                {getMatchMessage(item.match)}
+                                              </Typography>
+                                            )}
+                                            {event.status === 'Completed' && item.match && (
+                                              <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                                                <Box 
+                                                  component="span" 
+                                                  onClick={() => handleCopyEmail(item.partner_email)}
+                                                  sx={{ 
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    cursor: 'pointer',
+                                                    color: 'text.secondary',
+                                                    '&:hover': { opacity: 0.8 }
+                                                  }}
+                                                >
+                                                  <IconButton 
+                                                    size="small" 
+                                                    sx={{ 
+                                                      p: 0.25,
+                                                      mr: 1,
+                                                      color: 'inherit'
+                                                    }}
+                                                  >
+                                                    <ContentCopyIcon sx={{ fontSize: '0.9rem' }} />
+                                                  </IconButton>
+                                                  {item.partner_email}
+                                                </Box>
+                                              </Box>
+                                            )}
                                           </Box>
-                                          {item.event_speed_date_id && (
+                                          {event.status !== 'Completed' && item.event_speed_date_id && (
                                             <Box sx={{
                                               display: 'flex',
                                               gap: 0.75,
