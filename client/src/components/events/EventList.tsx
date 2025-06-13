@@ -2393,7 +2393,7 @@ const EventList = () => {
                               };
                               if (!item || !item.partner_id) {
                                 // Break round card
-                                return (
+                                return event.status !== 'Completed' && (
                                   <Box key={`break-round-${roundNum}`} sx={cardSx}>
                                     <Grid container spacing={1} alignItems="center">
                                       <Grid item xs={12}>
