@@ -28,8 +28,8 @@ import axios from 'axios';
 import { ScheduleItem, TimerState } from '../../types/event';
 
 const breakMessages = [
-    "Break round - grab a snack! 🍎",
-    "No match this round. Take a break! 🛋️",
+    "Grab a snack! 🍎",
+    "Take a break! 🛋️",
     "Time to stretch your legs! 🤸‍♂️",
     "Enjoy a quick rest! 😌",
     "Refill your drink and relax! 🥤",
@@ -148,8 +148,10 @@ const EventTimer = ({
     const isPersonalBreakRound = userSchedule && currentRound > 0 && !userSchedule.find(item => item.round === currentRound);
     const isGlobalBreak = timerStatus === 'break_time';
 
-    if (isGlobalBreak || isPersonalBreakRound) {
+    if (isPersonalBreakRound) {
       setCurrentBreakMessage(getRandomBreakMessage(currentRound));
+    } else if (isGlobalBreak) {
+      setCurrentBreakMessage("Break time - Next round starting soon!");
     }
   }, [currentRound, userSchedule, timerStatus]);
 
@@ -1045,8 +1047,8 @@ const EventTimer = ({
                   '100%': { opacity: 1 },
                 },
                 fontSize: isBreakTime
-                  ? { xs: '1.4rem', sm: '1.7rem', md: '1.9rem' } 
-                  : { xs: '1.8rem', sm: '2.4rem', md: '2.8rem' },
+                  ? { xs: '2.0rem', sm: '1.7rem', md: '1.9rem' } 
+                  : { xs: '2.8rem', sm: '2.4rem', md: '2.8rem' },
                 my: 0,
                 mx: 'auto',
                 flex: '0 0 auto',
