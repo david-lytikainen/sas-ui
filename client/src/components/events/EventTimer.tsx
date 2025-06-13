@@ -829,7 +829,7 @@ const EventTimer = ({
             {isBreakTime ? (
               <Box>
                 <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2, fontSize: { xs: '0.8rem', sm: '0.95rem' } }}> 
-                  {currentBreakMessage}
+                  Break Time - Round {nextRoundInfo || '-'} starting soon.
                 </Typography>
                 {breakTimeRemaining !== 0 && (
                   <Typography 

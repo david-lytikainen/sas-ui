@@ -2400,9 +2400,6 @@ const EventList = () => {
                                         <Typography variant="subtitle2" component="div" gutterBottom={false} sx={{ fontWeight: 'bold', mb: 0.25 }}>
                                           Round {roundNum} — Break Round
                                         </Typography>
-                                        <Typography variant="body2" color="text.secondary">
-                                          Break time - grab a snack!
-                                        </Typography>
                                       </Grid>
                                     </Grid>
                                   </Box>
