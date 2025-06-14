@@ -1869,13 +1869,19 @@ const EventList = () => {
         'Not a match, head up king 👑',
         'Not a match, stay royal 👑',
         'Not a match, you shining tho 👑',
-        'Not a match, no problem 👑'
+        'Not a match, no problem 👑',
+        'Not a match, still that guy 👑',
+        'Not a match, you still the prize 👑',
+        'Not a match, but your vibe’s elite 👑'
       ],
       Female: [
         'Not a match, head up queen 👸',
         'Not a match, stay royal 👸',
         'Not a match, you shining tho 👸',
-        'Not a match, no problem 👸'
+        'Not a match, no problem 👸',
+        'Not a match, stay glowing 👸',
+        'Not a match, royalty never settles 👸',
+        'Not a match, but your worth is not up for debate 👸'
       ]
     };
     
