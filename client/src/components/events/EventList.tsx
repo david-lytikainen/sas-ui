@@ -2895,7 +2895,7 @@ const EventList = () => {
               type="number"
               variant="outlined"
               value={numTables}
-              onChange={(e) => setNumTables(parseInt(e.target.value) || 1)}
+              onChange={(e) => setNumTables(e.target.value as any)}
               inputProps={{ min: 1 }}
               sx={{ mb: 2 }}
             />
@@ -2906,7 +2906,7 @@ const EventList = () => {
               type="number"
               variant="outlined"
               value={numRounds}
-              onChange={(e) => setNumRounds(parseInt(e.target.value) || 1)}
+              onChange={(e) => setNumRounds(e.target.value as any)}
               inputProps={{ min: 1 }}
             />
           </Box>

@@ -807,7 +807,10 @@ const EventTimer = ({
             display: 'flex',
             alignItems: 'center',
             minHeight: { xs: '40px', sm: '48px'},
-            p: { xs: 1, sm: 1.5 }, 
+            pt: { xs: 2, sm: 2.5 }, 
+            pb: { xs: 2, sm: 2.5 }, 
+            pl: { xs: 1.2, sm: 1.5 }, 
+            pr: { xs: 1.2, sm: 1.5 }, 
             ml: { xs: 0, sm: 0.5 }, 
             mr: { xs: 0, sm: 0.5 }, 
             borderRadius: '4px', 
@@ -819,7 +822,7 @@ const EventTimer = ({
         >
           <TimerIcon 
             sx={{ 
-              mr: { xs: 0.5, sm: 1 }, 
+              mr: { xs: 0.8, sm: 1 }, 
               color: isActive ? theme.palette.primary.main : isBreakTime ? theme.palette.info.main : theme.palette.text.secondary,
               fontSize: { xs: '1.1rem', sm: '1.3rem' }, 
               flexShrink: 0,
@@ -843,25 +846,26 @@ const EventTimer = ({
               </Box>
             ) : isActive && currentRoundSchedule ? (
               <Box>
-                <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2, fontSize: { xs: '0.8rem', sm: '0.95rem' } }}> 
-                  Round {currentRound}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: 'block', fontSize: { xs: '0.7rem', sm: '0.85rem' } }}> 
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.2, fontSize: { xs: '1rem', sm: '1.15rem' } }}> 
+                    Round {currentRound}
+                  </Typography>
+                  {isActive && timeRemaining <= 30 && (
+                    <Typography 
+                      color="primary"
+                      variant="body2" 
+                      sx={{ fontWeight: 600, fontSize: { xs: '0.9rem', sm: '1rem' } }} 
+                    >
+                      {formatTime(timeRemaining)}
+                    </Typography>
+                  )}
+                </Box>
+                <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: 'block', fontSize: { xs: '0.9rem', sm: '1rem' } }}> 
                   {currentRoundSchedule ? 
                     `Table ${currentRoundSchedule.table} with ${currentRoundSchedule.partner_name}` : 
                     'Loading schedule...'
                   }
                 </Typography>
-                {/* comment out time for attendees for now */}
-                {/* {isActive && (
-                  <Typography 
-                    color="primary"
-                    variant="body2" 
-                    sx={{ fontWeight: 600, mt: 0, fontSize: { xs: '0.7rem', sm: '0.8rem' } }} 
-                  >
-                    {formatTime(timeRemaining)} is active
-                  </Typography>
-                )} */}
               </Box>
             ) : isEnded ? (
               <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', sm: '0.95rem' } }}>Event Finished - Submit your selections!</Typography>
@@ -945,7 +949,7 @@ const EventTimer = ({
             sx={{
               display: 'flex',
               width: '100%',
-              py: { xs: 1, sm: 1.5 },
+              py: { xs: 2, sm: 2.5 },
               borderRadius: '6px',
               bgcolor: isAlmostDone ? theme.palette.error.light + '22' :
                       isActive ? theme.palette.primary.light + '22' :
@@ -1023,7 +1027,7 @@ const EventTimer = ({
                       fontSize: { xs: '0.9rem', sm: '1.1rem'}
                     }}
                   >
-                    {isBreakTime ? 'Break Time' : `Round ${currentRound || '-'}`}
+                    {isBreakTime ? 'Break' : `Round ${currentRound || '-'}`}
                   </Typography>
                 )}
               </Box>
@@ -1048,7 +1052,7 @@ const EventTimer = ({
                 },
                 fontSize: isBreakTime
                   ? { xs: '2.0rem', sm: '1.7rem', md: '1.9rem' } 
-                  : { xs: '2.8rem', sm: '2.4rem', md: '2.8rem' },
+                  : { xs: '2.1rem', sm: '2.1rem', md: '2.1rem' },
                 my: 0,
                 mx: 'auto',
                 flex: '0 0 auto',
