@@ -2509,11 +2509,11 @@ const EventList = () => {
                                 {attendeeSelectionError[event.id]}
                               </Alert>
                             )}
-                            {submittedEventIds.has(event.id) ? (
+                            {(event.status !== 'Completed' && submittedEventIds.has(event.id)) ? (
                                 <Typography variant="body2" color="success.main" sx={{ textAlign: 'center', mt: 1.5 }}>
                                     Your selections have been submitted. Thank you for attending! 🎉
                                 </Typography>
-                            ) : (
+                            ) : event.status !== 'Completed' && (
                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, mt: 1.5 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                     <Button
