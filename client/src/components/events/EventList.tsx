@@ -1872,7 +1872,7 @@ const EventList = () => {
         'Not a match, no problem 👑',
         'Not a match, still that guy 👑',
         'Not a match, you still the prize 👑',
-        'Not a match, but your vibe’s elite 👑'
+        'Not a match, but your vibe is elite 👑'
       ],
       Female: [
         'Not a match, head up queen 👸',
