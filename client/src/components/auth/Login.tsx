@@ -155,6 +155,11 @@ const Login = () => {
               {"Don't have an account? Sign Up"}
             </Link>
           </Box>
+          <Box sx={{ textAlign: 'center' }}>
+            <Link component={RouterLink} to="/forgot-password" variant="body2" sx={{ fontSize: '0.8rem'}}>
+              {"Forgot Password?"}
+            </Link>
+          </Box>
         </Box>
       </Paper>
     </Container>
