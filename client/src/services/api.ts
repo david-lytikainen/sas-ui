@@ -5,7 +5,7 @@ import { Event, ScheduleItem } from '../types/event';
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 
-const api = axios.create({
+const axiosInstance = axios.create({
     baseURL: API_BASE_URL,
     headers: {
         'Content-Type': 'application/json',
@@ -15,7 +15,7 @@ const api = axios.create({
 });
 
 // Request interceptor for API calls
-api.interceptors.request.use(
+axiosInstance.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
         if (token) {
@@ -29,7 +29,7 @@ api.interceptors.request.use(
 );
 
 // Response interceptor for API calls
-api.interceptors.response.use(
+axiosInstance.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
@@ -45,10 +45,10 @@ api.interceptors.response.use(
                 }
 
                 // Try to validate the token
-                const response = await api.get('/user/validate-token');
+                const response = await axiosInstance.get('/user/validate-token');
                 if (response.data && response.data.user) {
                     // Token is valid, retry the original request
-                    return api(originalRequest);
+                    return axiosInstance(originalRequest);
                 }
             } catch (refreshError) {
                 // If token refresh fails, just reject the error
@@ -64,7 +64,7 @@ api.interceptors.response.use(
 const realAuthApi = {
   login: async (email: string, password: string): Promise<AuthResponse> => {
     try {
-      const response = await api.post('/user/signin', { email, password }, { withCredentials: true });
+      const response = await axiosInstance.post('/user/signin', { email, password }, { withCredentials: true });
       const { token, user } = response.data;
       
       // Ensure token is properly formatted
@@ -120,7 +120,7 @@ const realAuthApi = {
     try {
       console.log('Sending registration data:', backendUserData);
       // Register the user
-      const response = await api.post('/user/signup', backendUserData);
+      const response = await axiosInstance.post('/user/signup', backendUserData);
       console.log('Registration response:', response.data);
       
       // After signup, log in to get the token
@@ -148,7 +148,7 @@ const realAuthApi = {
       }
 
       console.log('Validating token:', token);
-      const response = await api.get('/user/validate-token', {
+      const response = await axiosInstance.get('/user/validate-token', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -189,7 +189,7 @@ const realAuthApi = {
   
   updateUser: async (userId: string, userData: any) => {
     try {
-      const response = await api.patch(`/user/users/${userId}`, userData);
+      const response = await axiosInstance.patch(`/user/users/${userId}`, userData);
       return response.data.user;
     } catch (error) {
       console.error('Error updating user:', error);
@@ -207,6 +207,34 @@ const realAuthApi = {
     // This would call a backend endpoint to delete a user
     // For now, return success
     return { success: true };
+  },
+
+  forgotPassword: async (email: string): Promise<{ message: string }> => {
+    try {
+      const response = await axiosInstance.post('/user/forgot-password', { email });
+      return response.data;
+    } catch (error: any) {
+      // Avoid revealing if an email exists or not.
+      // For the frontend, we can treat it as a success.
+      // Log the actual error for developers.
+      console.error("Forgot password error:", error.response?.data || error.message);
+      // We are not re-throwing the error to the component
+      // to prevent showing specific errors to the user.
+      // The component will show a generic success message.
+      return { message: 'If an account with that email exists, a password reset link has been sent.' };
+    }
+  },
+
+  resetPassword: async (token: string, password: string): Promise<{ message: string }> => {
+    try {
+      const response = await axiosInstance.post(`/user/reset-password/${token}`, { password });
+      return response.data;
+    } catch (error: any) {
+      if (error.response && error.response.data) {
+        throw new Error(error.response.data.message || error.response.data.error || 'Password reset failed');
+      }
+      throw new Error('Password reset failed. Please try again.');
+    }
   }
 };
 
@@ -323,14 +351,14 @@ interface Match {
 
 const realEventsApi: EventsApi = {
   getAll: async () => {
-    const response = await api.get('/events');
+    const response = await axiosInstance.get('/events');
     console.log('getting events please...',response)
     return response.data;
   },
 
   getById: async (eventId: string) => {
     try {
-      const response = await api.get(`/events/${eventId}`);
+      const response = await axiosInstance.get(`/events/${eventId}`);
       return response.data;
     } catch (error: any) {
       console.error(`Error fetching event with ID ${eventId}:`, error);
@@ -346,32 +374,32 @@ const realEventsApi: EventsApi = {
       ...eventData,
       starts_at: eventData.starts_at && new Date(eventData.starts_at).toISOString()
     };
-    const response = await api.post('/events/create', eventDataWithTZ);
+    const response = await axiosInstance.post('/events/create', eventDataWithTZ);
     return response.data;
   },
 
   updateEvent: async (eventId: string, eventData: Partial<Event>): Promise<{ message: string, event: Event }> => {
-    const response = await api.put(`/events/${eventId}`, eventData);
+    const response = await axiosInstance.put(`/events/${eventId}`, eventData);
     return response.data;
   },
 
   deleteEvent: async (eventId: string): Promise<{ message: string }> => {
-    const response = await api.delete(`/events/${eventId}`);
+    const response = await axiosInstance.delete(`/events/${eventId}`);
     return response.data;
   },
 
   registerForEvent: async (eventId: string, body?: { join_waitlist: boolean }) => {
-    const response = await api.post(`/events/${eventId}/register`, body);
+    const response = await axiosInstance.post(`/events/${eventId}/register`, body);
     return response.data;
   },
 
   cancelRegistration: async (eventId: string) => {
-    const response = await api.post(`/events/${eventId}/cancel-registration`);
+    const response = await axiosInstance.post(`/events/${eventId}/cancel-registration`);
     return response.data;
   },
   
   checkIn: async (eventId: string, pin: string) => {
-    const response = await api.post(`/events/${eventId}/check-in`, { pin });
+    const response = await axiosInstance.post(`/events/${eventId}/check-in`, { pin });
     return response.data;
   },
 
@@ -379,7 +407,7 @@ const realEventsApi: EventsApi = {
     try {
       const token = localStorage.getItem('token'); // Get token from localStorage
   
-      const response = await api.get('/events', {
+      const response = await axiosInstance.get('/events', {
         headers: {
           Authorization: `Bearer ${token}`
         },
@@ -395,17 +423,17 @@ const realEventsApi: EventsApi = {
   },
   
   updateEventStatus: async (eventId: string, status: string) => {
-    const response = await api.patch(`/events/${eventId}/status`, { status });
+    const response = await axiosInstance.patch(`/events/${eventId}/status`, { status });
     return response.data;
   },
   
   getEventAttendeePins: async (eventId: string) => {
-    const response = await api.get(`/events/${eventId}/attendee-pins`);
+    const response = await axiosInstance.get(`/events/${eventId}/attendee-pins`);
     return { data: response.data };
   },
   
   getEventAttendees: async (eventId: string) => {
-    const response = await api.get(`/events/${eventId}/attendees`);
+    const response = await axiosInstance.get(`/events/${eventId}/attendees`);
     return { data: response.data };
   },
   
@@ -420,7 +448,7 @@ const realEventsApi: EventsApi = {
     church?: string
   }) => {
     try {
-      const response = await api.patch(`/events/${eventId}/attendees/${attendeeId}`, data);
+      const response = await axiosInstance.patch(`/events/${eventId}/attendees/${attendeeId}`, data);
       return response.data;
     } catch (error: any) {
       if (error.response?.data?.error) {
@@ -432,7 +460,7 @@ const realEventsApi: EventsApi = {
   
   getSchedule: async (eventId: string) => {
     try {
-      const response = await api.get(`/events/${eventId}/schedule`);
+      const response = await axiosInstance.get(`/events/${eventId}/schedule`);
       return response.data;
     } catch (error: any) {
       if (error.response?.data?.error) {
@@ -444,7 +472,7 @@ const realEventsApi: EventsApi = {
   
   getAllSchedules: async (eventId: string) => {
     try {
-      const response = await api.get(`/events/${eventId}/all-schedules`);
+      const response = await axiosInstance.get(`/events/${eventId}/all-schedules`);
       return response.data;
     } catch (error: any) {
       if (error.response?.data?.error) {
@@ -460,7 +488,7 @@ const realEventsApi: EventsApi = {
         num_tables: numTables,
         num_rounds: numRounds
       };
-      const response = await api.post(`/events/${eventId}/generate/schedules`, payload);
+      const response = await axiosInstance.post(`/events/${eventId}/generate/schedules`, payload);
       return response.data;
     } catch (error: any) {
       if (error.response?.data?.error) {
@@ -473,7 +501,7 @@ const realEventsApi: EventsApi = {
   resumeEvent: async (eventId: string) => {
     try {
       // Use the updateEventStatus method to set the event back to "In Progress"
-      const response = await api.patch(`/events/${eventId}/status`, { status: 'In Progress' });
+      const response = await axiosInstance.patch(`/events/${eventId}/status`, { status: 'In Progress' });
       return response.data;
     } catch (error: any) {
       if (error.response?.data?.error) {
@@ -487,12 +515,12 @@ const realEventsApi: EventsApi = {
     eventId: string, 
     selections: Array<{ event_speed_date_id: number; interested: boolean }>
   ) => {
-    const response = await api.post(`/events/${eventId}/speed-date-selections`, { selections });
+    const response = await axiosInstance.post(`/events/${eventId}/submit-selections`, { selections });
     return response.data;
   },
   getMyMatches: async (eventId: string) => {
     try {
-      const response = await api.get(`/events/${eventId}/my-matches`);
+      const response = await axiosInstance.get(`/events/${eventId}/my-matches`);
       return response.data; 
     } catch (error: any) {
       console.error(`Error fetching matches for event ${eventId}:`, error);
@@ -504,7 +532,7 @@ const realEventsApi: EventsApi = {
   },
   getAllMatchesForEvent: async (eventId: string) => {
     try {
-      const response = await api.get(`/events/${eventId}/all-matches`);
+      const response = await axiosInstance.get(`/events/${eventId}/all-matches`);
       return response.data;
     } catch (error: any) {
       console.error(`Error fetching all matches for event ${eventId}:`, error);
@@ -516,7 +544,7 @@ const realEventsApi: EventsApi = {
   },
   getEventWaitlist: async (eventId: string) => {
     try {
-      const response = await api.get(`/events/${eventId}/waitlist`);
+      const response = await axiosInstance.get(`/events/${eventId}/waitlist`);
       return { data: response.data }; // Assuming response.data is the array of waitlisted users
     } catch (error: any) {
       console.error(`Error fetching waitlist for event ${eventId}:`, error);
@@ -536,19 +564,16 @@ const realEventsApi: EventsApi = {
     church?: string,
   }) => {
     try {
-      const response = await api.patch(`/events/${eventId}/waitlist/${userId}`, data);
+      const response = await axiosInstance.patch(`/events/${eventId}/waitlist/users/${userId}`, data);
       return response.data;
     } catch (error: any) {
       if (error.response?.data?.error) {
         throw new Error(error.response.data.error);
       }
-      throw new Error('Failed to update waitlist user details');
+      throw new Error('Failed to update waitlist user details.');
     }
   }
 };
 
-// Export the real API implementation
-export const authApi = realAuthApi;
-export const eventsApi = realEventsApi;
-
-export default api; 
+export default realAuthApi;
+export { realEventsApi as eventsApi }; 

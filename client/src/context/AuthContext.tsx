@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { authApi } from '../services/api';
+import authApi from '../services/api';
 import { User, TokenValidationResponse } from '../types/user';
 import { useSplash } from './SplashContext';
 
