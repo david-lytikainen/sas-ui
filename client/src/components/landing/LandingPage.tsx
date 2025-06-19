@@ -5,6 +5,10 @@ import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
+import Grid from '@mui/material/Grid';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import GroupIcon from '@mui/icons-material/Group';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -242,6 +246,70 @@ const LandingPage: React.FC = () => {
           >
             Christian dating can be wild. Online dating might lead to exhaustion or dead ends and it can be challenging to meet other Christians outside of your church community. Saved and Single is a cross-church speed-dating event that helps Christian singles from PA, DE, and NJ intentionally connect in person at a stunning private barn in Berwyn, PA.
           </Typography>
+        </Container>
+      </Box>
+
+      {/* Analytics Section */}
+      <Box sx={{ py: { xs: 6, md: 10 }, backgroundColor: 'background.default' }}>
+        <Container maxWidth="lg">
+          <Typography 
+            variant="h4" 
+            component="h2" 
+            gutterBottom 
+            align="center" 
+            sx={{ fontWeight: 600, mb: 6, color: 'text.primary' }}
+          >
+            Success By The Numbers
+          </Typography>
+          <Grid container spacing={{ xs: 4, md: 5 }} justifyContent="center">
+            {/* Stat 1: Match Likelihood */}
+            <Grid item xs={12} sm={6} md={4}>
+              <Paper 
+                elevation={2} 
+                sx={{ p: 3, textAlign: 'center', borderRadius: 3, height: '100%' }}
+              >
+                <FavoriteIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+                <Typography variant="h3" component="p" sx={{ fontWeight: 700, mb: 1 }}>
+                  66%
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  Likelihood of matching with at least one person you're interested in.
+                </Typography>
+              </Paper>
+            </Grid>
+
+            {/* Stat 2: Number of Dates */}
+            <Grid item xs={12} sm={6} md={4}>
+              <Paper 
+                elevation={2} 
+                sx={{ p: 3, textAlign: 'center', borderRadius: 3, height: '100%' }}
+              >
+                <GroupIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+                <Typography variant="h3" component="p" sx={{ fontWeight: 700, mb: 1 }}>
+                  11-13
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  You'll likely go on 11-13 dates during a single event.
+                </Typography>
+              </Paper>
+            </Grid>
+
+            {/* Stat 3: Age Range */}
+            <Grid item xs={12} sm={6} md={4}>
+              <Paper 
+                elevation={2} 
+                sx={{ p: 3, textAlign: 'center', borderRadius: 3, height: '100%' }}
+              >
+                <AccessTimeIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+                <Typography variant="h3" component="p" sx={{ fontWeight: 700, mb: 1 }}>
+                  ± 2 Years
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  Average age difference between you and the people you'll meet.
+                </Typography>
+              </Paper>
+            </Grid>
+          </Grid>
         </Container>
       </Box>
 
