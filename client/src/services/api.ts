@@ -519,8 +519,16 @@ const realEventsApi: EventsApi = {
     return response.data;
   },
   getMyMatches: async (eventId: string) => {
-    const response = await axiosInstance.get(`/events/${eventId}/my-matches`);
-    return response.data; 
+    try {
+      const response = await axiosInstance.get(`/events/${eventId}/my-matches`);
+      return response.data; 
+    } catch (error: any) {
+      console.error(`Error fetching matches for event ${eventId}:`, error);
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error('Failed to fetch your matches for this event.');
+    }
   },
   getAllMatchesForEvent: async (eventId: string) => {
     try {
