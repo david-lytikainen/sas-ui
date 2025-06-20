@@ -70,12 +70,12 @@ const LandingPage: React.FC = () => {
   const theme = useTheme();
 
   const images = [
-    { src: '/images/event-photo-1.jpg', alt: 'Attendees at a Saved and Single event' },
+    { src: '/images/event-photo-1.jpg', alt: 'Saved and Single event venue' },
     { src: '/images/event-photo-2.jpg', alt: 'Speakers at a Saved and Single event' },
     { src: '/images/event-photo-3.jpg', alt: 'Guests mingling at a Saved and Single event' },
     { src: '/images/event-photo-4.jpg', alt: 'Guests mingling at a Saved and Single event' },
     { src: '/images/event-photo-5.jpg', alt: 'Food selection at the 2024 Saved and Single event' },
-    { src: '/images/event-photo-6.jpg', alt: 'Guest on a speed date.' },
+    { src: '/images/event-photo-6.jpg', alt: 'Speakers at a Saved and Single event' },
   ];
 
   // Auto-advance carousel
