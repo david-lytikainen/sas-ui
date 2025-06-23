@@ -22,6 +22,8 @@ import LandingPage from './components/landing/LandingPage';
 import Footer from './components/common/Footer'; // Assuming you have/want a global footer
 import SplashScreen from './components/common/SplashScreen';
 import { SplashProvider, useSplash } from './context/SplashContext';
+import ForgotPassword from "./components/auth/ForgotPassword";
+import ResetPassword from "./components/auth/ResetPassword";
 
 // Define the actual default background colors for the page
 const ACTUAL_LIGHT_MODE_PAGE_BACKGROUND = '#FFF9F5'; 
@@ -272,6 +274,8 @@ const ProtectedRoutes = () => {
       />
       
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password/:token" element={<ResetPassword />} />
       
       {/* Home route is now accessible to everyone */}
       <Route 
