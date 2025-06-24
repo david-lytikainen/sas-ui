@@ -3,13 +3,14 @@ import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import { Link as RouterLink } from 'react-router-dom';
+import { Link } from '@mui/material';
 
 const Footer: React.FC = () => {
   return (
     <Box 
       component="footer" 
       sx={{
-        py: 3,
+        py: 1.5,
         px: 2,
         mt: 'auto',
         backgroundColor: (theme) => 
@@ -18,14 +19,46 @@ const Footer: React.FC = () => {
       }}
     >
       <Container maxWidth="lg">
-        <Typography variant="body2" color="text.secondary" align="center">
-          - Saved & Single {new Date().getFullYear()} -
-        </Typography>
-        <Typography variant="body2" color="text.secondary" align="center" sx={{mt: 1}}>
-          <RouterLink to="/privacy-policy" style={{color: 'inherit', textDecoration: 'none'}}>
-            Privacy Policy
-          </RouterLink>
-        </Typography>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: { xs: 1.5, sm: 2 },
+            textAlign: 'center',
+          }}
+        >
+          <Typography variant="caption" color="text.secondary">
+          {new Date().getFullYear()} Saved & Single
+          </Typography>
+          <Box sx={{ display: 'flex', gap: { xs: 1.5, sm: 2 } }}>
+            <Link
+              component={RouterLink}
+              to="/privacy-policy"
+              color="inherit"
+              sx={{ 
+                fontSize: 'caption.fontSize', 
+                textDecoration: 'none', 
+                '&:hover': { textDecoration: 'underline' } 
+              }}
+            >
+              Privacy Policy
+            </Link>
+            <Link
+              component={RouterLink}
+              to="/terms-and-conditions"
+              color="inherit"
+              sx={{ 
+                fontSize: 'caption.fontSize', 
+                textDecoration: 'none', 
+                '&:hover': { textDecoration: 'underline' } 
+              }}
+            >
+              Terms and Conditions
+            </Link>
+          </Box>
+        </Box>
       </Container>
     </Box>
   );

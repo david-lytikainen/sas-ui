@@ -24,6 +24,7 @@ import SplashScreen from './components/common/SplashScreen';
 import { SplashProvider, useSplash } from './context/SplashContext';
 import ForgotPassword from "./components/auth/ForgotPassword";
 import ResetPassword from "./components/auth/ResetPassword";
+import TermsAndConditions from './components/legal/TermsAndConditions';
 
 // Define the actual default background colors for the page
 const ACTUAL_LIGHT_MODE_PAGE_BACKGROUND = '#FFF9F5'; 
@@ -274,8 +275,9 @@ const ProtectedRoutes = () => {
       />
       
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password/:token" element={<ResetPassword />} />
+      <Route path="/forgot-password" element={<AuthRedirect><ForgotPassword /></AuthRedirect>} />
+      <Route path="/reset-password/:token" element={<AuthRedirect><ResetPassword /></AuthRedirect>} />
+      <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
       
       {/* Home route is now accessible to everyone */}
       <Route 
