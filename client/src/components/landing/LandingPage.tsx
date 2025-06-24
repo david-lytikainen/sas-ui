@@ -1,4 +1,4 @@
-import React, { createContext, useState, useMemo, useEffect, CSSProperties } from 'react';
+import React, { createContext, useState, useMemo, useEffect, CSSProperties, useRef } from 'react';
 import { createTheme, ThemeProvider, useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -7,6 +7,9 @@ import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import { Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { alpha } from '@mui/material/styles';
+import Grid from '@mui/material/Grid';
+import useMediaQuery from '@mui/material/useMediaQuery';
 
 export const ColorModeContext = createContext({ toggleColorMode: () => {} });
 
@@ -52,6 +55,10 @@ const LandingPage: React.FC = () => {
   const fullText = 'Meet Your Match, In Faith.';
   const [displayedText, setDisplayedText] = useState('');
   const [typeIndex, setTypeIndex] = useState(0);
+  const [activeFaq, setActiveFaq] = useState(0);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const answerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeIndex < fullText.length) {
@@ -67,7 +74,32 @@ const LandingPage: React.FC = () => {
     }
   }, [typeIndex, fullText]);
 
-  const theme = useTheme();
+  const faqs = [
+    {
+      question: "What should I expect at a Saved & Single event?",
+      answer: "Expect a fun, relaxed atmosphere at a beautiful venue where you'll meet other single Christians. The night includes structured speed dating, mingling, and refreshments. Our goal is to make it easy and enjoyable to make new connections.",
+    },
+    {
+      question: "What should I bring with me?",
+      answer: "Just bring yourself, a positive attitude, and your smartphone! Your phone will be used with our web app to see your schedule for the night and select your matches. Everything else is provided.",
+    },
+    {
+      question: "How do I use the app during the event?",
+      answer: "Upon arrival, you'll check in and get access to the event within the app. It will show you your schedule and where to go for each round. After each date, you'll use the app to  indicate if you're interested in the person you just met.",
+    },
+    {
+      question: "How many dates will I go on?",
+      answer: "The number of dates depends on the number of attendees at each event, but we aim for everyone to have between 10 and 15 meaningful conversations.",
+    },
+    {
+      question: "How many rounds are there and how long is each one?",
+      answer: "Typically, there are 10-15 rounds, with each date lasting about 3-4 minutes.",
+    },
+    {
+      question: "Why is there a cost to attend?",
+      answer: "The ticket price helps us cover the costs of venue, refreshments, staffing, event insurance, cleaning, and the development of the app that makes the event run smoothly.",
+    },
+  ];
 
   const images = [
     { src: '/images/event-photo-1.jpg', alt: 'Saved and Single event venue' },
@@ -308,6 +340,101 @@ const LandingPage: React.FC = () => {
           </Box>
         </Box>
       </Container>
+
+      {/* Q&A Section */}
+      <Box sx={{ backgroundColor: 'background.paper', py: { xs: 4, md: 8 } }}>
+        <Container maxWidth="lg">
+          <Typography 
+            variant="h4" 
+            component="h2" 
+            gutterBottom 
+            align="center" 
+            sx={{ 
+              fontWeight: 600, 
+              mb: 4, 
+              color: theme.palette.primary.main,
+              fontSize: { xs: '1.75rem', sm: '2.125rem' }
+            }}
+          >
+            Frequently Asked Questions
+          </Typography>
+          
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 2, md: 4}, minHeight: { xs: 'auto', md: 220 } }}>
+            {/* Left side - Questions */}
+            <Grid container spacing={2} sx={{ flex: 3, alignContent: 'flex-start' }}>
+              {faqs.map((faq, index) => (
+                <Grid item xs={12} md={6} key={index}>
+                  <Button
+                    fullWidth
+                    onClick={() => {
+                      setActiveFaq(index);
+                      if (isMobile && answerRef.current) {
+                        setTimeout(() => {
+                          answerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 50);
+                      }
+                    }}
+                    onMouseEnter={() => setActiveFaq(index)}
+                    sx={{
+                      height: '100%',
+                      justifyContent: 'flex-start',
+                      p: 2,
+                      textAlign: 'left',
+                      color: activeFaq === index ? 'primary.main' : 'text.primary',
+                      backgroundColor: activeFaq === index ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                      '&:hover': {
+                        backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                      },
+                      textTransform: 'none',
+                      fontWeight: activeFaq === index ? 600 : 400,
+                      borderRadius: 3,
+                    }}
+                  >
+                    {faq.question}
+                  </Button>
+                </Grid>
+              ))}
+            </Grid>
+
+            {/* Right side - Answer */}
+            <Box ref={answerRef} sx={{ flex: 2, display: 'flex', flexDirection: 'column' }}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 3,
+                  flexGrow: 1,
+                  border: `1px solid ${theme.palette.divider}`,
+                  backgroundColor: alpha(theme.palette.background.default, 0.5),
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden', 
+                  borderRadius: 3,
+                }}
+                key={activeFaq}
+                className="scale-in"
+              >
+                <Typography variant="h6" component="h3" sx={{ mb: 1.5, color: 'primary.main', flexShrink: 0 }}>
+                  {faqs[activeFaq].question}
+                </Typography>
+                <Box sx={{ overflowY: 'auto', pr: 1,
+                    '::-webkit-scrollbar': {
+                        width: '8px',
+                    },
+                    '::-webkit-scrollbar-track': {
+                        backgroundColor: 'transparent',
+                    },
+                    '::-webkit-scrollbar-thumb': {
+                        backgroundColor: theme.palette.divider,
+                        borderRadius: '4px',
+                    }
+                }}>
+                  <Typography color="text.secondary">{faqs[activeFaq].answer}</Typography>
+                </Box>
+              </Paper>
+            </Box>
+          </Box>
+        </Container>
+      </Box>
     </Box>
   );
 };
