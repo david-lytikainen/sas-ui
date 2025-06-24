@@ -389,12 +389,12 @@ const realEventsApi: EventsApi = {
   },
 
   registerForEvent: async (eventId: string, body?: { join_waitlist: boolean }) => {
-    const response = await axiosInstance.post(`/events/${eventId}/register`, body);
+    const response = await axiosInstance.post(`/events/${eventId}/register`, body || {});
     return response.data;
   },
 
   cancelRegistration: async (eventId: string) => {
-    const response = await axiosInstance.post(`/events/${eventId}/cancel-registration`);
+    const response = await axiosInstance.post(`/events/${eventId}/cancel-registration`, {});
     return response.data;
   },
   
@@ -564,7 +564,7 @@ const realEventsApi: EventsApi = {
     church?: string,
   }) => {
     try {
-      const response = await axiosInstance.patch(`/events/${eventId}/waitlist/users/${userId}`, data);
+      const response = await axiosInstance.patch(`/events/${eventId}/waitlist/${userId}`, data);
       return response.data;
     } catch (error: any) {
       if (error.response?.data?.error) {
