@@ -35,23 +35,41 @@ axiosInstance.interceptors.response.use(
         const originalRequest = error.config;
 
         // If the error is 401 and we haven't tried to refresh the token yet
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        // Also prevent infinite loops by not retrying validate-token calls
+        if (error.response?.status === 401 && 
+            !originalRequest._retry && 
+            !originalRequest.url?.includes('/user/validate-token')) {
             originalRequest._retry = true;
 
             try {
                 const token = localStorage.getItem('token');
                 if (!token) {
-                    throw new Error('No token found');
+                    // No token found, clear any stored token and reject
+                    localStorage.removeItem('token');
+                    return Promise.reject(error);
                 }
 
-                // Try to validate the token
-                const response = await axiosInstance.get('/user/validate-token');
+                // Try to validate the token with a direct axios call to avoid interceptor loop
+                const response = await axios.get(`${API_BASE_URL}/user/validate-token`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    withCredentials: true
+                });
+
                 if (response.data && response.data.user) {
                     // Token is valid, retry the original request
                     return axiosInstance(originalRequest);
+                } else {
+                    // Invalid response, clear token and reject
+                    localStorage.removeItem('token');
+                    return Promise.reject(error);
                 }
             } catch (refreshError) {
-                // If token refresh fails, just reject the error
+                // If token validation fails, clear token and reject the original error
+                localStorage.removeItem('token');
                 return Promise.reject(error);
             }
         }
@@ -148,10 +166,14 @@ const realAuthApi = {
       }
 
       console.log('Validating token:', token);
-      const response = await axiosInstance.get('/user/validate-token', {
+      // Use direct axios call to avoid interceptor loop
+      const response = await axios.get(`${API_BASE_URL}/user/validate-token`, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        withCredentials: true
       });
 
       if (!response.data || !response.data.user) {
