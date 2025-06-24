@@ -38,7 +38,7 @@ const PrivacyPolicy = () => {
             </li>
             <li>
               <Typography variant="body1">
-                <strong>Birthday:</strong> Provided at sign-up. Needed to verify you meet age requirements and to show age-based matches (if applicable). We verify you are between 20 and 30 years old for our specific service.
+                <strong>Birthday:</strong> Provided at sign-up. Needed to verify you meet age requirements and to show age-based matches (if applicable). We verify you are between 20 and 40 years old for our specific service.
               </Typography>
             </li>
             <li>
@@ -193,7 +193,7 @@ const PrivacyPolicy = () => {
             8. Children and Age Restrictions
           </Typography>
           <Typography variant="body1" paragraph>
-            You must be at least 20 years old and no older than 30 years old to use Saved & Single. We may delete any account that violates our terms.
+            You must be at least 20 years old and no older than 40 years old to use Saved & Single. We may delete any account that violates our terms.
           </Typography>
         </Box>
 

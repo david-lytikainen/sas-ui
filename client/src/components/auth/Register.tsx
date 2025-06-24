@@ -100,8 +100,8 @@ const Register = () => {
       age--;
     }
 
-    if (age < 20 || age > 30) {
-      setError('You must be between 20 and 30 years old to register');
+    if (age < 20 || age > 40) {
+      setError('You must be between 20 and 40 years old to register');
       return;
     }
 
@@ -236,7 +236,7 @@ const Register = () => {
                 paddingLeft: '12px'
               }
             }}
-            helperText="Must be 20-30 years old"
+            helperText="Must be 20-40 years old"
             FormHelperTextProps={{ 
               sx: { 
                 fontSize: '0.75rem',
