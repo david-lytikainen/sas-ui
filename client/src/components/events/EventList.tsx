@@ -63,22 +63,31 @@ import {
   People as PeopleIcon,
   CheckBox as CheckBoxIcon,
   ContentCopy as ContentCopyIcon,
+  CreditCard as CreditCardIcon,
+  AccountBalanceWallet as VenmoIcon,
 } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import { eventsApi } from '../../services/api';
 import { Event, EventStatus, ScheduleItem } from '../../types/event';
 import EventTimer from './EventTimer';
+import PaymentForm from './PaymentForm';
+import VenmoPayment from './VenmoPayment';
 import { churchOptions } from '../../constants/churchOptions';
+import { useParams, useSearchParams } from 'react-router-dom';
 
 const EventList = () => {
   const { events: contextEvents, createEvent, refreshEvents, isRegisteredForEvent, filteredEvents } = useEvents(); // Destructure filteredEvents
   const { user, isAdmin, isOrganizer } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { eventId: urlEventId } = useParams<{ eventId: string }>();
+  const [searchParams] = useSearchParams();
+  const paymentIntentId = searchParams.get('payment_intent');
   const [signUpDialogOpen, setSignUpDialogOpen] = useState(false);
   const [signUpEventId, setSignUpEventId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelEventId, setCancelEventId] = useState<string | null>(null);
   const [showCreateCard, setShowCreateCard] = useState(false);
@@ -185,6 +194,7 @@ const EventList = () => {
   // Add state for the waitlist confirmation dialog
   const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false);
   const [eventForWaitlist, setEventForWaitlist] = useState<Event | null>(null);
+  const [waitlistReason, setWaitlistReason] = useState<string>('');
 
   // Add search state for registered users dialog  
   const [registeredUsersSearchTerm, setRegisteredUsersSearchTerm] = useState<string>('');
@@ -204,14 +214,17 @@ const EventList = () => {
     status: string,
     pin: string,
   }[]>([]);
-  const [waitlistReason, setWaitlistReason] = useState<string>('');
+
+  const [paymentFormOpen, setPaymentFormOpen] = useState(false);
+  const [eventForPayment, setEventForPayment] = useState<Event | null>(null);
+  const [existingPaymentIntentId, setExistingPaymentIntentId] = useState<string | null>(null);
+  const [paymentMethodDialogOpen, setPaymentMethodDialogOpen] = useState(false);
+  const [venmoPaymentOpen, setVenmoPaymentOpen] = useState(false);
   const [viewWaitlistDialogOpen, setViewWaitlistDialogOpen] = useState<boolean>(false);
   const [selectedEventForWaitlistUsers, setSelectedEventForWaitlistUsers] = useState<Event | null>(null);
   const [waitlistedUsers, setWaitlistedUsers] = useState<any[]>([]);
   const [filteredWaitlistedUsers, setFilteredWaitlistedUsers] = useState<any[]>([]);
   const [waitlistedUsersSearchTerm, setWaitlistedUsersSearchTerm] = useState<string>('');
-
-  // ADD State for editing waitlist users
   const [editingWaitlistUserId, setEditingWaitlistUserId] = useState<number | null>(null);
   const [editWaitlistFormData, setEditWaitlistFormData] = useState<any>({
     first_name: '',
@@ -223,6 +236,18 @@ const EventList = () => {
     church: '',
   });
   const [currentRounds, setCurrentRounds] = useState<Record<number, number>>({});
+
+  useEffect(() => {
+    if (urlEventId && paymentIntentId && contextEvents.length > 0) {
+      const event = contextEvents.find(e => e.id.toString() === urlEventId);
+      if (event) {
+        setEventForPayment(event);
+        setExistingPaymentIntentId(paymentIntentId);
+        setPaymentMethodDialogOpen(true);
+        setSuccessMessage('A spot opened up! Choose your payment method to secure your registration.');
+      }
+    }
+  }, [urlEventId, paymentIntentId, contextEvents]);
 
   // Helper functions for localStorage
   const getPersistedSelections = (eventId: number): Record<number, boolean> => {
@@ -346,6 +371,19 @@ const EventList = () => {
         const backendError = registrationError.response?.data?.error;
         const backendMsg = registrationError.response?.data?.message;
         const waitlistAvailable = registrationError.response?.data?.waitlist_available === true;
+        const requiresPayment = registrationError.response?.data?.requires_payment === true;
+
+        if (requiresPayment && registrationError.response?.status === 402) {
+          setSignUpDialogOpen(false);
+          const event = filteredEvents.find(e => e.id.toString() === signUpEventId);
+          if (event) {
+            setEventForPayment(event);
+            setPaymentMethodDialogOpen(true);
+          } else {
+            setErrorMessage('Event not found for payment processing.');
+          }
+          return;
+        }
 
         if ((backendError === "Event is currently full" 
                 || backendError === "Event is currently full for this gender") 
@@ -1889,12 +1927,128 @@ const EventList = () => {
     return genderMessages[Math.floor(Math.random() * genderMessages.length)];
   };
 
+  const handlePaymentSuccess = async () => {
+    try {
+      setPaymentFormOpen(false);
+      setEventForPayment(null);
+      setErrorMessage(null);
+      setSuccessMessage('Payment successful! Updating your registration status...');
+      
+      console.log('Payment successful! Refreshing registration status...');
+      
+      let attempts = 0;
+      const maxAttempts = 5;
+      const retryDelay = 1500;
+      
+            const refreshWithRetry = async () => {
+        attempts++;
+        console.log(`Refreshing events (attempt ${attempts}/${maxAttempts})...`);
+        
+        if (attempts === 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        await refreshEvents();
+        
+        const apiResponse = await eventsApi.getAll();
+        const data = apiResponse as { 
+          events?: any[]; 
+          registrations?: Array<{event_id: number, status: string, pin?: string, registration_date?: string, check_in_date?: string}>
+        };
+        
+        console.log('Full API response:', data);
+        console.log('Registrations array:', data.registrations);
+        
+        if (eventForPayment && data.events) {
+          console.log('Looking for event ID:', eventForPayment.id);
+          console.log('Available events:', data.events.map(e => ({ id: e.id, name: e.name })));
+          console.log('Available registrations:', data.registrations?.map(r => ({ event_id: r.event_id, status: r.status })));
+          
+          const rawEvent = data.events.find((e: any) => e.id === eventForPayment.id);
+          const registrationInfo = data.registrations?.find(reg => reg.event_id === eventForPayment.id);
+          
+          console.log('Raw event found:', !!rawEvent);
+          console.log('Registration info found:', registrationInfo);
+          
+          const paidEvent = rawEvent ? {
+            ...rawEvent,
+            registration: registrationInfo ? {
+              status: registrationInfo.status,
+              pin: registrationInfo.pin,
+              registration_date: registrationInfo.registration_date,
+              check_in_date: registrationInfo.check_in_date
+            } : undefined
+          } : null;
+          
+          if (paidEvent) {
+            console.log('Found paid event:', paidEvent.name);
+            console.log('Registration data:', paidEvent.registration);
+            console.log('Raw registration info:', registrationInfo);
+            if (paidEvent.registration) {
+              console.log('Registration status:', paidEvent.registration.status);
+            }
+          } else {
+            console.log('Paid event not found in API response');
+          }
+          
+          const isRegistered = paidEvent && paidEvent.registration && 
+            ['Registered', 'REGISTERED', 'registered', 'Checked In', 'CHECKED_IN', 'checked_in'].includes(paidEvent.registration.status);
+            
+          if (isRegistered) {
+            console.log('Registration confirmed! User is now registered.');
+            setSuccessMessage('🎉 Registration complete! You are now registered for the event.');
+            setTimeout(() => setSuccessMessage(null), 5000);
+            return true;
+          } else if (attempts < maxAttempts) {
+            console.log(`Registration not yet confirmed. Retrying in ${retryDelay}ms...`);
+            setTimeout(refreshWithRetry, retryDelay);
+            return false;
+          } else {
+            console.log('Max retry attempts reached. Registration may still be processing.');
+            setSuccessMessage(null);
+            setErrorMessage('Payment successful! Your registration is being processed. Please refresh the page in a few moments to see your updated status.');
+            return false;
+          }
+        }
+        return true;
+      };
+      
+      await refreshWithRetry();
+      
+    } catch (error: any) {
+      console.error('Error refreshing events after payment:', error);
+      setSuccessMessage(null);
+      setErrorMessage('Payment successful, but failed to refresh events. Please refresh the page to see your registration status.');
+    }
+  };
+
+  const handleCardPaymentSelect = () => {
+    setPaymentMethodDialogOpen(false);
+    setPaymentFormOpen(true);
+  };
+
+  const handleVenmoPaymentSelect = () => {
+    console.log('EventList: Venmo payment selected, event:', eventForPayment?.name);
+    setPaymentMethodDialogOpen(false);
+    setVenmoPaymentOpen(true);
+  };
+
+  const handlePaymentMethodDialogClose = () => {
+    setPaymentMethodDialogOpen(false);
+  };
+
   return (
     <>
       <Container maxWidth="lg" sx={{ pt: 4, pb: 14 }}>
         {errorMessage && (
           <Alert severity="error" onClose={() => setErrorMessage(null)} sx={{ mb: 2 }}>
             {errorMessage}
+          </Alert>
+        )}
+
+        {successMessage && (
+          <Alert severity="success" onClose={() => setSuccessMessage(null)} sx={{ mb: 2 }}>
+            {successMessage}
           </Alert>
         )}
 
@@ -2780,7 +2934,7 @@ const EventList = () => {
                       <TableCell sx={{ width: 80, minWidth: 70 }}><strong>Gender</strong></TableCell>
                       <TableCell sx={{ width: 60, minWidth: 50, textAlign: 'center' }}><strong>Age</strong></TableCell>
                       <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Birthday</strong></TableCell>
-                      <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Church</strong></TableCell> {/* Added church column */}
+                      <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Church</strong></TableCell>
                       <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Registered</strong></TableCell>
                       <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Status</strong></TableCell>
                       <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Check-in Time</strong></TableCell>
@@ -2831,10 +2985,7 @@ const EventList = () => {
                             <TableCell>{user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'}</TableCell>
                             <TableCell><Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /></TableCell>
                             <TableCell>{user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'}</TableCell>
-                            <TableCell sx={{ textAlign: 'center' }}><TextField size="small" label="PIN" value={editFormData.pin || ''} onChange={(e) => handleEditFormChange(e.target.value, 'pin')} inputProps={{ maxLength: 4, pattern: '[0-9]*' }} sx={{ width: 65 }} /></TableCell>
-                            {(isAdmin() || isOrganizer()) && (
-                              <TableCell sx={{ textAlign: 'center' }}><Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}><IconButton size="small" color="primary" onClick={() => handleSaveEdits(user.id)} title="Save"><SaveIcon fontSize="small" /></IconButton><IconButton size="small" color="error" onClick={handleCancelEditing} title="Cancel"><CancelEditIcon fontSize="small" /></IconButton></Box></TableCell>
-                            )}
+                            <TableCell sx={{ textAlign: 'center' }}><TextField size="small" label="PIN" value={editFormData.pin || ''} onChange={(e) => handleEditFormChange(e.target.value, 'pin')} inputProps={{ maxLength: 4, pattern: '[0-9]*' }} sx={{ width: 65 }} /></TableCell>{(isAdmin() || isOrganizer()) && (<TableCell sx={{ textAlign: 'center' }}><Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}><IconButton size="small" color="primary" onClick={() => handleSaveEdits(user.id)} title="Save"><SaveIcon fontSize="small" /></IconButton><IconButton size="small" color="error" onClick={handleCancelEditing} title="Cancel"><CancelEditIcon fontSize="small" /></IconButton></Box></TableCell>)}
                           </>
                         ) : (
                           <>
@@ -2844,14 +2995,11 @@ const EventList = () => {
                             <TableCell>{user.gender}</TableCell>
                             <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
                             <TableCell>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</TableCell>
-                            <TableCell>{user.church || 'Other'}</TableCell> {/* Show church */}
+                            <TableCell>{user.church || 'Other'}</TableCell>
                             <TableCell>{user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'}</TableCell>
                             <TableCell><Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /></TableCell>
                             <TableCell>{user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'}</TableCell>
-                            <TableCell sx={{ textAlign: 'center' }}>{user.pin}</TableCell>
-                            {(isAdmin() || isOrganizer()) && (
-                              <TableCell sx={{ textAlign: 'center' }}><IconButton size="small" color="primary" onClick={() => handleStartEditing(user)} title="Edit"><EditIcon fontSize="small" /></IconButton></TableCell>
-                            )}
+                            <TableCell sx={{ textAlign: 'center' }}>{user.pin}</TableCell>{(isAdmin() || isOrganizer()) && (<TableCell sx={{ textAlign: 'center' }}><IconButton size="small" color="primary" onClick={() => handleStartEditing(user)} title="Edit"><EditIcon fontSize="small" /></IconButton></TableCell>)}
                           </>
                         )}
                       </TableRow>
@@ -3464,8 +3612,7 @@ const EventList = () => {
                                 renderInput={(params) => (<TextField {...params} label="Church" size="small"/>)}
                               />
                             </TableCell>
-                            <TableCell>{user.waitlisted_at ? formatUTCToLocal(user.waitlisted_at, true) : 'N/A'}</TableCell>
-                            {(isAdmin() || isOrganizer()) && (
+                            <TableCell>{user.waitlisted_at ? formatUTCToLocal(user.waitlisted_at, true) : 'N/A'}</TableCell>{(isAdmin() || isOrganizer()) && (
                               <TableCell sx={{ textAlign: 'center' }}>
                                 <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
                                   <IconButton size="small" color="primary" onClick={() => handleSaveWaitlistUserEdits(user.id)} title="Save">
@@ -3487,8 +3634,7 @@ const EventList = () => {
                             <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
                             <TableCell>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</TableCell>
                             <TableCell>{user.church || 'Other'}</TableCell>
-                            <TableCell>{user.waitlisted_at ? formatUTCToLocal(user.waitlisted_at, true) : 'N/A'}</TableCell>
-                            {(isAdmin() || isOrganizer()) && (
+                            <TableCell>{user.waitlisted_at ? formatUTCToLocal(user.waitlisted_at, true) : 'N/A'}</TableCell>{(isAdmin() || isOrganizer()) && (
                               <TableCell sx={{ textAlign: 'center' }}>
                                 <IconButton size="small" color="primary" onClick={() => handleStartEditingWaitlistUser(user)} title="Edit">
                                   <EditIcon fontSize="small" />
@@ -3544,6 +3690,123 @@ const EventList = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Payment Method Selection Dialog */}
+      <Dialog
+        open={paymentMethodDialogOpen}
+        onClose={handlePaymentMethodDialogClose}
+        maxWidth="sm"
+        fullWidth
+        disableEscapeKeyDown={false}
+      >
+        <DialogTitle>
+          <Typography variant="h6" component="div">
+            Choose Payment Method
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          {eventForPayment && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="body1" gutterBottom>
+                {eventForPayment.name}
+              </Typography>
+              <Typography variant="h5" color="primary">
+                ${parseFloat(eventForPayment.price_per_person).toFixed(2)}
+              </Typography>
+            </Box>
+          )}
+          
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Select your preferred payment method to complete your event registration.
+          </Typography>
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Button
+              variant="outlined"
+              size="large"
+              onClick={handleCardPaymentSelect}
+              startIcon={<CreditCardIcon />}
+              sx={{
+                justifyContent: 'flex-start',
+                p: 2,
+                border: '2px solid',
+                borderColor: 'primary.main',
+                '&:hover': {
+                  borderColor: 'primary.dark',
+                  backgroundColor: 'primary.50',
+                }
+              }}
+            >
+              <Box sx={{ textAlign: 'left', ml: 1 }}>
+                <Typography variant="subtitle1" fontWeight="bold">
+                  Credit/Debit Card
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Secure payment with Stripe
+                </Typography>
+              </Box>
+            </Button>
+
+            <Button
+              variant="outlined"
+              size="large"
+              onClick={handleVenmoPaymentSelect}
+              startIcon={<VenmoIcon />}
+              sx={{
+                justifyContent: 'flex-start',
+                p: 2,
+                border: '2px solid',
+                borderColor: '#3D95CE',
+                color: '#3D95CE',
+                '&:hover': {
+                  borderColor: '#2E7BA6',
+                  backgroundColor: 'rgba(61, 149, 206, 0.05)',
+                  color: '#2E7BA6',
+                }
+              }}
+            >
+              <Box sx={{ textAlign: 'left', ml: 1 }}>
+                <Typography variant="subtitle1" fontWeight="bold">
+                  Venmo
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Pay with your Venmo account
+                </Typography>
+              </Box>
+            </Button>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handlePaymentMethodDialogClose} color="secondary">
+            Cancel
+          </Button>
+        </DialogActions>  
+      </Dialog>
+
+      {/* Venmo Payment Dialog */}
+      <VenmoPayment
+        open={venmoPaymentOpen}
+        onClose={() => {
+          setVenmoPaymentOpen(false);
+          setEventForPayment(null);
+          setExistingPaymentIntentId(null);
+        }}
+        event={eventForPayment}
+        onSuccess={handlePaymentSuccess}
+      />
+
+      {/* Payment Form Dialog */}
+      <PaymentForm
+        open={paymentFormOpen}
+        onClose={() => {
+          setPaymentFormOpen(false);
+          setEventForPayment(null);
+          setExistingPaymentIntentId(null);
+        }}
+        event={eventForPayment}
+        onSuccess={handlePaymentSuccess}
+        existingPaymentIntentId={existingPaymentIntentId || undefined}
+      />
     </Container>
   </>
   );

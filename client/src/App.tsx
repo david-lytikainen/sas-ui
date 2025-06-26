@@ -10,6 +10,8 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import EventList from './components/events/EventList';
+import PaymentSuccess from './components/events/PaymentSuccess';
+import PaymentCancelled from './components/events/PaymentCancelled';
 import PrivateRoute from './components/routing/PrivateRoute';
 import AuthRedirect from './components/routing/AuthRedirect';
 import { AuthProvider } from './context/AuthContext';
@@ -24,6 +26,7 @@ import SplashScreen from './components/common/SplashScreen';
 import { SplashProvider, useSplash } from './context/SplashContext';
 import ForgotPassword from "./components/auth/ForgotPassword";
 import ResetPassword from "./components/auth/ResetPassword";
+import AccountSettings from './components/settings/AccountSettings';
 
 // Define the actual default background colors for the page
 const ACTUAL_LIGHT_MODE_PAGE_BACKGROUND = '#FFF9F5'; 
@@ -295,6 +298,48 @@ const ProtectedRoutes = () => {
         }
       />
 
+      <Route 
+        path="/account-settings" 
+        element={
+          <PrivateRoute>
+            <AccountSettings />
+          </PrivateRoute>
+        } 
+      />
+      
+      {/* Payment routes */}
+      <Route 
+        path="/payment/success" 
+        element={
+          <PrivateRoute>
+            <EventProvider>
+              <PaymentSuccess />
+            </EventProvider>
+          </PrivateRoute>
+        } 
+      />
+      <Route 
+        path="/payment/cancelled" 
+        element={
+          <PrivateRoute>
+            <PaymentCancelled />
+          </PrivateRoute>
+        } 
+      />
+      
+      {/* Waitlist payment route - for users clicking email links */}
+      <Route 
+        path="/events/:eventId/payment" 
+        element={
+          <PrivateRoute>
+            <EventProvider>
+              <EventList />
+            </EventProvider>
+          </PrivateRoute>
+        } 
+      />
+      
+      {/* Catch all route */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -389,6 +434,20 @@ function App() {
   );
 
   const theme = useMemo(() => createTheme(getDesignTokens(mode)), [mode]);
+
+  useEffect(() => {
+    const preloadStripe = async () => {
+      try {
+        const { eventsApi } = await import('./services/api');
+        await eventsApi.getStripeConfig();
+        console.debug('Stripe config preloaded successfully');
+      } catch (error) {
+        console.debug('Stripe preload failed:', error);
+      }
+    };
+    
+    preloadStripe();
+  }, []);
 
   return (
     <SplashProvider>

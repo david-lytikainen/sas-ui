@@ -239,7 +239,7 @@ const realAuthApi = {
 };
 
 interface EventsApi {
-  getAll: () => Promise<Event[]>;
+  getAll: () => Promise<{events: Event[], registrations: any[]}>;
   getById: (eventId: string) => Promise<Event>;
   create: (eventData: Omit<Event, 'id' | 'creator_id' | 'created_at' | 'updated_at' | 'registration_deadline'>) => Promise<Event>;
   updateEvent: (eventId: string, eventData: Partial<Event>) => Promise<{ message: string, event: Event }>;
@@ -329,6 +329,40 @@ interface EventsApi {
       phone: string,
       church: string
     }
+  }>;
+  
+  getStripeConfig: () => Promise<{ publishable_key: string }>;
+  createCheckoutSession: (eventId: string) => Promise<{ session_id: string }>;
+  createPaymentIntent: (eventId: string) => Promise<{ client_secret: string, payment_intent_id: string }>;
+  verifyPaymentSession: (sessionId: string) => Promise<{ 
+    payment_status: string, 
+    session_status: string, 
+    metadata: any 
+  }>;
+  
+  createVenmoPaymentIntent: (eventId: string) => Promise<{
+    client_secret: string,
+    payment_intent_id: string,
+    venmo_deep_link: {
+      ios_deep_link: string,
+      web_fallback: string,
+      success_url: string,
+      cancel_url: string
+    }
+  }>;
+  getVenmoPaymentStatus: (paymentIntentId: string) => Promise<{
+    payment_intent_id: string,
+    status: string,
+    amount: number,
+    currency: string,
+    payment_method: string,
+    event_id: string,
+    event_name: string
+  }>;
+  simulateVenmoPayment: (paymentIntentId: string) => Promise<{
+    status: string,
+    message: string,
+    registration: any
   }>;
 }
 
@@ -572,7 +606,48 @@ const realEventsApi: EventsApi = {
       }
       throw new Error('Failed to update waitlist user details.');
     }
-  }
+  },
+  getStripeConfig: (() => {
+    let cachedConfig: Promise<{ publishable_key: string }> | null = null;
+    
+    return async () => {
+      if (!cachedConfig) {
+        cachedConfig = axiosInstance.get('/stripe/config').then(response => response.data);
+      }
+      return cachedConfig;
+    };
+  })(),
+
+  createCheckoutSession: async (eventId: string) => {
+    const response = await axiosInstance.post(`/events/${eventId}/create-checkout-session`);
+    return response.data;
+  },
+
+  createPaymentIntent: async (eventId: string) => {
+    const response = await axiosInstance.post(`/events/${eventId}/create-payment-intent`);
+    return response.data;
+  },
+
+  verifyPaymentSession: async (sessionId: string) => {
+    const response = await axiosInstance.get(`/stripe/verify-session/${sessionId}`);
+    return response.data;
+  },
+
+  // Venmo payment functions
+  createVenmoPaymentIntent: async (eventId: string) => {
+    const response = await axiosInstance.post(`/events/${eventId}/create-venmo-payment-intent`);
+    return response.data;
+  },
+
+  getVenmoPaymentStatus: async (paymentIntentId: string) => {
+    const response = await axiosInstance.get(`/venmo/payment-status/${paymentIntentId}`);
+    return response.data;
+  },
+
+  simulateVenmoPayment: async (paymentIntentId: string) => {
+    const response = await axiosInstance.post(`/venmo/simulate-payment/${paymentIntentId}`);
+    return response.data;
+  },
 };
 
 export default realAuthApi;

@@ -129,6 +129,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="dns-prefetch" href="//www.google-analytics.com" />
+    <link rel="preconnect" href="https://js.stripe.com" />
+    <link rel="dns-prefetch" href="//api.stripe.com" />
     
     <!-- SEO: Language and location hints -->
     <link rel="alternate" hreflang="en-us" href="https://savedandsingle.com/" />
@@ -138,6 +140,9 @@
       window.REACT_APP_API_URL = 'http://localhost:5001/api';
       localStorage.setItem('apiBaseUrl', 'http://localhost:5001/api');
     </script>
+    
+    <!-- Stripe.js -->
+    <script src="https://js.stripe.com/v3/"></script>
   </head>
   <body>
     <noscript>

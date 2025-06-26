@@ -36,6 +36,7 @@ sas-ui/
 
 - **User Authentication**: Sign up, sign in, and profile management
 - **Event Management**: Create, view, and manage speed dating events
+- **Payment Processing**: Secure payment handling with Stripe for paid events
 - **Admin Dashboard**: Admin-specific controls and views
 - **Responsive Design**: Works on desktop and mobile devices
 - **Real-time Updates**: Live updates for matches and notifications
@@ -108,8 +109,23 @@ This frontend communicates with the SAS-API Flask backend. The integration point
 
 - **Authentication**: User registration and login
 - **Event Management**: Creating and managing events
+- **Payment Processing**: Stripe checkout integration for paid events
 - **Profile Management**: Updating user profiles
 - **Admin Functions**: User and event administration
+
+### Payment Flow
+
+The application supports paid events through Stripe integration:
+
+1. **Event Registration**: When users click "Sign Up" for paid events, they're redirected to Stripe Checkout
+2. **Payment Processing**: Stripe securely handles payment information
+3. **Success/Cancellation**: Users are redirected to appropriate pages after payment
+4. **Automatic Registration**: Successful payments automatically register users for events
+
+### Payment Pages
+
+- `/payment/success` - Displays payment confirmation and registration success
+- `/payment/cancelled` - Handles cancelled payments with options to retry
 
 ## Using the Start Script
 
