@@ -733,9 +733,30 @@ const EventList = () => {
         </Box>
       );
     }
+
+    // Handle Pending Payment status
+    if (registrationStatus === 'Pending Payment') {
+      return (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start', width: '100%' }}>
+          <Chip 
+            label="Payment Due at Event" 
+            color="warning" 
+            size="small" 
+            icon={<AttachMoneyIcon />}
+            sx={{ alignSelf: 'flex-start' }} 
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'flex-start', maxWidth: '200px' }}>
+            You'll pay ${parseFloat(event.price_per_person).toFixed(2)} when you arrive at the event.
+          </Typography>
+          <Button size="small" variant="outlined" color="error" onClick={() => handleCancelClick(event.id)} startIcon={<CancelIcon />} sx={{ alignSelf: 'flex-start' }}>
+            Cancel Registration
+          </Button>
+        </Box>
+      );
+    }
     
-    // If registered (and not waitlisted) and event is not completed or in progress
-    if (isUserRegistered && registrationStatus !== 'Waitlisted' && event.status !== 'Completed' && event.status !== 'In Progress') {
+    // If registered (and not waitlisted or pending payment) and event is not completed or in progress
+    if (isUserRegistered && registrationStatus !== 'Waitlisted' && registrationStatus !== 'Pending Payment' && event.status !== 'Completed' && event.status !== 'In Progress') {
       const chipLabel = registrationStatus === 'Checked In' ? 'Checked In' : 'Registered';
       const chipColor = registrationStatus === 'Checked In' ? 'success' : 'info';
       const chipIcon = registrationStatus === 'Checked In' ? <CheckInIcon /> : undefined;
@@ -1639,13 +1660,13 @@ const EventList = () => {
   const handleOpenEditEventDialog = (event: Event) => {
     setEventToEdit(event);
     setEditEventForm({
-      name: event.name,
-      description: event.description,
+      name: event.name || '',
+      description: event.description || '',
       starts_at: event.starts_at ? new Date(new Date(event.starts_at).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '',
-      address: event.address,
-      max_capacity: event.max_capacity.toString(),
-      price_per_person: event.price_per_person.toString(),
-      status: event.status,
+      address: event.address || '',
+      max_capacity: event.max_capacity?.toString() || '0',
+      price_per_person: event.price_per_person?.toString() || '0',
+      status: event.status || 'Registration Open',
         });
     setEditEventDialogOpen(true);
   };
