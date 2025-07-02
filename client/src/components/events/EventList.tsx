@@ -39,6 +39,7 @@ import {
   Snackbar,
   SnackbarCloseReason,
   Autocomplete,
+  CircularProgress,
 } from '@mui/material';
 import {
   Event as EventIcon,
@@ -90,6 +91,7 @@ const EventList = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelEventId, setCancelEventId] = useState<string | null>(null);
+  const [cancellationInProgress, setCancellationInProgress] = useState<Record<string, boolean>>({});
   const [showCreateCard, setShowCreateCard] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: '',
@@ -314,18 +316,18 @@ const EventList = () => {
   });
 
 
+  // Registration is considered closed only once the event has actually started
   const isRegistrationClosed = (event: Event) => {
     if (!event.starts_at) return false;
-    
+
     const eventStart = new Date(event.starts_at);
     const now = new Date();
-    
-    // Calculate time difference in hours
-    const timeDiff = (eventStart.getTime() - now.getTime()) / (1000 * 60 * 60);
-    
-    // Get rid of the limit of 2 hours
-    // TODO: Remove this once we have a better way to handle this
-    return timeDiff <= 0.01;
+
+    // If for some reason the date failed to parse, keep registration open
+    if (isNaN(eventStart.getTime())) return false;
+
+    // Close registration once the event start time has passed
+    return eventStart.getTime() <= now.getTime();
   };
 
   // Update handleSignUpClick to check registration close time
@@ -367,13 +369,14 @@ const EventList = () => {
           );
         }
       } catch (registrationError: any) {
-        console.error('Failed to register for event:', registrationError);
         const backendError = registrationError.response?.data?.error;
         const backendMsg = registrationError.response?.data?.message;
         const waitlistAvailable = registrationError.response?.data?.waitlist_available === true;
         const requiresPayment = registrationError.response?.data?.requires_payment === true;
 
         if (requiresPayment && registrationError.response?.status === 402) {
+          // This is expected behavior for paid events - don't log as error
+          console.log('Payment required for event registration, opening payment dialog');
           setSignUpDialogOpen(false);
           const event = filteredEvents.find(e => e.id.toString() === signUpEventId);
           if (event) {
@@ -385,6 +388,8 @@ const EventList = () => {
           return;
         }
 
+        // Only log as error for actual errors, not expected payment flow
+        console.error('Failed to register for event:', registrationError);
         if ((backendError === "Event is currently full" 
                 || backendError === "Event is currently full for this gender") 
               && waitlistAvailable) {
@@ -436,14 +441,62 @@ const EventList = () => {
 
   const handleCancelConfirm = async () => {
     if (cancelEventId) {
+      // Set loading state
+      setCancellationInProgress(prev => ({ ...prev, [cancelEventId]: true }));
+      
+      // Close dialog immediately for responsive UI
+      setCancelDialogOpen(false);
+      setCancelEventId(null);
+      
       try {
-        await eventsApi.cancelRegistration(cancelEventId);
-        setCancelDialogOpen(false);
-        setCancelEventId(null);
-        // Refresh events to update registration status
-        await refreshEvents();
+        // Make the API call and immediately show success message
+        const response = await eventsApi.cancelRegistration(cancelEventId);
+        
+        // Clear loading state
+        setCancellationInProgress(prev => {
+          const newState = { ...prev };
+          delete newState[cancelEventId];
+          return newState;
+        });
+        
+        // Show success message immediately
+        if (response.refund_info?.refund_error) {
+          setSuccessMessage(`Registration cancelled successfully. Note: ${response.refund_info.refund_error}`);
+        } else if (response.refund_info?.refund_processed) {
+          setSuccessMessage('Registration cancelled and refund processed successfully.');
+        } else {
+          setSuccessMessage('Successfully cancelled your registration for the event.');
+        }
+        
+        // Refresh events in the background (don't await it)
+        refreshEvents().catch(err => console.error('Background refresh failed:', err));
+        
       } catch (error: any) {
-        setErrorMessage(error.message || 'Failed to cancel registration');
+        console.error('Error cancelling registration:', error);
+        
+        // Clear loading state on error
+        setCancellationInProgress(prev => {
+          const newState = { ...prev };
+          delete newState[cancelEventId];
+          return newState;
+        });
+        
+        const errorMessage = error.response?.data?.error || error.message || 'Failed to cancel registration';
+        
+        // Handle specific error cases
+        console.log('Cancel registration error details:', {
+          errorMessage,
+          responseData: error.response?.data,
+          status: error.response?.status
+        });
+        
+        if (errorMessage.includes('No registration found to cancel')) {
+          setErrorMessage('Registration already cancelled. Refreshing event list...');
+          // Refresh to show current accurate state
+          refreshEvents().catch(err => console.error('Refresh failed:', err));
+        } else {
+          setErrorMessage(errorMessage);
+        }
       }
     }
   };
@@ -748,8 +801,16 @@ const EventList = () => {
           <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'flex-start', maxWidth: '200px' }}>
             You'll pay ${parseFloat(event.price_per_person).toFixed(2)} when you arrive at the event.
           </Typography>
-          <Button size="small" variant="outlined" color="error" onClick={() => handleCancelClick(event.id)} startIcon={<CancelIcon />} sx={{ alignSelf: 'flex-start' }}>
-            Cancel Registration
+          <Button 
+            size="small" 
+            variant="outlined" 
+            color="error" 
+            onClick={() => handleCancelClick(event.id)} 
+            startIcon={cancellationInProgress[event.id.toString()] ? <CircularProgress size={16} /> : <CancelIcon />}
+            disabled={cancellationInProgress[event.id.toString()]}
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            {cancellationInProgress[event.id.toString()] ? 'Cancelling...' : 'Cancel Registration'}
           </Button>
         </Box>
       );
@@ -764,8 +825,16 @@ const EventList = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start', width: '100%' }}>
           <Chip label={chipLabel} color={chipColor} icon={chipIcon} size="small" sx={{ alignSelf: 'flex-start' }} />
           {registrationStatus !== 'Checked In' && (
-            <Button size="small" variant="outlined" color="error" onClick={() => handleCancelClick(event.id)} startIcon={<CancelIcon />} sx={{ alignSelf: 'flex-start' }}>
-              Cancel Registration
+            <Button 
+              size="small" 
+              variant="outlined" 
+              color="error" 
+              onClick={() => handleCancelClick(event.id)} 
+              startIcon={cancellationInProgress[event.id.toString()] ? <CircularProgress size={16} /> : <CancelIcon />}
+              disabled={cancellationInProgress[event.id.toString()]}
+              sx={{ alignSelf: 'flex-start' }}
+            >
+              {cancellationInProgress[event.id.toString()] ? 'Cancelling...' : 'Cancel Registration'}
             </Button>
           )}
         </Box>
@@ -782,7 +851,6 @@ const EventList = () => {
           color="primary" 
           startIcon={<SignUpIcon />} 
           onClick={() => handleSignUpClick(event.id)}
-          disabled={isRegistrationClosed(event)}
           sx={{ width: { xs: '100%', sm: 'auto' }, alignSelf: {xs: 'stretch', sm: 'flex-start'} }}
         >
           Sign Up
@@ -798,7 +866,6 @@ const EventList = () => {
           color="primary" 
           startIcon={<SignUpIcon />} 
           onClick={() => handleSignUpClick(event.id)}
-          disabled={isRegistrationClosed(event)}
           sx={{ width: { xs: '100%', sm: 'auto' }, alignSelf: {xs: 'stretch', sm: 'flex-start'} }}
         >
           Join Waitlist

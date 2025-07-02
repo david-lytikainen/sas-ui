@@ -245,7 +245,13 @@ interface EventsApi {
   updateEvent: (eventId: string, eventData: Partial<Event>) => Promise<{ message: string, event: Event }>;
   deleteEvent: (eventId: string) => Promise<{ message: string }>;
   registerForEvent: (eventId: string, body?: { join_waitlist: boolean }) => Promise<{ message: string, waitlist_available?: boolean }>;
-  cancelRegistration: (eventId: string) => Promise<{ message: string }>;
+  cancelRegistration: (eventId: string) => Promise<{ 
+    message: string;
+    refund_info?: {
+      refund_processed: boolean;
+      refund_error?: string;
+    }
+  }>;
   checkIn: (eventId: string, pin: string) => Promise<{ message: string }>;
   testGetEvents: () => Promise<Event[]>;
   updateEventStatus: (eventId: string, status: string) => Promise<{ message: string }>;
@@ -408,7 +414,7 @@ const realEventsApi: EventsApi = {
       ...eventData,
       starts_at: eventData.starts_at && new Date(eventData.starts_at).toISOString()
     };
-    const response = await axiosInstance.post('/events/create', eventDataWithTZ);
+    const response = await axiosInstance.post('/events', eventDataWithTZ);
     return response.data;
   },
 
@@ -428,7 +434,11 @@ const realEventsApi: EventsApi = {
   },
 
   cancelRegistration: async (eventId: string) => {
-    const response = await axiosInstance.post(`/events/${eventId}/cancel-registration`);
+    const response = await axiosInstance.post(`/events/${eventId}/cancel-registration`, {}, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
     return response.data;
   },
   
@@ -457,7 +467,7 @@ const realEventsApi: EventsApi = {
   },
   
   updateEventStatus: async (eventId: string, status: string) => {
-    const response = await axiosInstance.patch(`/events/${eventId}/status`, { status });
+    const response = await axiosInstance.put(`/events/${eventId}/status`, { status });
     return response.data;
   },
   
@@ -522,7 +532,7 @@ const realEventsApi: EventsApi = {
         num_tables: numTables,
         num_rounds: numRounds
       };
-      const response = await axiosInstance.post(`/events/${eventId}/generate/schedules`, payload);
+      const response = await axiosInstance.post(`/events/${eventId}/start`, payload);
       return response.data;
     } catch (error: any) {
       if (error.response?.data?.error) {
@@ -535,7 +545,7 @@ const realEventsApi: EventsApi = {
   resumeEvent: async (eventId: string) => {
     try {
       // Use the updateEventStatus method to set the event back to "In Progress"
-      const response = await axiosInstance.patch(`/events/${eventId}/status`, { status: 'In Progress' });
+      const response = await axiosInstance.put(`/events/${eventId}/status`, { status: 'In Progress' });
       return response.data;
     } catch (error: any) {
       if (error.response?.data?.error) {
@@ -549,7 +559,7 @@ const realEventsApi: EventsApi = {
     eventId: string, 
     selections: Array<{ event_speed_date_id: number; interested: boolean }>
   ) => {
-    const response = await axiosInstance.post(`/events/${eventId}/submit-selections`, { selections });
+    const response = await axiosInstance.post(`/events/${eventId}/speed-date-selections`, { selections });
     return response.data;
   },
   getMyMatches: async (eventId: string) => {

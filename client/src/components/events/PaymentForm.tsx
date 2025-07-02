@@ -40,7 +40,42 @@ const getStripe = async () => {
       stripePromise = loadStripe(config.publishable_key);
     } catch (error) {
       console.error('Failed to load Stripe config:', error);
-      throw error;
+      // Fallback: try direct fetch to bypass axios interceptors
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5001/api'}/stripe/config`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        const config = await response.json();
+        stripePromise = loadStripe(config.publishable_key);
+        console.log('Stripe config loaded via fallback fetch');
+      } catch (fallbackError: any) {
+        console.error('Fallback fetch also failed:', fallbackError);
+        
+        // Check if this is a mixed content issue (HTTPS → HTTP)
+        const isHttpsToHttp = window.location.protocol === 'https:' && 
+          (process.env.REACT_APP_API_URL || 'http://localhost:5001/api').startsWith('http:');
+        
+        if (isHttpsToHttp) {
+          throw new Error('Payment system unavailable: Mixed content blocked. Please ensure both frontend and backend use HTTPS, or access the site via HTTP.');
+        } else if (fallbackError.message?.includes('Network Error')) {
+          throw new Error('Payment system unavailable: Cannot connect to payment server. Please check your internet connection.');
+        } else {
+          // Last resort: try with a hardcoded key for development
+          console.warn('Using fallback Stripe key due to config loading failure');
+          const fallbackKey = 'pk_test_51RdZeRH6zrocvYcAtTKhX6hNjwZCiELcsS2VqafhAaoUGn1jxvdhcHnuo03lzBgpEEetAgY1tHVauVancijMEQi400hAgJRENi';
+          stripePromise = loadStripe(fallbackKey);
+          console.log('Stripe loaded with fallback key');
+          return stripePromise;
+        }
+      }
     }
   }
   return stripePromise;
@@ -103,9 +138,27 @@ const PaymentFormInner: React.FC<PaymentFormInnerProps> = ({
         onError(error.message || 'An error occurred during payment');
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         console.log('Payment succeeded! Waiting for registration processing...');
+        
+        // Explicitly verify the payment and register the user
+        try {
+          const verifyResponse = await axios.get(
+            `${process.env.REACT_APP_API_URL || 'http://localhost:5001/api'}/stripe/payment-intent/${paymentIntent.id}`, 
+            {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json',
+              },
+              withCredentials: true
+            }
+          );
+          console.log('Payment verification response:', verifyResponse.data);
+        } catch (verifyError) {
+          console.error('Error verifying payment:', verifyError);
+        }
+        
         setTimeout(() => {
           onSuccess();
-        }, 500);
+        }, 1000); // Increased delay to allow backend processing
       } else {
         onError('Payment processing failed. Please try again.');
       }
@@ -229,51 +282,51 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   }, [open, event]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const initializePayment = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+    if (!event) return;
+    
+    setLoading(true);
+    setError(null);
 
-      // Start Stripe loading immediately (don't wait for it)
-      const stripePromise = getStripe();
-      
+    try {
+      // Initialize Stripe first
+      const stripe = await getStripe();
+      setStripeInstance(Promise.resolve(stripe));
+
+      // Create payment intent
+      let clientSecretValue: string;
       if (existingPaymentIntentId) {
-        // For waitlist payments, we already have a PaymentIntent ID
-        // We need to retrieve the client_secret from the backend
-        const paymentIntentPromise = eventsApi.getStripeConfig().then(() => 
-          axios.get(`${process.env.REACT_APP_API_URL || 'http://localhost:5001/api'}/stripe/payment-intent/${existingPaymentIntentId}`, {
+        // For waitlist users with existing payment intent
+        const response = await axios.get(
+          `${process.env.REACT_APP_API_URL || 'http://localhost:5001/api'}/stripe/payment-intent/${existingPaymentIntentId}`,
+          {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`,
               'Content-Type': 'application/json',
             },
             withCredentials: true
-          })
+          }
         );
-        
-        const [stripeInstance, paymentIntentResponse] = await Promise.all([
-          stripePromise,
-          paymentIntentPromise
-        ]);
-
-        setStripeInstance(Promise.resolve(stripeInstance));
-        setClientSecret(paymentIntentResponse.data.client_secret);
+        clientSecretValue = response.data.client_secret;
       } else {
-        // Create new payment intent for regular registration
-        const paymentIntentPromise = eventsApi.createPaymentIntent(event!.id.toString());
-
-        // Wait for both to complete
-        const [stripeInstance, paymentIntent] = await Promise.all([
-          stripePromise,
-          paymentIntentPromise
-        ]);
-
-        setStripeInstance(Promise.resolve(stripeInstance));
-        setClientSecret(paymentIntent.client_secret);
+        // Create new payment intent
+        const response = await eventsApi.createPaymentIntent(event.id.toString());
+        clientSecretValue = response.client_secret;
       }
 
-    } catch (err: any) {
-      console.error('Error initializing payment:', err);
-      console.error('Error details:', err.response?.data);
-      setError(err.response?.data?.error || 'Failed to initialize payment. Please try again.');
+      if (clientSecretValue) {
+        setClientSecret(clientSecretValue);
+      } else {
+        throw new Error('No client secret received from payment service');
+      }
+    } catch (error: any) {
+      console.log('Payment initialization issue:', error.message || 'Unknown error');
+      const isNetworkError = error.message?.includes('Network Error') || error.code === 'ERR_NETWORK';
+      
+      if (isNetworkError) {
+        setError('Payment system temporarily unavailable. Please try refreshing the page or contact support.');
+      } else {
+        setError(error.message || 'Failed to initialize payment. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
