@@ -188,7 +188,7 @@ const LandingPage: React.FC = () => {
             fontSize: { xs: '1rem', sm: '1.5rem' }
           }}
         >
-          Tired of endless swiping? Saved & Single hosts cross-church speed-dating events for Christian singles (ages 20-30) in PA, DE, & NJ to connect authentically, in person.
+          Tired of endless swiping? Saved & Single hosts cross-church speed-dating events for Christian singles in PA, DE, & NJ to connect authentically, in person.
         </Typography>
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'center', alignItems: 'center', gap: { xs: 2, sm: 2 } }}>
           <Button 
