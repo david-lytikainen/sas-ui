@@ -100,7 +100,7 @@ const Register = () => {
       age--;
     }
 
-    if (age < 20 || age > 40) {
+    if (age < 20 || age > 42) {
       setError('You must be between 20 and 40 years old to register');
       return;
     }
