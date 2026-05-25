@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { AuthResponse, TokenValidationResponse} from '../types/user';
-import { Event, ScheduleItem } from '../types/event';
+import { AuthResponse, TokenValidationResponse } from '../types/user';
+import { Event, ScheduleItem, Timer } from '../types/event';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
@@ -330,6 +330,37 @@ interface EventsApi {
       church: string
     }
   }>;
+  getTimer: (eventId: string) => Promise<Timer | null>;
+  startTimerRound: (eventId: string, roundNumber?: number) => Promise<TimerActionResponse>;
+  endTimerRound: (eventId: string) => Promise<EventTimerPayload>;
+  pauseTimerRound: (eventId: string, timeRemaining: number) => Promise<TimerActionResponse>;
+  resumeTimerRound: (eventId: string) => Promise<TimerActionResponse>;
+  nextTimerRound: (eventId: string) => Promise<TimerActionResponse>;
+  updateTimerDuration: (eventId: string, data: TimerDurationUpdate) => Promise<TimerActionResponse>;
+}
+
+interface EventTimerPayload {
+  id: number;
+  event_id: number;
+  current_round: number;
+  final_round: number;
+  round_duration: number;
+  round_start_time: string | null;
+  is_paused: boolean;
+  pause_time_remaining: number | null;
+  break_duration: number;
+}
+
+interface TimerActionResponse {
+  timer: EventTimerPayload;
+  message: string;
+  complete?: boolean;
+  error?: string;
+}
+
+interface TimerDurationUpdate {
+  round_duration?: number;
+  break_duration?: number;
 }
 
 interface MatchPair {
@@ -572,8 +603,36 @@ const realEventsApi: EventsApi = {
       }
       throw new Error('Failed to update waitlist user details.');
     }
+  },
+  getTimer: async (eventId: string) => {
+    const response = await axiosInstance.get(`/events/${eventId}/timer`);
+    return response.data;
+  },
+  startTimerRound: async (eventId: string, roundNumber?: number) => {
+    const response = await axiosInstance.post(`/events/${eventId}/timer/start`, roundNumber ? { round_number: roundNumber } : {});
+    return response.data;
+  },
+  endTimerRound: async (eventId: string) => {
+    const response = await axiosInstance.post(`/events/${eventId}/timer/end`);
+    return response.data;
+  },
+  pauseTimerRound: async (eventId: string, timeRemaining: number) => {
+    const response = await axiosInstance.post(`/events/${eventId}/timer/pause`, { time_remaining: timeRemaining });
+    return response.data;
+  },
+  resumeTimerRound: async (eventId: string) => {
+    const response = await axiosInstance.post(`/events/${eventId}/timer/resume`);
+    return response.data;
+  },
+  nextTimerRound: async (eventId: string) => {
+    const response = await axiosInstance.post(`/events/${eventId}/timer/next`);
+    return response.data;
+  },
+  updateTimerDuration: async (eventId: string, data: TimerDurationUpdate) => {
+    const response = await axiosInstance.put(`/events/${eventId}/timer/duration`, data);
+    return response.data;
   }
 };
 
 export default realAuthApi;
-export { realEventsApi as eventsApi }; 
+export { realEventsApi as eventsApi };

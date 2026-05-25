@@ -1,24 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Container,
-  Box,
-  Typography,
-  TextField,
-  Button,
-  Alert,
-  Paper,
-  InputAdornment,
-  IconButton,
-  FormControl,
-  Select,
-  MenuItem,
-  InputLabel,
-  SelectChangeEvent,
-  useTheme,
-  Link as MuiLink,
-  Autocomplete,
-} from '@mui/material';
+import { Container, Box, Typography, TextField, Button, Alert, Paper, InputAdornment, IconButton, FormControl, Select, MenuItem, InputLabel, SelectChangeEvent, useTheme, Link as MuiLink, Autocomplete } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import { churchOptions } from '../../constants/churchOptions';
@@ -537,4 +519,4 @@ const Register = () => {
   );
 };
 
-export default Register; 
+export default Register;

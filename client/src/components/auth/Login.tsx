@@ -2,19 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useSplash } from '../../context/SplashContext';
-import {
-  Container,
-  Box,
-  TextField,
-  Button,
-  Typography,
-  Link,
-  Alert,
-  Paper,
-  Fade,
-  InputAdornment,
-  IconButton,
-} from '@mui/material';
+import { Container, Box, TextField, Button, Typography, Link, Alert, Paper, Fade, InputAdornment, IconButton } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 
 const Login = () => {
@@ -166,4 +154,4 @@ const Login = () => {
   );
 };
 
-export default Login; 
+export default Login;

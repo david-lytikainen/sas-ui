@@ -361,7 +361,7 @@ const AppLayout = () => {
 function App() {
   const [mode, setMode] = useState<'light' | 'dark'>(() => {
     const savedMode = localStorage.getItem('themeMode');
-    return (savedMode === 'light' || savedMode === 'dark') ? savedMode : 'light';
+    return (savedMode === 'light' || savedMode === 'dark') ? savedMode : 'dark';
   });
 
   useEffect(() => {

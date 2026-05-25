@@ -1,27 +1,12 @@
 import { useContext, useState } from 'react';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
-import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Button,
-  Box,
-  Container,
-  IconButton,
-  useTheme,
-  useMediaQuery,
-} from '@mui/material';
+import { AppBar, Toolbar, Typography, Button, Box, Container, IconButton, useTheme, useMediaQuery } from '@mui/material';
 import { animated, useSpring, useTrail } from '@react-spring/web';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { useAuth } from '../context/AuthContext';
 import { ColorModeContext } from '../context/ColorModeContext';
-import {
-  ExitToApp as ExitIcon,
-  Home as HomeIcon,
-  Login as LoginIcon,
-  PersonAdd as PersonAddIcon
-} from '@mui/icons-material';
+import { ExitToApp as ExitIcon, Home as HomeIcon, Login as LoginIcon, PersonAdd as PersonAddIcon } from '@mui/icons-material';
 
 const AnimatedIconButton = animated(IconButton);
 const AnimatedBox = animated(Box);
@@ -274,4 +259,4 @@ const Navigation = () => {
   );
 };
 
-export default Navigation; 
+export default Navigation;

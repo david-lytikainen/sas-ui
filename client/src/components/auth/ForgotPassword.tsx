@@ -1,16 +1,6 @@
 import React, { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import {
-  Container,
-  Box,
-  TextField,
-  Button,
-  Typography,
-  Link,
-  Alert,
-  Paper,
-  Fade,
-} from '@mui/material';
+import { Container, Box, TextField, Button, Typography, Link, Alert, Paper, Fade } from '@mui/material';
 import { default as realAuthApi } from '../../services/api';
 
 const ForgotPassword = () => {
@@ -112,4 +102,4 @@ const ForgotPassword = () => {
   );
 };
 
-export default ForgotPassword; 
+export default ForgotPassword;

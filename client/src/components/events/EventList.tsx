@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Box, Typography, Button, Card, CardContent, CardActions, Grid, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Alert, useMediaQuery, useTheme, TextField, Link as MuiLink, Collapse, Select, MenuItem, InputLabel, FormControl, DialogContentText, Divider, Snackbar, SnackbarCloseReason } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Container, Box, Typography, Button, Card, CardContent, CardActions, Grid, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Alert, useMediaQuery, useTheme, TextField, Link as MuiLink, Collapse, Select, MenuItem, InputLabel, FormControl, DialogContentText, Divider } from '@mui/material';
 import { Event as EventIcon, HowToReg as SignUpIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon, AttachMoney as AttachMoneyIcon, CheckCircle as CheckInIcon, Email as EmailIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Settings as SettingsIcon, List as ListIcon, PlayArrow as StartIcon, Stop as EndIcon, Visibility as ViewIcon, Edit as EditIcon, Delete as DeleteIcon, People as PeopleIcon, CheckBox as CheckBoxIcon } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
@@ -46,7 +46,6 @@ const EventList = () => {
   const [selectedEventForAllSchedules, setSelectedEventForAllSchedules] = useState<Event | null>(null);
 
   const [userSchedules, setUserSchedules] = useState<Record<number, ScheduleItem[]>>({});
-  const [showNotificationSnackbar, setShowNotificationSnackbar] = useState<boolean>(false);
 
   // ADD State for expanding user's own schedule inline
   const [expandedUserSchedules, setExpandedUserSchedules] = useState<Record<number, boolean>>({});
@@ -280,21 +279,6 @@ const EventList = () => {
     }
   };
 
-  const getStatusColor = (status: EventStatus) => {
-    switch (status) {
-      case 'Registration Open':
-        return 'success';
-      case 'In Progress':
-        return 'primary';
-      case 'Completed':
-        return 'info';
-      case 'Cancelled':
-        return 'error';
-      default:
-        return 'default';
-    }
-  };
-
   // Sort events like a SQL database would
   const sortedEvents = [...filteredEvents].sort((a, b) => { // Use filteredEvents
     // First by status using the statusPriority
@@ -447,6 +431,12 @@ const EventList = () => {
   const renderActionButtons = (event: Event) => {
     const isUserRegistered = isRegisteredForEvent(event.id);
     const registrationStatus = event.registration?.status;
+    const openCheckInDialog = () => {
+      setSelectedEventForCheckIn(event);
+      setCheckInPin('');
+      setCheckInError(null);
+      setGlobalCheckInDialogOpen(true);
+    };
 
     // Handle Waitlisted status first
     if (registrationStatus === 'Waitlisted') {
@@ -462,14 +452,17 @@ const EventList = () => {
 
     // If registered (and not waitlisted) and event is not completed or in progress
     if (isUserRegistered && registrationStatus !== 'Waitlisted' && event.status !== 'Completed' && event.status !== 'In Progress') {
-      const chipLabel = registrationStatus === 'Checked In' ? 'Checked In' : 'Registered';
-      const chipColor = registrationStatus === 'Checked In' ? 'success' : 'info';
-      const chipIcon = registrationStatus === 'Checked In' ? <CheckInIcon /> : undefined;
       return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start', width: '100%' }}>
-          <Chip label={chipLabel} color={chipColor} icon={chipIcon} size="small" sx={{ alignSelf: 'flex-start' }} />
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: 1 }}>
+          {registrationStatus === 'Checked In' ? (
+            <Chip label="Checked In" color="success" icon={<CheckInIcon />} size="small" />
+          ) : (
+            <Button size="small" variant="outlined" color="primary" onClick={openCheckInDialog} startIcon={<CheckInIcon />}>
+              Check In
+            </Button>
+          )}
           {registrationStatus !== 'Checked In' && (
-            <Button size="small" variant="outlined" color="error" onClick={() => handleCancelClick(event.id)} startIcon={<CancelIcon />} sx={{ alignSelf: 'flex-start' }}>
+            <Button size="small" variant="outlined" color="error" onClick={() => handleCancelClick(event.id)} startIcon={<CancelIcon />}>
               Cancel Registration
             </Button>
           )}
@@ -493,11 +486,6 @@ const EventList = () => {
           Sign Up
         </Button>
       );
-    }
-
-    // Fallback for other statuses e.g. 'In Progress' where user is not checked in
-    if (event.status === 'In Progress' && registrationStatus !== 'Checked In') {
-        return <Chip label="Event In Progress" color="default" size="small" sx={{ alignSelf: 'flex-start' }} />;
     }
 
     return null;
@@ -583,6 +571,23 @@ const EventList = () => {
               View Waitlist
             </Button>
 
+            {(event.status === 'In Progress' || event.status === 'Completed') && (
+              <Button
+                variant="outlined"
+                size="small"
+                color="primary"
+                startIcon={<ViewIcon />}
+                onClick={() => {
+                  setSelectedEventForAllSchedules(event);
+                  setViewAllSchedulesDialogOpen(true);
+                }}
+                fullWidth
+                sx={{ borderRadius: 1 }}
+              >
+                View All Schedules
+              </Button>
+            )}
+
             <Button
               variant="outlined"
               size="small"
@@ -608,23 +613,6 @@ const EventList = () => {
             >
               End
             </Button>
-
-            {(event.status === 'In Progress' || event.status === 'Completed') && (
-              <Button
-                variant="outlined"
-                size="small"
-                color="primary"
-                startIcon={<ViewIcon />}
-                onClick={() => {
-                  setSelectedEventForAllSchedules(event);
-                  setViewAllSchedulesDialogOpen(true);
-                }}
-                fullWidth
-                sx={{ borderRadius: 1 }}
-              >
-                View All Schedules
-              </Button>
-            )}
 
             <Grid container spacing={1} sx={{ mt: 0.5 }}>
               <Grid item xs={6}>
@@ -805,66 +793,11 @@ const EventList = () => {
   }, [filteredEvents, isRegisteredForEvent, user, userSchedules, savedAttendeeSelections, attendeeSpeedDateSelections]); // Added savedAttendeeSelections & attendeeSpeedDateSelections to deps
 
   useEffect(() => {
-    if ('Notification' in window) {
-      const currentPermission = Notification.permission;
-      // Show snackbar only if permission is default (not granted or denied)
-      setShowNotificationSnackbar(currentPermission === 'default');
-    } else {
-      setShowNotificationSnackbar(false); // Don't show if notifications not supported
-    }
-
     const storedSubmitted = localStorage.getItem('submittedEventIds');
     if (storedSubmitted) {
       setSubmittedEventIds(new Set(JSON.parse(storedSubmitted)));
     }
   }, []);
-
-
-  const requestNotificationPermission = useCallback(async () => {
-    if (!('Notification' in window)) {
-      console.log('This browser does not support notifications');
-      return 'unsupported'; // Indicate unsupported
-    }
-    try {
-      if (Notification.permission !== 'denied') {
-        const permission = await Notification.requestPermission();
-        setShowNotificationSnackbar(false);
-        return permission;
-      }
-      return Notification.permission;
-    } catch (error) {
-      console.error('Error requesting notification permission:', error);
-      setShowNotificationSnackbar(false);
-      return 'denied';
-    }
-  }, [setShowNotificationSnackbar]);
-
-  const handleEnableNotifications = () => {
-    requestNotificationPermission().then(permission => {
-      if (permission === 'granted') {
-        console.log('Notification permission granted via EventList');
-      } else {
-        console.log(`Notification permission status: ${permission}`);
-      }
-    });
-  };
-
-  const handleDeclineNotifications = () => {
-    setShowNotificationSnackbar(false);
-    // Optionally store this preference in localStorage to prevent showing again
-    localStorage.setItem('notificationsDeclined', 'true');
-  };
-
-  const handleCloseNotificationSnackbar = useCallback((_event: any, reason: SnackbarCloseReason) => {
-    if (reason === 'clickaway') {
-      return;
-    }
-    setShowNotificationSnackbar(false);
-  }, [setShowNotificationSnackbar]);
-
-  const handleAlertClose = useCallback(() => {
-    setShowNotificationSnackbar(false);
-  }, [setShowNotificationSnackbar]);
 
   const handleOpenEditEventDialog = (event: Event) => {
     setEventToEdit(event);
@@ -1050,34 +983,13 @@ const EventList = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Chip
                         label={event.status}
-                        color={getStatusColor(event.status)}
-                        sx={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}
+                        sx={{
+                          fontWeight: 600,
+                          fontSize: isMobile ? '0.75rem' : '0.875rem',
+                          bgcolor: theme.palette.mode === 'dark' ? '#2b2b2b' : '#e0e0e0',
+                          color: theme.palette.mode === 'dark' ? '#f5f5f5' : '#212121'
+                        }}
                       />
-                      {/* Add per-event Check-In button if eligible, now top right */}
-                      {(() => {
-                        const isUserRegistered = isRegisteredForEvent(event.id);
-                        const registrationStatus = event.registration?.status;
-                        const canCheckIn = isUserRegistered && registrationStatus !== 'Checked In' && (event.status === 'Registration Open' || event.status === 'In Progress');
-                        if (canCheckIn) {
-                          return (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              startIcon={<CheckInIcon />}
-                              sx={{ ml: 1, px: 2, py: 0.5, fontWeight: 600, fontSize: isMobile ? '0.8rem' : '1rem', borderRadius: 2, boxShadow: 1 }}
-                              onClick={() => {
-                                setSelectedEventForCheckIn(event);
-                                setCheckInPin('');
-                                setCheckInError(null);
-                                setGlobalCheckInDialogOpen(true);
-                              }}
-                            >
-                              Check-In
-                            </Button>
-                          );
-                        }
-                        return null;
-                      })()}
                     </Box>
                   </Box>
 
@@ -1412,10 +1324,7 @@ const EventList = () => {
         onCancel={() => setEndEventDialogOpen(false)}
         onConfirm={handleEndEvent}
       >
-        Are you sure you want to end "{selectedEventForEnding?.name}"? This will mark the event as completed and cannot be undone.
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          Note: Only events that are currently in progress can be ended.
-        </Typography>
+        Are you sure you want to end "{selectedEventForEnding?.name}"? <br></br> Attendees will no longer be able to select Yes or No and all blank entries will be treated as No.
       </ConfirmDialog>
 
       <ViewAllSchedules
@@ -1446,43 +1355,6 @@ const EventList = () => {
           </Typography>
         </MuiLink>
       </Box>
-
-      {/* UPDATE Snackbar for Notification Permission Request */}
-      <Snackbar
-         open={showNotificationSnackbar}
-         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-         onClose={handleCloseNotificationSnackbar}
-         sx={{ position: 'fixed', bottom: 12, zIndex: theme.zIndex.snackbar + 1}}
-         autoHideDuration={null} // Remove auto-hide
-       >
-         <Alert
-           severity="info"
-           action={
-             <Box sx={{ display: 'flex', gap: 1 }}>
-               <Button
-                 color="error"
-                 size="medium"
-                 onClick={handleDeclineNotifications}
-                 variant="outlined"
-               >
-                 Decline
-               </Button>
-               <Button
-                 color="inherit"
-                 size="medium"
-                 onClick={handleEnableNotifications}
-                 variant="outlined"
-               >
-                 Enable
-               </Button>
-             </Box>
-           }
-           onClose={handleAlertClose}
-           sx={{width: '100%', textAlign: 'center', pt: 1, pb: 1 }}
-         >
-           Enable browser notifications for event timer alerts
-         </Alert>
-       </Snackbar>
 
       {/* ADD: Edit Event Dialog */}
       <Dialog open={editEventDialogOpen} onClose={() => setEditEventDialogOpen(false)} maxWidth="sm" fullWidth>

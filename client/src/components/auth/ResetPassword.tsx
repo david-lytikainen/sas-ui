@@ -1,18 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
-import {
-  Container,
-  Box,
-  TextField,
-  Button,
-  Typography,
-  Link,
-  Alert,
-  Paper,
-  Fade,
-  InputAdornment,
-  IconButton,
-} from '@mui/material';
+import { Container, Box, TextField, Button, Typography, Link, Alert, Paper, Fade, InputAdornment, IconButton } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import realAuthApi from '../../services/api';
 
@@ -175,4 +163,4 @@ const ResetPassword = () => {
   );
 };
 
-export default ResetPassword; 
+export default ResetPassword;
