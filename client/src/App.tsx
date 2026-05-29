@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useMemo, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, useTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -25,47 +25,25 @@ import { SplashProvider, useSplash } from './context/SplashContext';
 import ForgotPassword from "./components/auth/ForgotPassword";
 import ResetPassword from "./components/auth/ResetPassword";
 
-// Define the actual default background colors for the page
-const ACTUAL_LIGHT_MODE_PAGE_BACKGROUND = '#FFF9F5'; 
-const ACTUAL_DARK_MODE_PAGE_BACKGROUND = '#222222';  
+const ACTUAL_DARK_MODE_PAGE_BACKGROUND = '#222222';
 
-// ADDED getDesignTokens function
-const getDesignTokens = (mode: 'light' | 'dark') => ({
+const getDesignTokens = () => ({
   palette: {
-    mode,
-    ...(mode === 'light'
-      ? {
-          primary: {
-            main: '#D98B9C',
-          },
-          secondary: {
-            main: '#B0A1C4',
-          },
-          background: {
-            default: ACTUAL_LIGHT_MODE_PAGE_BACKGROUND,
-            paper: '#FFFFFF',   
-          },
-          text: {
-            primary: '#4A4A4A', 
-            secondary: '#6E6E6E', 
-          },
-        }
-      : {
-          primary: {
-            main: '#A6C0FE',
-          },
-          secondary: {
-            main: '#707070', // Darker gray secondary color
-          },
-          background: {
-            default: ACTUAL_DARK_MODE_PAGE_BACKGROUND, // Use actual dark page background
-            paper: '#333333',   // Slightly lighter gray for paper elements
-          },
-          text: {
-            primary: '#E0E0E0', // Light gray text for good contrast
-            secondary: '#B0B0B0', // Slightly darker gray for secondary text
-          },
-        }),
+    mode: 'dark' as const,
+    primary: {
+      main: '#A6C0FE',
+    },
+    secondary: {
+      main: '#707070',
+    },
+    background: {
+      default: ACTUAL_DARK_MODE_PAGE_BACKGROUND,
+      paper: '#333333',
+    },
+    text: {
+      primary: '#E0E0E0',
+      secondary: '#B0B0B0',
+    },
   },
   typography: {
     fontFamily: [
@@ -94,12 +72,10 @@ const getDesignTokens = (mode: 'light' | 'dark') => ({
           fontWeight: 600,
           padding: '10px 20px',
           transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-          '&:hover': {
-            transform: 'scale(1.02) translateY(-1px)',
-            boxShadow: mode === 'dark' 
-              ? '0 4px 12px rgba(0, 0, 0, 0.5)' 
-              : '0 4px 10px rgba(217, 139, 156, 0.25)', 
-          },
+            '&:hover': {
+              transform: 'scale(1.02) translateY(-1px)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
+            },
           '&:active': {
             transform: 'scale(0.98)',
           },
@@ -112,16 +88,10 @@ const getDesignTokens = (mode: 'light' | 'dark') => ({
         root: {
           backgroundImage: 'none',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          ...(mode === 'dark' && {
-            backgroundColor: '#333333',
-          }),
-           // Light mode paper background will be taken from palette.background.paper
+          backgroundColor: '#333333',
           '&:hover': {
             transform: 'translateY(-2px)',
-            boxShadow: mode === 'dark' 
-              ? '0 6px 20px rgba(0, 0, 0, 0.4)' 
-              // Softer shadow for feminine light mode
-              : '0 6px 15px rgba(217, 139, 156, 0.2)', 
+            boxShadow: '0 6px 20px rgba(0, 0, 0, 0.4)',
           },
         },
       },
@@ -129,15 +99,9 @@ const getDesignTokens = (mode: 'light' | 'dark') => ({
     MuiAppBar: {
       styleOverrides: {
         root: {
-          backgroundColor: mode === 'dark' 
-            ? 'rgba(19, 19, 19, 0.85)' 
-            // Light mode AppBar - using warm off-white with blur
-            : 'rgba(255, 249, 245, 0.85)', 
+          backgroundColor: 'rgba(19, 19, 19, 0.85)',
           backdropFilter: 'blur(20px)',
-          borderBottom: mode === 'dark' 
-            ? '1px solid rgba(255, 255, 255, 0.1)' 
-            // Softer, themed border for light mode
-            : '1px solid rgba(217, 139, 156, 0.25)', 
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
         },
       },
     },
@@ -344,7 +308,6 @@ const AppLayout = () => {
           flexGrow: 1, 
           py: theme.spacing(3),
           px: theme.spacing(2),
-          paddingTop: '64px', 
           backgroundColor: theme.palette.background.default,
           [theme.breakpoints.up('sm')]: {
             px: theme.spacing(3),
@@ -359,36 +322,25 @@ const AppLayout = () => {
 };
 
 function App() {
-  const [mode, setMode] = useState<'light' | 'dark'>(() => {
-    const savedMode = localStorage.getItem('themeMode');
-    return (savedMode === 'light' || savedMode === 'dark') ? savedMode : 'dark';
-  });
-
   useEffect(() => {
-    localStorage.setItem('themeMode', mode);
     let themeColorMeta = document.querySelector('meta[name="theme-color"]');
     if (!themeColorMeta) {
       themeColorMeta = document.createElement('meta');
       themeColorMeta.setAttribute('name', 'theme-color');
       document.head.appendChild(themeColorMeta);
     }
-    themeColorMeta.setAttribute('content', mode === 'light' ? ACTUAL_LIGHT_MODE_PAGE_BACKGROUND : ACTUAL_DARK_MODE_PAGE_BACKGROUND);
-  }, [mode]);
+    themeColorMeta.setAttribute('content', ACTUAL_DARK_MODE_PAGE_BACKGROUND);
+  }, []);
 
   const colorMode = useMemo(
     () => ({
-      toggleColorMode: () => {
-        setMode((prevMode: 'light' | 'dark') => {
-          const newMode = prevMode === 'light' ? 'dark' : 'light';
-          return newMode;
-        });
-      },
-      mode,
+      toggleColorMode: () => {},
+      mode: 'dark' as const,
     }),
-    [mode]
+    []
   );
 
-  const theme = useMemo(() => createTheme(getDesignTokens(mode)), [mode]);
+  const theme = useMemo(() => createTheme(getDesignTokens()), []);
 
   return (
     <SplashProvider>

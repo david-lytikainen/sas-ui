@@ -134,7 +134,7 @@ const CreateEvent = ({ onCancel, onCreated, onError }: CreateEventProps) => {
                   top: '50%',
                   transform: 'translateY(-50%)',
                   pointerEvents: 'none',
-                  color: theme.palette.mode === 'dark' ? 'rgb(255, 255, 255)' : 'rgba(0, 0, 0, 0.38)',
+                  color: 'rgb(255, 255, 255)',
                   fontSize: '16px',
                   zIndex: 1
                 },
@@ -157,14 +157,14 @@ const CreateEvent = ({ onCancel, onCreated, onError }: CreateEventProps) => {
                 '& input[type="datetime-local"][value]:not([value=""])': {
                   textAlign: 'left !important',
                   direction: 'ltr !important',
-                  color: theme.palette.mode === 'dark' ? 'white !important' : 'text.primary !important',
+                  color: 'white !important',
                   '&::-webkit-datetime-edit': { paddingLeft: 0, textAlign: 'left !important', opacity: 1 }
                 }
               }}
               InputProps={{
                 endAdornment: (
                   <div style={{ position: 'absolute', right: '10px', display: 'flex', alignItems: 'center', pointerEvents: 'none', zIndex: 2 }}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" style={{ opacity: 0.7, color: theme.palette.mode === 'dark' ? 'white' : 'rgba(0, 0, 0, 0.54)' }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" style={{ opacity: 0.7, color: 'white' }}>
                       <path fill="currentColor" d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
                     </svg>
                   </div>

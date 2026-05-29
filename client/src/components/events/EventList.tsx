@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Container, Box, Typography, Button, Card, CardContent, CardActions, Grid, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Alert, useMediaQuery, useTheme, TextField, Link as MuiLink, Collapse, Select, MenuItem, InputLabel, FormControl, DialogContentText, Divider } from '@mui/material';
 import { Event as EventIcon, HowToReg as SignUpIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon, AttachMoney as AttachMoneyIcon, CheckCircle as CheckInIcon, Email as EmailIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Settings as SettingsIcon, List as ListIcon, PlayArrow as StartIcon, Stop as EndIcon, Visibility as ViewIcon, Edit as EditIcon, Delete as DeleteIcon, People as PeopleIcon, CheckBox as CheckBoxIcon } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import { eventsApi } from '../../services/api';
-import { Event, EventStatus, ScheduleItem } from '../../types/event';
+import { Event, EventStatus } from '../../types/event';
 import CreateEvent from './CreateEvent';
 import EventTimer from './EventTimer';
 import MySchedule from './MySchedule';
@@ -45,27 +45,9 @@ const EventList = () => {
   const [viewAllSchedulesDialogOpen, setViewAllSchedulesDialogOpen] = useState(false);
   const [selectedEventForAllSchedules, setSelectedEventForAllSchedules] = useState<Event | null>(null);
 
-  const [userSchedules, setUserSchedules] = useState<Record<number, ScheduleItem[]>>({});
-
-  // ADD State for expanding user's own schedule inline
-  const [expandedUserSchedules, setExpandedUserSchedules] = useState<Record<number, boolean>>({});
-
-  // ADD State for attendee's own speed date selections
-  const [attendeeSpeedDateSelections, setAttendeeSpeedDateSelections] = useState<Record<number, { eventId: number, interested: boolean }>>({});
-  const [attendeeSelectionError, setAttendeeSelectionError] = useState<Record<number, string | null>>({});
-  // ADD State to track successful submissions by the attendee
-  const [submittedEventIds, setSubmittedEventIds] = useState<Set<number>>(new Set());
-  const [submitConfirmOpen, setSubmitConfirmOpen] = useState(false);
-  const [eventToSubmitId, setEventToSubmitId] = useState<number | null>(null);
-  // ADD State to track if the selection window is confirmed closed for an event
-  const [selectionWindowClosedError, setSelectionWindowClosedError] = useState<Record<number, boolean>>({});
-
-  // Add state for tables and rounds input
   const [numTables, setNumTables] = useState<number>(10);
   const [numRounds, setNumRounds] = useState<number>(10);
   const [isTableConfigOpen, setIsTableConfigOpen] = useState<boolean>(false);
-  const [savedAttendeeSelections, setSavedAttendeeSelections] = useState<Record<number, Record<number, boolean>>>({}); // eventId -> { event_speed_date_id: interested }
-  const [saveIndicator, setSaveIndicator] = useState<Record<number, boolean>>({}); // eventId -> true if just saved
 
   const [editEventDialogOpen, setEditEventDialogOpen] = useState<boolean>(false);
   const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
@@ -82,7 +64,6 @@ const EventList = () => {
   const [deleteEventConfirmOpen, setDeleteEventConfirmOpen] = useState<boolean>(false);
   const [eventToDeleteId, setEventToDeleteId] = useState<number | null>(null);
 
-  // Add state for the waitlist confirmation dialog
   const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false);
   const [eventForWaitlist, setEventForWaitlist] = useState<Event | null>(null);
 
@@ -90,22 +71,6 @@ const EventList = () => {
   const [viewWaitlistDialogOpen, setViewWaitlistDialogOpen] = useState<boolean>(false);
   const [selectedEventForWaitlistUsers, setSelectedEventForWaitlistUsers] = useState<Event | null>(null);
   const [currentRounds, setCurrentRounds] = useState<Record<number, number>>({});
-
-  // Helper functions for localStorage
-  const getPersistedSelections = (eventId: number): Record<number, boolean> => {
-    const selections = localStorage.getItem(`attendeeSelections_${eventId}`);
-    return selections ? JSON.parse(selections) : {};
-  };
-
-  const persistSelection = (eventId: number, eventSpeedDateId: number, interested: boolean) => {
-    const selections = getPersistedSelections(eventId);
-    selections[eventSpeedDateId] = interested;
-    localStorage.setItem(`attendeeSelections_${eventId}`, JSON.stringify(selections));
-  };
-
-  const persistAllSelectionsForEvent = (eventId: number, selections: Record<number, boolean>) => {
-    localStorage.setItem(`attendeeSelections_${eventId}`, JSON.stringify(selections));
-  };
 
   const formatUTCToLocal = (utcDateString: string, includeTime: boolean = true) => {
     try {
@@ -132,33 +97,17 @@ const EventList = () => {
     return formatUTCToLocal(dateString, true);
   };
 
-  const isRegistrationClosed = (event: Event) => {
-    if (!event.starts_at) return false;
-
-    const eventStart = new Date(event.starts_at);
-    const now = new Date();
-
-    // Calculate time difference in hours
-    const timeDiff = (eventStart.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-    // Get rid of the limit of 2 hours
-    // TODO: Remove this once we have a better way to handle this
-    return timeDiff <= 0.01;
-  };
-
-  // Update handleSignUpClick to check registration close time
   const handleSignUpClick = (eventId: number) => {
-    const event = filteredEvents.find(e => e.id === eventId); // Use filteredEvents
+    const event = filteredEvents.find(e => e.id === eventId);
     if (!event) return;
 
-    if (event.status === 'Completed') {
-      setErrorMessage("Registration is not available for completed events.");
+    if (event.status === 'In Progress') {
+      setErrorMessage("Registration is not available for In Progress events.");
       return;
     }
 
-    // Check if event starts within 2 hours
-    if (isRegistrationClosed(event)) {
-      setErrorMessage("Registration is closed for this event (starts within 2 hours).");
+    if (event.status === 'Completed') {
+      setErrorMessage("Registration is not available for Completed events.");
       return;
     }
 
@@ -279,9 +228,7 @@ const EventList = () => {
     }
   };
 
-  // Sort events like a SQL database would
-  const sortedEvents = [...filteredEvents].sort((a, b) => { // Use filteredEvents
-    // First by status using the statusPriority
+  const sortedEvents = [...filteredEvents].sort((a, b) => {
     const statusOrder: Record<EventStatus, number> = {
       'In Progress': 1,
       'Registration Open': 2,
@@ -289,144 +236,14 @@ const EventList = () => {
       'Cancelled': 4
     };
 
-    // Primary sort by status
     const statusCompare = statusOrder[a.status] - statusOrder[b.status];
     if (statusCompare !== 0) return statusCompare;
 
-    // Secondary sort by starts_at date string (direct string comparison)
-    // This is more like how SQL would compare date strings in ORDER BY
     if (a.starts_at < b.starts_at) return 1;
     if (a.starts_at > b.starts_at) return -1;
 
-    // If both status and date are equal, sort by ID for consistent order
     return a.id - b.id;
   });
-
-  // Function to toggle inline user schedule visibility
-  const toggleUserScheduleInline = (eventId: number) => {
-    setExpandedUserSchedules(prev => ({
-      ...prev,
-      [eventId]: !prev[eventId]
-    }));
-    // Clear previous error for this event when toggling
-    setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null }));
-  };
-
-  const handleAttendeeSelectionChange = (eventSpeedDateId: number, eventId: number, interested: boolean) => {
-    setAttendeeSpeedDateSelections(prev => ({
-      ...prev,
-      [eventSpeedDateId]: { eventId, interested }
-    }));
-    // Persist this individual selection to localStorage
-    persistSelection(eventId, eventSpeedDateId, interested);
-    // Clear error for this event when a selection is made
-    setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null }));
-  };
-
-  const getCurrentPicksForEvent = (eventId: number) => {
-    return Object.entries(attendeeSpeedDateSelections)
-      .filter(([_, sel]) => sel.eventId === eventId)
-      .reduce((acc, [id, sel]) => {
-        acc[Number(id)] = sel.interested;
-        return acc;
-      }, {} as Record<number, boolean>);
-  };
-
-  const isSaveDisabled = (eventId: number) => {
-    const current = getCurrentPicksForEvent(eventId);
-    const saved = savedAttendeeSelections[eventId] || {};
-    const allIds = new Set([...Object.keys(current), ...Object.keys(saved)]);
-    for (const id of Array.from(allIds)) {
-      if (current[Number(id)] !== saved[Number(id)]) return false;
-    }
-    return true;
-  };
-
-  const handleSaveAttendeeSelections = async (eventId: number): Promise<boolean> => {
-    const event = filteredEvents.find(e => e.id === eventId);
-    if (!event) {
-      console.error("Event not found in handleSaveAttendeeSelections for eventId:", eventId);
-      setAttendeeSelectionError(prev => ({ ...prev, [eventId]: 'Event details not found. Cannot save selections.' }));
-      return false;
-    }
-
-    const currentPicks = getCurrentPicksForEvent(eventId);
-    // Update local saved state first for immediate UI feedback if desired for isSaveDisabled
-    setSavedAttendeeSelections(prev => ({ ...prev, [eventId]: { ...currentPicks } }));
-    // Persist all current selections for this event to localStorage
-    persistAllSelectionsForEvent(eventId, currentPicks);
-
-    setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null })); // Clear previous error
-    const schedule = userSchedules[eventId] || [];
-
-    const selectionsToSubmit = schedule.map(item => ({
-      event_speed_date_id: item.event_speed_date_id,
-      interested: currentPicks[item.event_speed_date_id] === true // Default to false (NO) if not in currentPicks
-    }));
-
-    if (schedule.length === 0) {
-      setAttendeeSelectionError(prev => ({ ...prev, [eventId]: 'No schedule found to save selections for this event.' }));
-      return false;
-    }
-    setSaveIndicator(prev => ({ ...prev, [eventId]: true }));
-
-    // Only attempt to submit to the backend if the event is not completed
-    if (event.status !== 'Completed') {
-      try {
-        await eventsApi.submitSpeedDateSelections(eventId.toString(), selectionsToSubmit);
-
-        setTimeout(() => setSaveIndicator(prev => ({ ...prev, [eventId]: false })), 1200);
-        setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: false })); // Reset this flag on successful submission
-        return true;
-      } catch (error: any) {
-        const specificErrorMessage = 'Speed date selections window closed 24 hours after event completion.';
-        const backendErrorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
-
-        if (backendErrorMessage === specificErrorMessage) {
-          setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: true }));
-          setAttendeeSelectionError(prev => ({ ...prev, [eventId]: null }));
-        } else {
-          setAttendeeSelectionError(prev => ({
-            ...prev,
-            [eventId]: backendErrorMessage || 'Failed to save your selections.'
-          }));
-          setSelectionWindowClosedError(prev => ({ ...prev, [eventId]: false }));
-        }
-        // Ensure save indicator is turned off on error too
-        setTimeout(() => setSaveIndicator(prev => ({ ...prev, [eventId]: false })), 1200);
-        return false;
-      }
-    } else {
-      // For completed events, selections are saved locally. API submission is skipped.
-      console.log(`Event ${eventId} (${event.name}) is completed. Selections saved locally only.`);
-      // The save indicator is already true, turn it off after a delay.
-      setTimeout(() => setSaveIndicator(prev => ({ ...prev, [eventId]: false })), 1200);
-      // No need to set specific errors here, as local save is successful.
-      // Backend selectionWindowClosedError is not relevant as we didn't attempt submission.
-      return true;
-    }
-  };
-
-
-  const handleSubmitClick = (eventId: number) => {
-    setEventToSubmitId(eventId);
-    setSubmitConfirmOpen(true);
-  };
-
-  const handleSubmitConfirm = async () => {
-    if (eventToSubmitId) {
-      const savedSuccessfully = await handleSaveAttendeeSelections(eventToSubmitId);
-
-      if (savedSuccessfully) {
-        const newSubmittedEventIds = new Set(submittedEventIds);
-        newSubmittedEventIds.add(eventToSubmitId);
-        setSubmittedEventIds(newSubmittedEventIds);
-        localStorage.setItem('submittedEventIds', JSON.stringify(Array.from(newSubmittedEventIds)));
-      }
-      setSubmitConfirmOpen(false);
-      setEventToSubmitId(null);
-    }
-  };
 
   const renderActionButtons = (event: Event) => {
     const isUserRegistered = isRegisteredForEvent(event.id);
@@ -480,7 +297,6 @@ const EventList = () => {
           color="primary"
           startIcon={<SignUpIcon />}
           onClick={() => handleSignUpClick(event.id)}
-          disabled={isRegistrationClosed(event)}
           sx={{ width: { xs: '100%', sm: 'auto' }, alignSelf: {xs: 'stretch', sm: 'flex-start'} }}
         >
           Sign Up
@@ -680,7 +496,6 @@ const EventList = () => {
   };
 
 
-  // Modified to show confirmation dialog only if event is in progress
   const handleEndEventClick = (event: Event) => {
     if (event.status !== 'In Progress') {
       setErrorMessage('Events can only be ended when they are in progress.');
@@ -691,7 +506,6 @@ const EventList = () => {
     setEndEventDialogOpen(true);
   };
 
-  // Actual event ending logic, called after confirmation
   const handleEndEvent = async () => {
     try {
       if (!selectedEventForEnding) return;
@@ -704,100 +518,6 @@ const EventList = () => {
       setErrorMessage(error.message || 'Failed to end event');
     }
   };
-
-  // Effect to fetch user schedules for active, checked-in events
-  useEffect(() => {
-    const fetchSchedulesForActiveEvents = async () => {
-      const schedulesToUpdate: Record<number, ScheduleItem[]> = {};
-      const newAttendeeSelections: Record<number, { eventId: number, interested: boolean }> = {};
-      const newSavedSelections: Record<number, Record<number, boolean>> = {};
-      let needsScheduleUpdate = false;
-
-      for (const event of filteredEvents) { // Use filteredEvents
-        const isRegistered = isRegisteredForEvent(event.id);
-        const registrationStatus = event.registration?.status || null;
-
-        // console.log(`Event ${event.id}: Status=${event.status}, Registered=${isRegistered}, CheckInStatus=${registrationStatus}, AlreadyFetched=${userSchedules.hasOwnProperty(event.id)}`);
-
-        if ((event.status === 'In Progress' || event.status === 'Completed') &&
-            isRegistered &&
-            registrationStatus === 'Checked In')
-        {
-          if (!userSchedules.hasOwnProperty(event.id)) {
-            try {
-              // console.log(`Fetching schedule for event ${event.id}`);
-              const response = await eventsApi.getSchedule(event.id.toString());
-              if (response && response.schedule) {
-                // console.log(`Fetched schedule for event ${event.id}:`, response.schedule);
-                schedulesToUpdate[event.id] = response.schedule;
-
-                // Load persisted selections for this event's schedule
-                const persisted = getPersistedSelections(event.id);
-                newSavedSelections[event.id] = { ...persisted }; // Initialize saved selections
-                response.schedule.forEach(item => {
-                  if (item.event_speed_date_id && persisted.hasOwnProperty(item.event_speed_date_id)) {
-                    newAttendeeSelections[item.event_speed_date_id] = {
-                      eventId: event.id,
-                      interested: persisted[item.event_speed_date_id]
-                    };
-                  }
-                });
-                needsScheduleUpdate = true;
-              } else {
-                 // console.log(`No schedule found for event ${event.id}`);
-                 schedulesToUpdate[event.id] = [];
-                 newSavedSelections[event.id] = {}; // Initialize saved selections even if no schedule
-                 needsScheduleUpdate = true;
-              }
-            } catch (err) {
-              console.error(`Failed to fetch schedule for event ${event.id}:`, err);
-              schedulesToUpdate[event.id] = [];
-              newSavedSelections[event.id] = {}; // Initialize saved selections on error
-              needsScheduleUpdate = true;
-            }
-          } else {
-            // Schedules already fetched, ensure selections are loaded if not already part of initial load
-            // This handles cases where component re-renders but schedules were already present
-            if (!savedAttendeeSelections[event.id]) {
-              const persisted = getPersistedSelections(event.id);
-              newSavedSelections[event.id] = { ...persisted };
-              (userSchedules[event.id] || []).forEach(item => {
-                if (item.event_speed_date_id && persisted.hasOwnProperty(item.event_speed_date_id) && !attendeeSpeedDateSelections[item.event_speed_date_id]) {
-                  newAttendeeSelections[item.event_speed_date_id] = {
-                    eventId: event.id,
-                    interested: persisted[item.event_speed_date_id]
-                  };
-                }
-              });
-            }
-          }
-        }
-      }
-
-      if (needsScheduleUpdate) {
-        setUserSchedules(prev => ({ ...prev, ...schedulesToUpdate }));
-      }
-      // Update selections states together
-      if (Object.keys(newAttendeeSelections).length > 0) {
-        setAttendeeSpeedDateSelections(prev => ({ ...prev, ...newAttendeeSelections }));
-      }
-      if (Object.keys(newSavedSelections).length > 0) {
-        setSavedAttendeeSelections(prev => ({ ...prev, ...newSavedSelections}));
-      }
-    }; // End of fetchSchedulesForActiveEvents
-
-    // Check if user data and events are loaded before fetching
-    if (user && filteredEvents.length > 0) { // Use filteredEvents
-        fetchSchedulesForActiveEvents();
-    }
-  }, [filteredEvents, isRegisteredForEvent, user, userSchedules, savedAttendeeSelections, attendeeSpeedDateSelections]); // Added savedAttendeeSelections & attendeeSpeedDateSelections to deps
-
-  useEffect(() => {
-    const storedSubmitted = localStorage.getItem('submittedEventIds');
-    if (storedSubmitted) {
-      setSubmittedEventIds(new Set(JSON.parse(storedSubmitted)));
-    }
-  }, []);
 
   const handleOpenEditEventDialog = (event: Event) => {
     setEventToEdit(event);
@@ -865,50 +585,9 @@ const EventList = () => {
     }
   };
 
-  const handleCopyEmail = async (email: string) => {
-    try {
-      await navigator.clipboard.writeText(email);
-    } catch (err) {
-      console.error('Failed to copy email:', err);
-    }
-  };
-
-  const getMatchMessage = (isMatch: boolean) => {
-    if (!user?.gender) return isMatch ? 'You matched! Reach out with:' : 'Not a match';
-
-    if (isMatch) {
-      return 'You matched! Reach out with:';
-    }
-
-    // No match messages
-    const messages = {
-      Male: [
-        'Not a match, head up king 👑',
-        'Not a match, stay royal 👑',
-        'Not a match, you shining tho 👑',
-        'Not a match, no problem 👑',
-        'Not a match, still that guy 👑',
-        'Not a match, you still the prize 👑',
-        'Not a match, but your vibe is elite 👑'
-      ],
-      Female: [
-        'Not a match, head up queen 👸',
-        'Not a match, stay royal 👸',
-        'Not a match, you shining tho 👸',
-        'Not a match, no problem 👸',
-        'Not a match, stay glowing 👸',
-        'Not a match, royalty never settles 👸',
-        'Not a match, but your worth is not up for debate 👸'
-      ]
-    };
-
-    const genderMessages = messages[user.gender as 'Male' | 'Female'];
-    return genderMessages[Math.floor(Math.random() * genderMessages.length)];
-  };
-
   return (
     <>
-      <Container maxWidth="lg" sx={{ pt: 4, pb: 14 }}>
+      <Container maxWidth="lg">
         {errorMessage && (
           <Alert severity="error" onClose={() => setErrorMessage(null)} sx={{ mb: 2 }}>
             {errorMessage}
@@ -920,7 +599,7 @@ const EventList = () => {
             display: 'flex',
             justifyContent: { xs: 'flex-start', sm: 'space-between' },
             alignItems: 'center',
-            mb: 4,
+            mb: 2,
             flexDirection: { xs: 'row', sm: 'row' }
           }}
         >
@@ -986,8 +665,8 @@ const EventList = () => {
                         sx={{
                           fontWeight: 600,
                           fontSize: isMobile ? '0.75rem' : '0.875rem',
-                          bgcolor: theme.palette.mode === 'dark' ? '#2b2b2b' : '#e0e0e0',
-                          color: theme.palette.mode === 'dark' ? '#f5f5f5' : '#212121'
+                          bgcolor: '#2b2b2b',
+                          color: '#f5f5f5'
                         }}
                       />
                     </Box>
@@ -1008,7 +687,8 @@ const EventList = () => {
                   </Box>
                   )}
 
-                {(event.status === 'In Progress') && (
+                {/* Round Timer */}
+                {(event.status === 'In Progress' && (isAdmin() || event.registration)) && (
                   <Box sx={{ mb: { xs: 1, sm: 3 } }}>
                     <Divider sx={{ mb: { xs: 0.5, sm: 2 } }} />
                     <Box
@@ -1043,20 +723,17 @@ const EventList = () => {
                         </Typography>
                       )}
                     </Box>
-                    {(() => {
-                      const scheduleForTimer = isRegisteredForEvent(event.id) && event.registration?.status === 'Checked In' ? userSchedules[event.id] : undefined;
-                      return (
-                        <EventTimer
-                          eventId={event.id}
-                          isAdmin={canManageEvent(event)}
-                          eventStatus={event.status}
-                          userSchedule={scheduleForTimer}
-                          onRoundChange={(round) => {
-                            setCurrentRounds(prev => ({...prev, [event.id]: round }));
-                          }}
-                        />
-                      );
-                    })()}
+                    <EventTimer
+                      eventId={event.id}
+                      isAdmin={canManageEvent(event)}
+                      isCheckedIn={isRegisteredForEvent(event.id) && event.registration?.status === 'Checked In'}
+                      eventStatus={event.status}
+                      onRoundChange={(round) => {
+                        setCurrentRounds(prev => (
+                          prev[event.id] === round ? prev : { ...prev, [event.id]: round }
+                        ));
+                      }}
+                    />
                   </Box>
                 )}
 
@@ -1127,22 +804,7 @@ const EventList = () => {
                 {isRegisteredForEvent(event.id) && event.registration?.status === 'Checked In' && (
                   <MySchedule
                     event={event}
-                    schedule={userSchedules[event.id]}
-                    expanded={expandedUserSchedules[event.id]}
                     currentRound={currentRounds[event.id]}
-                    attendeeSpeedDateSelections={attendeeSpeedDateSelections}
-                    attendeeSelectionError={attendeeSelectionError[event.id]}
-                    submitted={submittedEventIds.has(event.id)}
-                    saveIndicator={saveIndicator[event.id]}
-                    selectionWindowClosedError={selectionWindowClosedError[event.id]}
-                    isSaveDisabled={isSaveDisabled(event.id)}
-                    onToggle={() => toggleUserScheduleInline(event.id)}
-                    onSelectionChange={handleAttendeeSelectionChange}
-                    onClearError={() => setAttendeeSelectionError(prev => ({...prev, [event.id]: null}))}
-                    onSave={() => handleSaveAttendeeSelections(event.id)}
-                    onSubmit={() => handleSubmitClick(event.id)}
-                    onCopyEmail={handleCopyEmail}
-                    getMatchMessage={getMatchMessage}
                   />
                 )}
               </CardContent>
@@ -1495,16 +1157,6 @@ const EventList = () => {
         event={selectedEventForWaitlistUsers}
         onClose={() => setViewWaitlistDialogOpen(false)}
       />
-
-      <ConfirmDialog
-        open={submitConfirmOpen}
-        title="Submit Final Selections?"
-        confirmLabel="Submit"
-        onCancel={() => setSubmitConfirmOpen(false)}
-        onConfirm={handleSubmitConfirm}
-      >
-        Once you submit, you will not be able to change your selections. Are you sure?
-      </ConfirmDialog>
     </Container>
   </>
   );

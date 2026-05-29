@@ -48,25 +48,24 @@ const Login = () => {
   };
 
   return (
-    <Container component="main" maxWidth="xs" sx={{ mt: 15, mb: 15}}>
+    <Container component="main" maxWidth="sm" sx={{ mt: 2, mb: 2 }}>
+      <Typography 
+        variant="h4" 
+        component="h1" 
+        sx={{ 
+          textAlign: 'center', 
+          mb: 3,
+          fontWeight: 'bold',
+          color: 'primary.main'
+        }}
+      >
+        Saved & Single
+      </Typography>
       <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
-        <Typography 
-          variant="h4" 
-          component="h1" 
-          gutterBottom 
-          sx={{ 
-            textAlign: 'center', 
-            mb: 1, 
-            fontWeight: 'bold',
-            color: 'primary.main'
-          }}
-        >
-          Saved & Single
+        <Typography sx={{ textAlign: 'center', fontWeight: 'bold', fontSize: '1.2rem' }}>
+          Sign In
         </Typography>
-        <Typography variant="subtitle1" component="h2" sx={{ textAlign: 'center', mb: 1.5 , fontWeight: 'bold', fontSize: '1.2rem' }}>
-          Login
-        </Typography>
-        <Fade in={!!error}>
+        {error && (<Fade in={!!error}>
           <Alert 
             severity="error" 
             sx={{ 
@@ -84,7 +83,7 @@ const Login = () => {
           >
             {error}
           </Alert>
-        </Fade>
+        </Fade>)}
         
         <Box component="form" onSubmit={handleSubmit}>
           <TextField
@@ -138,13 +137,16 @@ const Login = () => {
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </Button>
-          <Box sx={{ textAlign: 'center' }}>
-            <Link component={RouterLink} to="/register" variant="body2" sx={{ fontSize: '0.8rem'}}>
-              {"Don't have an account? Sign Up"}
-            </Link>
-          </Box>
+          <Button
+            fullWidth
+            onClick={() => navigate('/register')}
+            size="small"
+            sx={{ mt: 0.5 }}
+          >
+            Don't have an account? Sign Up
+          </Button>
           <Box sx={{ textAlign: 'center'}}>
-            <Link component={RouterLink} to="/forgot-password" variant="subtitle1" sx={{ fontSize: '0.8rem', fontStyle: 'italic'}}>
+            <Link component={RouterLink} to="/forgot-password" variant="subtitle1" sx={{ fontSize: '0.7rem'}}>
               {"Forgot Password?"}
             </Link>
           </Box>

@@ -148,10 +148,10 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return userRegisteredEvents.includes(eventId);
   }, [userRegisteredEvents]);
 
-  // Memoized filtered events
   const filteredEvents = useMemo(() => {
     if (!user) return [];
 
+    // only show current event for an attendee
     if (!isAdmin()) {
       const checkedInEvent = events.find(event =>
         event.registration?.status === 'Checked In' &&

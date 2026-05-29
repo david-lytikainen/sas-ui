@@ -31,6 +31,7 @@ export interface ScheduleItem {
   partner_email: string;
   event_speed_date_id: number;
   match: boolean;
+  user_interested: boolean;
 }
 
 export interface Timer {

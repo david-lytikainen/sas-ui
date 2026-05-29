@@ -1,14 +1,10 @@
-import { useContext, useState } from 'react';
+import { useState } from 'react';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Button, Box, Container, IconButton, useTheme, useMediaQuery } from '@mui/material';
 import { animated, useSpring, useTrail } from '@react-spring/web';
-import Brightness4Icon from '@mui/icons-material/Brightness4';
-import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { useAuth } from '../context/AuthContext';
-import { ColorModeContext } from '../context/ColorModeContext';
-import { ExitToApp as ExitIcon, Home as HomeIcon, Login as LoginIcon, PersonAdd as PersonAddIcon } from '@mui/icons-material';
+import { ExitToApp as ExitIcon } from '@mui/icons-material';
 
-const AnimatedIconButton = animated(IconButton);
 const AnimatedBox = animated(Box);
 
 const Navigation = () => {
@@ -17,7 +13,6 @@ const Navigation = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const colorMode = useContext(ColorModeContext);
 
   const [logoHovered, setLogoHovered] = useState(false);
 
@@ -37,17 +32,13 @@ const Navigation = () => {
 
   const getNavItems = () => {
     if (!user) return [];
-
-    const items = [
+    return [
       {
-        label: 'Events',
-        icon: <HomeIcon />,
+        label: 'EVENTS',
         to: '/events',
         show: true,
       },
     ];
-
-    return items.filter(item => item.show);
   };
 
   const navItems = getNavItems();
@@ -56,15 +47,6 @@ const Navigation = () => {
     from: { opacity: 0, y: 5 },
     to: { opacity: 1, y: 0 },
     config: { tension: 280, friction: 20 },
-  });
-
-
-  // Dark mode toggle button spring animation
-  const toggleButtonProps = useSpring({
-    opacity: .5,
-    transform: 'scale(1)',
-    from: { opacity: 0, transform: 'scale(0.8)' },
-    config: { tension: 280, friction:10 },
   });
 
   const handleLogout = async () => {
@@ -128,18 +110,13 @@ const Navigation = () => {
                       component={RouterLink}
                       to={navItems[index].to}
                       color={isActive(navItems[index].to) ? "primary" : "inherit"}
-                      startIcon={navItems[index].icon}
                       sx={{
-                        fontWeight: isActive(navItems[index].to) ? 600 : 500,
+                        fontWeight: isActive(navItems[index].to) ? 700 : 600,
                         color: isActive(navItems[index].to) 
                           ? theme.palette.primary.main 
-                          : theme.palette.mode === 'light' 
-                            ? theme.palette.text.primary
-                            : 'inherit',
+                          : 'inherit',
                         '&:hover': {
-                          backgroundColor: theme.palette.mode === 'dark' 
-                            ? 'rgba(255, 255, 255, 0.08)' 
-                            : 'rgba(0, 0, 0, 0.04)',
+                          backgroundColor: 'rgba(255, 255, 255, 0.08)',
                           color: theme.palette.primary.main,
                         },
                         display: 'flex',
@@ -147,24 +124,21 @@ const Navigation = () => {
                         height: '100%',
                         padding: isMobile ? '6px 8px' : '8px 16px',
                         minWidth: isMobile ? 'auto' : undefined,
-                        '& .MuiButton-startIcon': {
-                          marginRight: isMobile ? 0 : 2,
-                        },
+                        letterSpacing: '0.08em',
                       }}
                     >
-                      {!isMobile && (
-                        <Typography
-                          component="span"
-                          sx={{
-                            color: 'inherit',
-                            fontSize: '0.875rem',
-                            lineHeight: 1.5,
-                            ml: -0.5,
-                          }}
-                        >
-                          {navItems[index].label}
-                        </Typography>
-                      )}
+                      <Typography
+                        component="span"
+                        sx={{
+                          color: 'inherit',
+                          fontSize: '1rem',
+                          lineHeight: 1.5,
+                          fontWeight: 'bold',
+                          letterSpacing: '0.08em',
+                        }}
+                      >
+                        {navItems[index].label}
+                      </Typography>
                     </Button>
                   </animated.div>
                 ))}
@@ -173,26 +147,13 @@ const Navigation = () => {
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <AnimatedIconButton 
-              onClick={colorMode.toggleColorMode} 
-              sx={{ 
-                ml: 1,
-                color: theme.palette.mode === 'light' 
-                  ? theme.palette.primary.dark
-                  : 'inherit'
-              }}
-              style={toggleButtonProps}
-            >
-              {theme.palette.mode === 'dark' ? <Brightness4Icon /> : <Brightness7Icon />}
-            </AnimatedIconButton>
-            
             {user ? (
               <Box sx={{ display: 'flex', alignItems: 'center'}}>
                 <Typography
                   variant="body1"
                   sx={{
                     fontWeight: 500,
-                    color: theme.palette.mode === 'light' ? theme.palette.text.primary : 'inherit',
+                    color: 'inherit',
                     fontSize: '0.95rem',
                     mr: 0
                   }}
@@ -200,57 +161,47 @@ const Navigation = () => {
                 >
                   Hi, {user.first_name}
                 </Typography>
+                {/* TODO remove */}
                 <IconButton
                   onClick={handleLogout}
-                  sx={{
-                    color: theme.palette.mode === 'light'
-                      ? theme.palette.primary.dark
-                      : 'inherit',
-                  }}
+                  sx={{ color: 'inherit' }}
                 >
                   <ExitIcon />
-                </IconButton>
+                </IconButton> 
               </Box>
             ) : (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.5 : 1 }}>
-                <Button
-                  color="inherit"
-                  onClick={() => navigate('/login')}
-                  startIcon={isMobile ? undefined : <LoginIcon />}
+              <Button
+                component={RouterLink}
+                to="/login"
+                sx={{
+                  fontWeight: 700,
+                  color: theme.palette.primary.main,
+                  letterSpacing: '0.08em',
+                  fontSize: '1rem',
+                  background: 'none',
+                  boxShadow: 'none',
+                  textTransform: 'none',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    color: theme.palette.primary.dark,
+                  },
+                  padding: isMobile ? '6px 8px' : '8px 16px',
+                  minWidth: isMobile ? 'auto' : undefined,
+                }}
+              >
+                <Typography
+                  component="span"
                   sx={{
-                    fontWeight: 500,
-                    color: theme.palette.mode === 'light' ? theme.palette.text.primary : 'inherit',
-                    '&:hover': {
-                      backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
-                      color: theme.palette.primary.main,
-                    },
-                    padding: isMobile ? '6px 8px' : '8px 12px',
-                    minWidth: isMobile ? 'auto' : undefined,
+                    color: 'inherit',
+                    fontSize: '1rem',
+                    lineHeight: 1.5,
+                    fontWeight: 'bold',
+                    letterSpacing: '0.08em',
                   }}
                 >
-                  {isMobile ? <LoginIcon /> : 'Login'}
-                </Button>
-                <Button
-                  variant={isMobile ? "text" : "outlined"}
-                  color="primary"
-                  onClick={() => navigate('/register')}
-                  startIcon={isMobile ? undefined : <PersonAddIcon />}
-                  sx={{
-                    fontWeight: 500,
-                    borderColor: isMobile ? 'transparent' : undefined,
-                    color: isMobile ? (theme.palette.mode === 'light' ? theme.palette.text.primary : 'inherit') : undefined,
-                    '&:hover': {
-                        backgroundColor: theme.palette.mode === 'dark' ? 'rgba(217, 139, 156, 0.1)' : 'rgba(217, 139, 156, 0.08)',
-                        borderColor: isMobile ? 'transparent' : theme.palette.primary.main,
-                        color: theme.palette.primary.main,
-                    },
-                    padding: isMobile ? '6px 8px' : '8px 12px',
-                    minWidth: isMobile ? 'auto' : undefined,
-                  }}
-                >
-                  {isMobile ? <PersonAddIcon /> : 'Register'}
-                </Button>
-              </Box>
+                  SIGN IN
+                </Typography>
+              </Button>
             )}
           </Box>
         </Toolbar>

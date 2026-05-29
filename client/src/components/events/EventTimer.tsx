@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Paper, Slider, Tooltip, Typography, useTheme } from '@mui/material';
 import { Pause, PlayArrow, Settings, SkipNext, Timer as TimerIcon } from '@mui/icons-material';
 import { eventsApi } from '../../services/api';
@@ -9,8 +9,8 @@ type TimerStatus = 'active' | 'paused' | 'inactive' | 'ended' | 'break_time';
 interface EventTimerProps {
   eventId: number;
   isAdmin: boolean;
+  isCheckedIn?: boolean;
   eventStatus?: string;
-  userSchedule?: ScheduleItem[];
   onRoundChange?: (round: number) => void;
 }
 
@@ -76,7 +76,7 @@ const getBreakMessage = (currentRound: number): string => {
   return BREAK_MESSAGES[currentRound % BREAK_MESSAGES.length];
 };
 
-const EventTimer = ({ eventId, isAdmin, eventStatus = 'In Progress', userSchedule, onRoundChange }: EventTimerProps): React.ReactElement | null => {
+const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In Progress', onRoundChange }: EventTimerProps): React.ReactElement | null => {
   const theme = useTheme();
   const isEventActive = eventStatus === 'In Progress' || eventStatus === 'Paused';
   const eventIdString = eventId.toString();
@@ -86,6 +86,8 @@ const EventTimer = ({ eventId, isAdmin, eventStatus = 'In Progress', userSchedul
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [newDuration, setNewDuration] = useState(DEFAULT_ROUND_DURATION);
+  const lastNotifiedRoundRef = useRef<number | null>(null);
+  const [userSchedule, setUserSchedule] = useState<ScheduleItem[] | undefined>(undefined);
 
   const timerStatus = getTimerStatus(timer);
   const currentRound = timer?.current_round ?? 0;
@@ -116,6 +118,9 @@ const EventTimer = ({ eventId, isAdmin, eventStatus = 'In Progress', userSchedul
   }, [eventIdString, isEventActive]);
 
   useEffect(() => {
+    if (currentRound <= 0) return;
+    if (lastNotifiedRoundRef.current === currentRound) return;
+    lastNotifiedRoundRef.current = currentRound;
     onRoundChange?.(currentRound);
   }, [currentRound, onRoundChange]);
 
@@ -135,6 +140,22 @@ const EventTimer = ({ eventId, isAdmin, eventStatus = 'In Progress', userSchedul
 
     return () => window.clearInterval(tickId);
   }, [isActive, isBreakTime, timeRemaining]);
+
+  useEffect(() => {
+    if (!isCheckedIn) {
+      setUserSchedule(undefined);
+      return;
+    }
+    const loadSchedule = async () => {
+      try {
+        const response = await eventsApi.getSchedule(eventIdString);
+        setUserSchedule(response?.schedule || []);
+      } catch {
+        setUserSchedule([]);
+      }
+    };
+    loadSchedule();
+  }, [eventIdString, isCheckedIn]);
 
   const runTimerAction = async (action: () => Promise<unknown>) => {
     try {
@@ -215,7 +236,7 @@ const EventTimer = ({ eventId, isAdmin, eventStatus = 'In Progress', userSchedul
   };
 
   const getAttendeeMessage = () => {
-    if (isEnded) return 'Event Finished - Submit your selections!';
+    if (isEnded) return 'Event Finished - Save your selections!';
     if (isInactive) return 'Event will be starting shortly!';
     if (isPaused && currentRoundSchedule) return `Round ${currentRound} paused`;
     if (isBreakTime) return `Get to your table for Round ${currentRound + 1}!`;

@@ -83,7 +83,7 @@ const Register = () => {
     }
 
     if (age < 20 || age > 30) {
-      setError('You must be between 20 and 30 years old to register');
+      setError('You must be between 20 and 30 years old to Sign Up');
       return;
     }
 
@@ -117,22 +117,21 @@ const Register = () => {
 
   return (
     <Container component="main" maxWidth="sm" sx={{ mt: 2, mb: 2 }}>
+      <Typography 
+        variant="h4"
+        component="h1" 
+        sx={{ 
+          textAlign: 'center', 
+          mb: 3,
+          fontWeight: 'bold',
+          color: 'primary.main',
+        }}
+      >
+        Saved & Single
+      </Typography>
       <Paper elevation={1} sx={{ p: { xs: 2, sm: 2, md: 3 }, borderRadius: 2 }}>
-        <Typography 
-          variant="h4"
-          component="h1" 
-          gutterBottom 
-          sx={{ 
-            textAlign: 'center', 
-            mb: 0.5,
-            fontWeight: 'bold',
-            color: 'primary.main',
-          }}
-        >
-         Saved & Single
-        </Typography>
-        <Typography variant="subtitle1" component="h2" sx={{ textAlign: 'center', mb: 1.5 , fontWeight: 'bold' }}>
-          Register
+        <Typography sx={{ textAlign: 'center', fontWeight: 'bold', fontSize: '1.2rem' }}>
+          Sign Up
         </Typography>
         {error && (
           <Alert severity="error" sx={{ mb: 1, fontSize: '0.8rem', py: 0.5 }}>
@@ -266,7 +265,7 @@ const Register = () => {
                 top: '50%',
                 transform: 'translateY(-50%)',
                 pointerEvents: 'none',
-                color:  theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.64)' : 'rgba(0, 0, 0, 0.47)',
+                color: 'rgba(255, 255, 255, 0.64)',
                 fontSize: '16px',
                 zIndex: 1
               },
@@ -417,37 +416,6 @@ const Register = () => {
             )}
             sx={{ mt: 1 }}
           />
-
-          {/* WILL ADD THIS BACK MAYBE LATER 
-          <FormControl component="fieldset" margin="dense" required sx={{ mt: 1}}>
-            <FormLabel component="legend" sx={{ fontSize: '0.8rem' }}>I want to:</FormLabel>
-            <RadioGroup
-              name="role"
-              value={formData.role}
-              onChange={handleTextChange}
-              row
-              sx={{ mt: -0.5 }}
-            >
-              <FormControlLabel
-                value="attendee"
-                control={<Radio size="small" />}
-                label="Attend Speed Dating Events"
-                sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
-              />
-              <FormControlLabel
-                value="organizer"
-                control={<Radio size="small" />}
-                label="Organize Speed Dating Events"
-                 sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
-              />
-              <FormControlLabel
-                value="admin"
-                control={<Radio size="small"/>}
-                label="Admin"
-                 sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
-              />
-            </RadioGroup>
-          </FormControl> */}
           
           <TextField
             fullWidth
@@ -494,11 +462,11 @@ const Register = () => {
             sx={{ mt: 1.5, mb: 0.5 }}
             disabled={loading}
           >
-            {loading ? 'Registering...' : 'Register'}
+            {loading ? 'Signing Up...' : 'Sign Up'}
           </Button>
 
           <Typography variant="caption" display="block" sx={{ mt: 1.5, textAlign: 'center', color: 'text.secondary' }}>
-            By clicking Register, you acknowledge that you have read and agree to the{' '}
+            By clicking Sign Up, you acknowledge that you have read and agree to the{' '}
             <MuiLink component="a" href="/privacy-policy" target="_blank" rel="noopener noreferrer">
               Privacy Policy
             </MuiLink>
@@ -511,7 +479,7 @@ const Register = () => {
             size="small"
             sx={{ mt: 0.5 }}
           >
-            Already have an account? Login
+            Already have an account? Sign In
           </Button>
         </Box>
       </Paper>
