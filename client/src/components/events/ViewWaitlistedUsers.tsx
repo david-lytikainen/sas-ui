@@ -3,7 +3,7 @@ import { Cancel as CancelEditIcon, Download as DownloadIcon, Edit as EditIcon, S
 import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { Event } from '../../types/event';
-import { churchOptions } from '../../constants/churchOptions';
+import authApi from '../../services/api';
 import { eventsApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -33,6 +33,7 @@ const ViewWaitlistedUsers = ({
     church: '',
   });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [churchOptions, setChurchOptions] = useState<string[]>([]);
 
   const canManageUsers = isAdmin() || isOrganizer();
 
@@ -89,6 +90,14 @@ const ViewWaitlistedUsers = ({
 
     fetchWaitlistedUsers();
   }, [open, event]);
+
+  useEffect(() => {
+    const loadChurches = async () => {
+      const churches = await authApi.getChurches();
+      setChurchOptions(Array.from(new Set([...churches, 'Other'])));
+    };
+    loadChurches();
+  }, []);
 
   const handleSearchChange = (searchEvent: ChangeEvent<HTMLInputElement>) => {
     const value = searchEvent.target.value;

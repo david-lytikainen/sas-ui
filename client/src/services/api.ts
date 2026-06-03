@@ -125,9 +125,13 @@ const realAuthApi = {
       
       // After signup, log in to get the token
       return await realAuthApi.login(userData.email, userData.password);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error);
-      throw error;
+      const backendMessage = error.response?.data?.message || error.response?.data?.error;
+      if (backendMessage) {
+        throw new Error(backendMessage);
+      }
+      throw new Error('Registration failed. Please try again.');
     }
   },
 
@@ -234,6 +238,15 @@ const realAuthApi = {
         throw new Error(error.response.data.message || error.response.data.error || 'Password reset failed');
       }
       throw new Error('Password reset failed. Please try again.');
+    }
+  },
+
+  getChurches: async (): Promise<string[]> => {
+    try {
+      const response = await axiosInstance.get('/user/churches');
+      return Array.isArray(response.data) ? response.data : [];
+    } catch {
+      return [];
     }
   }
 };

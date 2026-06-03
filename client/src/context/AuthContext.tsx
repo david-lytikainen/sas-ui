@@ -108,7 +108,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [persistLogin]);
 
   const login = async (email: string, password: string) => {
-    setLoading(true);
     setError(null);
     try {
       const response = await authApi.login(email, password);
@@ -121,8 +120,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err: any) {
       setError(err.message || 'Failed to login');
       throw err;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -136,7 +133,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     gender: string;
     current_church?: string;
   }) => {
-    setLoading(true);
     setError(null);
     try {
       const response = await authApi.register(userData);
@@ -149,8 +145,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err: any) {
       setError(err.message || 'Failed to register');
       throw err;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -177,7 +171,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         togglePersistLogin,
       }}
     >
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }; 
