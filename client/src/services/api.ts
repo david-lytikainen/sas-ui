@@ -343,6 +343,7 @@ interface EventsApi {
       church: string
     }
   }>;
+  moveWaitlistUserToRegistered: (eventId: string, userId: string) => Promise<{ message: string }>;
   getTimer: (eventId: string) => Promise<Timer | null>;
   startTimerRound: (eventId: string, roundNumber?: number) => Promise<TimerActionResponse>;
   endTimerRound: (eventId: string) => Promise<EventTimerPayload>;
@@ -615,6 +616,17 @@ const realEventsApi: EventsApi = {
         throw new Error(error.response.data.error);
       }
       throw new Error('Failed to update waitlist user details.');
+    }
+  },
+  moveWaitlistUserToRegistered: async (eventId: string, userId: string) => {
+    try {
+      const response = await axiosInstance.post(`/events/${eventId}/waitlist/${userId}/register`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      }
+      throw new Error('Failed to move waitlist user to registered.');
     }
   },
   getTimer: async (eventId: string) => {

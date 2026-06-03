@@ -65,16 +65,6 @@ const ViewRegisteredUsers = ({
     }
   };
 
-  const calculateAge = (birthday: Date): number => {
-    const today = new Date();
-    let age = today.getFullYear() - birthday.getFullYear();
-    const m = today.getMonth() - birthday.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthday.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
   useEffect(() => {
     if (!open || !event) return;
 
@@ -136,11 +126,8 @@ const ViewRegisteredUsers = ({
       first_name: user.first_name,
       last_name: user.last_name,
       email: user.email,
-      phone: user.phone,
       gender: user.gender,
-      birthday: user.birthday ? user.birthday.substring(0, 10) : '',
       church: user.church,
-      pin: user.pin,
     });
   };
 
@@ -190,7 +177,6 @@ const ViewRegisteredUsers = ({
             ...user,
             ...editFormData,
             name: `${editFormData.first_name} ${editFormData.last_name}`,
-            age: editFormData.birthday ? calculateAge(new Date(editFormData.birthday)) : user.age,
           };
         });
 
@@ -213,14 +199,13 @@ const ViewRegisteredUsers = ({
     }
 
     try {
-      let csvContent = 'Name,Email,Phone,Gender,Age,Birthday,Registration Date,Check-in Time,Status,PIN\n';
+      let csvContent = 'Name,Email,Gender,Age,Birthday,Church,Registration Date,Check-in Time,Status\n';
 
       usersToExport.forEach((user) => {
         const birthday = user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A';
         const registrationDate = user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A';
         const checkInDate = user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in';
-
-        csvContent += `"${user.name}","${user.email}","${user.phone}",${user.gender || 'N/A'},${user.age || 'N/A'},${birthday},${registrationDate},${checkInDate},${user.status},${user.pin}\n`;
+        csvContent += `"${user.name}","${user.email}",${user.gender || 'N/A'},${user.age || 'N/A'},${birthday},"${user.church || 'Other'}",${registrationDate},${checkInDate},${user.status}\n`;
       });
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -275,7 +260,6 @@ const ViewRegisteredUsers = ({
                   <TableRow>
                     <TableCell sx={{ width: '15%', minWidth: 150 }}><strong>Name</strong></TableCell>
                     <TableCell sx={{ width: '20%', minWidth: 180 }}><strong>Email</strong></TableCell>
-                    <TableCell sx={{ width: 130, minWidth: 120 }}><strong>Phone</strong></TableCell>
                     <TableCell sx={{ width: 80, minWidth: 70 }}><strong>Gender</strong></TableCell>
                     <TableCell sx={{ width: 60, minWidth: 50, textAlign: 'center' }}><strong>Age</strong></TableCell>
                     <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Birthday</strong></TableCell>
@@ -283,7 +267,6 @@ const ViewRegisteredUsers = ({
                     <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Registered</strong></TableCell>
                     <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Status</strong></TableCell>
                     <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Check-in Time</strong></TableCell>
-                    <TableCell sx={{ width: 70, minWidth: 60, textAlign: 'center' }}><strong>PIN</strong></TableCell>
                     {canEdit && (
                       <TableCell sx={{ width: 100, minWidth: 90, textAlign: 'center' }}><strong>Actions</strong></TableCell>
                     )}
@@ -301,7 +284,6 @@ const ViewRegisteredUsers = ({
                             </Box>
                           </TableCell>
                           <TableCell><TextField size="small" label="Email" value={editFormData.email} onChange={(e) => handleEditFormChange(e.target.value, 'email')} fullWidth /></TableCell>
-                          <TableCell><TextField size="small" label="Phone" value={editFormData.phone} onChange={(e) => handleEditFormChange(e.target.value, 'phone')} fullWidth /></TableCell>
                           <TableCell>
                             <FormControl size="small" fullWidth>
                               <InputLabel>Gender</InputLabel>
@@ -311,8 +293,8 @@ const ViewRegisteredUsers = ({
                               </Select>
                             </FormControl>
                           </TableCell>
-                          <TableCell sx={{ textAlign: 'center' }}>{editFormData.birthday ? calculateAge(new Date(editFormData.birthday)) : ''}</TableCell>
-                          <TableCell><TextField size="small" label="Birthday" type="date" value={editFormData.birthday || ''} onChange={(e) => handleEditFormChange(e.target.value, 'birthday')} InputLabelProps={{ shrink: true }} fullWidth /></TableCell>
+                          <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
+                          <TableCell>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</TableCell>
                           <TableCell>
                             <Autocomplete
                               fullWidth
@@ -329,7 +311,6 @@ const ViewRegisteredUsers = ({
                           <TableCell>{user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'}</TableCell>
                           <TableCell><Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /></TableCell>
                           <TableCell>{user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'}</TableCell>
-                          <TableCell sx={{ textAlign: 'center' }}><TextField size="small" label="PIN" value={editFormData.pin || ''} onChange={(e) => handleEditFormChange(e.target.value, 'pin')} inputProps={{ maxLength: 4, pattern: '[0-9]*' }} sx={{ width: 65 }} /></TableCell>
                           {canEdit && (
                             <TableCell sx={{ textAlign: 'center' }}>
                               <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
@@ -343,7 +324,6 @@ const ViewRegisteredUsers = ({
                         <>
                           <TableCell>{user.name}</TableCell>
                           <TableCell sx={{ wordBreak: 'break-all' }}>{user.email}</TableCell>
-                          <TableCell>{user.phone}</TableCell>
                           <TableCell>{user.gender}</TableCell>
                           <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
                           <TableCell>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</TableCell>
@@ -351,7 +331,6 @@ const ViewRegisteredUsers = ({
                           <TableCell>{user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'}</TableCell>
                           <TableCell><Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /></TableCell>
                           <TableCell>{user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'}</TableCell>
-                          <TableCell sx={{ textAlign: 'center' }}>{user.pin}</TableCell>
                           {canEdit && (
                             <TableCell sx={{ textAlign: 'center' }}>
                               <IconButton size="small" color="primary" onClick={() => handleStartEditing(user)} title="Edit">
