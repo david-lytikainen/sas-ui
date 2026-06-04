@@ -151,7 +151,6 @@ const realAuthApi = {
         return null;
       }
 
-      console.log('Validating token:', token);
       const response = await axiosInstance.get('/user/validate-token', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -163,7 +162,6 @@ const realAuthApi = {
         return null;
       }
 
-      console.log('Token validation response:', response.data);
       return {
         user: response.data.user
       };
@@ -397,7 +395,6 @@ interface Match {
 const realEventsApi: EventsApi = {
   getAll: async () => {
     const response = await axiosInstance.get('/events');
-    console.log('getting events please...',response)
     return response.data;
   },
 
