@@ -11,29 +11,19 @@ import { useAuth } from '../../context/AuthContext';
 export const ColorModeContext = createContext({ toggleColorMode: () => {} });
 
 export const ColorModeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [mode, setMode] = useState<'light' | 'dark'>('light');
-
-  const colorMode = useMemo(
-    () => ({
-      toggleColorMode: () => {
-        setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'));
-      },
-    }),
-    [],
-  );
+  const colorMode = useMemo(() => ({ toggleColorMode: () => {} }), []);
 
   const theme = useMemo(
     () =>
       createTheme({
         palette: {
-          mode,
+          mode: 'dark',
           primary: {
-            // purple in light mode, blue in dark mode
-            main: mode === 'dark' ? '#1976d2' : '#6200ea',
+            main: '#1976d2',
           },
         },
       }),
-    [mode],
+    [],
   );
 
   return (
@@ -48,24 +38,17 @@ const LandingPage: React.FC = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // Typewriter animation state
   const fullText = 'Meet Your Match, In Faith.';
-  const [displayedText, setDisplayedText] = useState('');
-  const [typeIndex, setTypeIndex] = useState(0);
+  const [typedLength, setTypedLength] = useState(0);
 
   useEffect(() => {
-    if (typeIndex < fullText.length) {
-      let speed = 55;
-      if (typeIndex === 17) {
-        speed = 400;
-      }
-      const timeout = setTimeout(() => {
-        setDisplayedText(fullText.slice(0, typeIndex + 1));
-        setTypeIndex(typeIndex + 1);
-      }, speed);
-      return () => clearTimeout(timeout);
-    }
-  }, [typeIndex, fullText]);
+    if (typedLength >= fullText.length) return;
+    const speed = typedLength === 17 ? 400 : 55;
+    const timeout = setTimeout(() => setTypedLength(prev => prev + 1), speed);
+    return () => clearTimeout(timeout);
+  }, [fullText.length, typedLength]);
+
+  const displayedText = fullText.slice(0, typedLength);
 
   const theme = useTheme();
 
@@ -79,14 +62,6 @@ const LandingPage: React.FC = () => {
   ];
 
   // Auto-advance carousel
-  useEffect(() => {
-    const timer = setInterval(() => {
-      handleNext();
-    }, 5000);
-
-    return () => clearInterval(timer);
-  }, );
-
   const handleNext = () => {
     if (isTransitioning) return;
     setIsTransitioning(true);
@@ -95,6 +70,13 @@ const LandingPage: React.FC = () => {
     );
     setTimeout(() => setIsTransitioning(false), 800);
   };
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!isTransitioning) handleNext();
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [isTransitioning]);
 
   const getImageStyle = (index: number): CSSProperties => {
     const isCurrent = index === currentImageIndex;
@@ -128,140 +110,37 @@ const LandingPage: React.FC = () => {
   return (
     <Box sx={{ flexGrow: 1, backgroundColor: 'background.default' }}> 
       {/* Hero Section */}
-      <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 }, textAlign: 'center' }}>
-        <Box sx={{ position: 'relative', width: '100%', textAlign: 'center', minHeight: { xs: '120px', sm: '140px', md: '120px', lg: '120px' }, mb: { xs: 0, md: -10} }}>
-          {/* Invisible full text to reserve space */}
-          <Typography
-            variant="h2"
-            component="h1"
-            gutterBottom
-            sx={{
-              fontWeight: 700,
-              color: 'transparent',
-              letterSpacing: '0.01em',
-              minHeight: '2.5em',
-              userSelect: 'none',
-              pointerEvents: 'none',
-              visibility: 'hidden',
-              position: 'static',
-              width: '100%',
-              display: 'block',
-              whiteSpace: 'normal',
-              textAlign: 'center',
-            }}
-            aria-hidden="true"
-          >
-            {fullText}
-          </Typography>
-          {/* Animated text */}
-          <Typography 
-            variant="h2" 
-            component="h1" 
-            gutterBottom 
-            sx={{ 
-              fontWeight: 700, 
-              color: theme.palette.primary.main,
-              letterSpacing: '0.01em',
-              minHeight: '2.5em',
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              width: '100%',
-              display: 'block',
-              whiteSpace: 'normal',
-              textAlign: 'center',
-              fontSize: { xs: '3.5rem', sm: '3.75rem' }
-            }}
-          >
-            {displayedText}
-          </Typography>
-        </Box>
+      <Container maxWidth="lg" sx={{ textAlign: 'center', mt: 2, pt: 0 }}>
         <Typography 
-          variant="h5" 
-          component="p" 
-          color="text.secondary" 
+          variant="h4" 
+          component="h1" 
           sx={{ 
-            mb: { xs: 2, sm: 4 }, 
-            maxWidth: '750px', 
-            mx: 'auto', 
-            alignContent: 'center',
-            fontSize: { xs: '1rem', sm: '1.5rem' }
+            textAlign: 'center', 
+            mb: 0.5, 
+            fontWeight: 'bold',
+            color: 'primary.main'
           }}
         >
-          Tired of endless swiping? Saved & Single hosts cross-church speed-dating events for Christian singles in PA, DE, & NJ to connect authentically, in person.
+          Saved & Single
         </Typography>
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'center', alignItems: 'center', gap: { xs: 2, sm: 2 } }}>
-          <Button 
-            variant="contained" 
-            color="primary" 
-            size="large" 
-            component={RouterLink} 
-            to="/register" 
-            sx={{ width: { xs: '80%', sm: 'auto' } }}
+        <Box sx={{ minHeight: '2.4em', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Typography 
+            variant="h5" 
+            component="h5"  
+            sx={{ 
+              fontWeight: 700, 
+              letterSpacing: '0.01em',
+              textAlign: 'center',
+              my: 0
+            }}
           >
-            Register for an Event
-          </Button>
-          <Button 
-            variant="outlined" 
-            color="primary" 
-            size="large" 
-            component={RouterLink} 
-            to={user ? '/events' : '/login'}
-            sx={{ width: { xs: '80%', sm: 'auto' } }}
-          >
-            {user ? 'Go to Events' : 'Member Login'}
-          </Button>
+            {displayedText || '\u00A0'}
+          </Typography>
         </Box>
       </Container>
 
-      {/* About Section */}
-      <Box sx={{ backgroundColor: 'background.paper', py: { xs: 4, md: 8 } }}>
-        <Container maxWidth="md">
-          <Typography 
-            variant="h4" 
-            component="h2" 
-            gutterBottom 
-            align="center" 
-            sx={{ 
-              fontWeight: 600, 
-              mb: 4, 
-              color: theme.palette.primary.main,
-              fontSize: { xs: '1.75rem', sm: '2.125rem' }
-            }}
-          >
-            Why Saved & Single?
-          </Typography>
-          <Typography 
-            variant="body1" 
-            color="text.secondary" 
-            sx={{ 
-              mb: 2, 
-              fontSize: { xs: '0.95rem', sm: '1.1rem' }, 
-              textAlign: 'center' 
-            }}
-          >
-            Christian dating can be wild. Online dating might lead to exhaustion or dead ends and it can be challenging to meet other Christians outside of your church community. Saved and Single is a cross-church speed-dating event that helps Christian singles from PA, DE, and NJ intentionally connect in person at a stunning private barn in Berwyn, PA.
-          </Typography>
-        </Container>
-      </Box>
-
       {/* Photos Carousel Section */}
-      <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
-        <Typography 
-          variant="h4" 
-          component="h2" 
-          gutterBottom 
-          align="center" 
-          sx={{ 
-            fontWeight: 600, 
-            mb: 4, 
-            border: 'none', 
-            background: 'none',
-            fontSize: { xs: '1.75rem', sm: '2.125rem' }
-          }}
-        >
-          Glimpses From Our 2024 Event
-        </Typography>
+      <Container maxWidth="lg" sx={{ py: { xs: 2.5, md: 5 } }}>
         <Box sx={{ position: 'relative', maxWidth: '1000px', mx: 'auto' }}>
           <Paper 
             elevation={3} 
@@ -308,6 +187,37 @@ const LandingPage: React.FC = () => {
           </Box>
         </Box>
       </Container>
+
+      {/* About Section */}
+      <Box sx={{ backgroundColor: 'background.paper', py: { xs: 4, md: 8 } }}>
+        <Container maxWidth="md">
+          <Typography 
+            variant="h4" 
+            component="h2" 
+            gutterBottom 
+            align="center" 
+            sx={{ 
+              fontWeight: 600, 
+              mb: 4, 
+              color: theme.palette.primary.main,
+              fontSize: { xs: '1.75rem', sm: '2.125rem' }
+            }}
+          >
+            Why Saved & Single?
+          </Typography>
+          <Typography 
+            variant="body1" 
+            color="text.secondary" 
+            sx={{ 
+              mb: 2, 
+              fontSize: { xs: '0.95rem', sm: '1.1rem' }, 
+              textAlign: 'center' 
+            }}
+          >
+            Tired of endless swiping? Saved & Single hosts speed-dating events for Christian singles to connect authentically, in person.
+          </Typography>
+        </Container>
+      </Box>
     </Box>
   );
 };

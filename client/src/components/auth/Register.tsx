@@ -1,32 +1,16 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Container,
-  Box,
-  Typography,
-  TextField,
-  Button,
-  Alert,
-  Paper,
-  InputAdornment,
-  IconButton,
-  FormControl,
-  Select,
-  MenuItem,
-  InputLabel,
-  SelectChangeEvent,
-  useTheme,
-  Link as MuiLink,
-  Autocomplete,
-} from '@mui/material';
+import { Container, Box, Typography, TextField, Button, Alert, Paper, InputAdornment, IconButton, FormControl, Select, MenuItem, InputLabel, SelectChangeEvent, Link as MuiLink, Autocomplete } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useAuth } from '../../context/AuthContext';
-import { churchOptions } from '../../constants/churchOptions';
+import { useSplash } from '../../context/SplashContext';
+import authApi from '../../services/api';
 
 const Register = () => {
   const navigate = useNavigate();
-  const theme = useTheme();
   const { register } = useAuth();
+  const { setShowLoginSplash } = useSplash();
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -41,16 +25,34 @@ const Register = () => {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [churchOptions, setChurchOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    const loadChurches = async () => {
+      const churches = await authApi.getChurches();
+      const uniqueOptions = Array.from(new Set([...churches, 'Other']));
+      setChurchOptions(uniqueOptions);
+    };
+    loadChurches();
+  }, []);
+
+  const formattedPhone = useMemo(() => {
+    const digits = formData.phone.replace(/\D/g, '').slice(0, 10);
+    if (!digits) return '';
+    if (digits.length < 4) return `(${digits}`;
+    if (digits.length < 7) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    return `(${digits.slice(0, 3)})-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }, [formData.phone]);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    
-    if (name === 'birthday') {
-      const date = new Date(value);
-      if (date > new Date()) {
-        return;
-      }
+
+    if (name === 'phone') {
+      const digits = value.replace(/\D/g, '').slice(0, 10);
+      setFormData(prev => ({ ...prev, phone: digits }));
+      return;
     }
+
     setFormData(prev => ({
       ...prev,
       [name]: name === 'email' ? value.toLowerCase() : value
@@ -85,8 +87,8 @@ const Register = () => {
       return;
     }
 
-    // Validate phone number is exactly 10 digits
-    if (!/^\d{10}$/.test(formData.phone)) {
+    const phoneDigits = formData.phone.replace(/\D/g, '');
+    if (!/^\d{10}$/.test(phoneDigits)) {
       setError('Phone number must be exactly 10 digits');
       return;
     }
@@ -100,8 +102,8 @@ const Register = () => {
       age--;
     }
 
-    if (age < 20 || age > 42) {
-      setError('You must be between 20 and 40 years old to register');
+    if (age < 18) {
+      setError('You must be 18+ to Sign Up');
       return;
     }
 
@@ -120,12 +122,13 @@ const Register = () => {
         last_name: formData.last_name,
         birthday: new Date(formData.birthday).toISOString().split('T')[0],
         gender: formData.gender,
-        phone: formData.phone,
+        phone: phoneDigits,
         current_church: formData.current_church || 'Other',
       };
       
       await register(registrationData);
-      navigate('/events');
+      setShowLoginSplash(true);
+      navigate('/events', { replace: true });
     } catch (err: any) {
       setError(err.message || 'An error occurred during registration');
     } finally {
@@ -135,22 +138,21 @@ const Register = () => {
 
   return (
     <Container component="main" maxWidth="sm" sx={{ mt: 2, mb: 2 }}>
+      <Typography 
+        variant="h4"
+        component="h1" 
+        sx={{ 
+          textAlign: 'center', 
+          mb: 3,
+          fontWeight: 'bold',
+          color: 'primary.main',
+        }}
+      >
+        Saved & Single
+      </Typography>
       <Paper elevation={1} sx={{ p: { xs: 2, sm: 2, md: 3 }, borderRadius: 2 }}>
-        <Typography 
-          variant="h4"
-          component="h1" 
-          gutterBottom 
-          sx={{ 
-            textAlign: 'center', 
-            mb: 0.5,
-            fontWeight: 'bold',
-            color: 'primary.main',
-          }}
-        >
-         Saved & Single
-        </Typography>
-        <Typography variant="subtitle1" component="h2" sx={{ textAlign: 'center', mb: 1.5 , fontWeight: 'bold' }}>
-          Register
+        <Typography sx={{ textAlign: 'center', fontWeight: 'bold', fontSize: '1.2rem' }}>
+          Sign Up
         </Typography>
         {error && (
           <Alert severity="error" sx={{ mb: 1, fontSize: '0.8rem', py: 0.5 }}>
@@ -197,189 +199,49 @@ const Register = () => {
             fullWidth
             label="Phone Number"
             name="phone"
-            value={formData.phone}
+            value={formattedPhone}
             onChange={handleTextChange}
             margin="dense"
             required
             type="tel"
             size="small"
             inputProps={{
-              pattern: "[0-9]{10}",
-              title: "Please enter a 10-digit phone number"
+              inputMode: 'numeric',
+              maxLength: 14,
+              pattern: "\\(\\d{3}\\)-\\d{3}-\\d{4}",
+              title: "Enter exactly 10 digits"
             }}
             sx={{ mb: 1 }}
           />
 
-          <TextField
-            fullWidth
+          <DatePicker
             label="Birthday"
-            name="birthday"
-            type="date"
-            value={formData.birthday}
-            onChange={handleTextChange}
-            margin="dense"
-            required
-            size="small"
-            InputLabelProps={{
-              shrink: true,
-              sx: {
-                color: 'text.secondary',
-                textAlign: 'left',
-                transform: 'translate(12px, -9px) scale(0.75)',
-                transformOrigin: 'top left'
+            value={formData.birthday ? new Date(formData.birthday) : null}
+            onChange={(value) => {
+              if (!value || Number.isNaN(value.getTime())) {
+                setFormData(prev => ({ ...prev, birthday: '' }));
+                return;
               }
+              setFormData(prev => ({ ...prev, birthday: value.toISOString().split('T')[0] }));
             }}
-            inputProps={{
-              max: new Date().toISOString().split('T')[0],
-              style: { 
-                textAlign: 'left',
-                paddingLeft: '12px'
-              }
-            }}
-            helperText="Must be 20-40 years old"
-            FormHelperTextProps={{ 
-              sx: { 
-                fontSize: '0.75rem',
-                marginTop: '2px',
-                color: 'text.secondary',
-                opacity: 0.8
-              } 
-            }}
-            InputProps={{
-              endAdornment: (
-                <div style={{
-                  position: 'absolute',
-                  right: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  pointerEvents: 'none',
-                }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" style={{opacity: 0.54}}>
-                    <path fill="currentColor" d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
-                  </svg>
-                </div>
-              ),
-            }}
-            sx={{
-              mt: 1,
-              mb: -0.25,
-              '& .MuiInputBase-root': {
-                marginBottom: '0px',
-                height: '40px',
-                display: 'flex',
-                justifyContent: 'flex-start',
-                alignItems: 'center',
-                '& input': {
-                  textAlign: 'left',
-                  paddingLeft: '12px !important',
-                  opacity: 1,
-                  color: 'text.primary'
-                }
-              },
-              '& .MuiInputBase-root:has(input[value=""]):before': {
-                content: '"MM/DD/YYYY"',
-                display: formData.birthday ? 'none' : 'block',
-                position: 'absolute',
-                left: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                pointerEvents: 'none',
-                color:  theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.64)' : 'rgba(0, 0, 0, 0.47)',
-                fontSize: '16px',
-                zIndex: 1
-              },
-              '& .MuiInputBase-root:after': {
-                display: 'none'
-              },
-              '& input[type="date"]': {
-                WebkitAppearance: 'none',
-                appearance: 'none',
-                position: 'relative',
-                display: 'block',
-                textAlign: 'left',
-                width: '100%',
-                paddingRight: '30px',
-                lineHeight: 'normal',
-                color: 'text.primary !important',
-                background: 'transparent !important',
-              },
-              '& input[type="date"]::-webkit-date-and-time-value': {
-                textAlign: 'left',
-                opacity: formData.birthday ? 1 : 0,
-                color: 'text.primary',
-                margin: 0,
-              },
-              '& input::-webkit-calendar-picker-indicator': {
-                opacity: 0,
-                position: 'absolute',
-                right: '0',
-                top: 0,
-                height: '100%',
-                width: '30px',
-                cursor: 'pointer',
-              },
-              '& input::-webkit-datetime-edit': {
-                paddingLeft: 0,
-                textAlign: 'left',
-                opacity: formData.birthday ? 1 : 0,
-                color: 'text.primary',
-                display: 'block',
-                minHeight: '1.6em',
-                whiteSpace: 'nowrap',
-                overflow: 'visible',
-              },
-              '& input::-webkit-datetime-edit-fields-wrapper': {
-                textAlign: 'left',
-                paddingLeft: 0,
-                opacity: 1,
-                display: 'inline-flex',
-                whiteSpace: 'nowrap',
-                padding: '1px 0',
-              },
-              '& input::-webkit-datetime-edit-text': {
-                opacity: 1, 
-                color: 'inherit',
-                display: 'inline',
-                whiteSpace: 'nowrap',
-              },
-              '& input::-webkit-datetime-edit-month-field': {
-                opacity: 1,
-                color: 'inherit',
-                display: 'inline',
-                whiteSpace: 'nowrap',
-              },
-              '& input::-webkit-datetime-edit-day-field': {
-                opacity: 1,
-                color: 'inherit',
-                display: 'inline',
-                whiteSpace: 'nowrap',
-              },
-              '& input::-webkit-datetime-edit-year-field': {
-                opacity: 1,
-                color: 'inherit',
-                display: 'inline',
-                whiteSpace: 'nowrap',
-              },
-              '& input:not([value]), & input[value=""]': {
-                color: 'rgba(0, 0, 0, 0.38)'
-              },
-              '@supports (-webkit-touch-callout: none)': {
-                '& input[type="date"]': {
-                  display: 'flex !important',
-                  alignItems: 'center',
-                  justifyContent: 'flex-start',
-                  opacity: 1,
-                  color: formData.birthday ? 'text.primary !important' : 'transparent !important',
-                  '-webkit-appearance': 'none',
-                  'appearance': 'none',
-                  padding: '0 12px',
-                  '&::-webkit-date-and-time-value': {
-                    margin: 0,
-                    opacity: formData.birthday ? 1 : 0,
-                    color: 'text.primary !important',
-                    display: 'inline-block',
-                    minWidth: '60px',
-                    position: 'relative'
+            disableFuture
+            referenceDate={new Date(2000, 0, 1)}
+            views={['year', 'month', 'day']}
+            openTo="year"
+            slotProps={{
+              textField: {
+                fullWidth: true,
+                required: true,
+                margin: 'dense',
+                size: 'small',
+                helperText: '18+ only. Use calendar icon to select date.',
+                inputProps: { readOnly: true },
+                FormHelperTextProps: {
+                  sx: {
+                    fontSize: '0.75rem',
+                    marginTop: '2px',
+                    color: 'text.secondary',
+                    opacity: 0.8
                   }
                 }
               }
@@ -429,43 +291,12 @@ const Register = () => {
                 {...params} 
                 label="Current Church" 
                 margin="dense"
-                helperText="If not listed, input it and we will add it :)."
+                helperText="Search for you Church. If not listed please type the name"
                 sx={{ mt: 1 }}
               />
             )}
             sx={{ mt: 1 }}
           />
-
-          {/* WILL ADD THIS BACK MAYBE LATER 
-          <FormControl component="fieldset" margin="dense" required sx={{ mt: 1}}>
-            <FormLabel component="legend" sx={{ fontSize: '0.8rem' }}>I want to:</FormLabel>
-            <RadioGroup
-              name="role"
-              value={formData.role}
-              onChange={handleTextChange}
-              row
-              sx={{ mt: -0.5 }}
-            >
-              <FormControlLabel
-                value="attendee"
-                control={<Radio size="small" />}
-                label="Attend Speed Dating Events"
-                sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
-              />
-              <FormControlLabel
-                value="organizer"
-                control={<Radio size="small" />}
-                label="Organize Speed Dating Events"
-                 sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
-              />
-              <FormControlLabel
-                value="admin"
-                control={<Radio size="small"/>}
-                label="Admin"
-                 sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.875rem' } }}
-              />
-            </RadioGroup>
-          </FormControl> */}
           
           <TextField
             fullWidth
@@ -512,11 +343,11 @@ const Register = () => {
             sx={{ mt: 1.5, mb: 0.5 }}
             disabled={loading}
           >
-            {loading ? 'Registering...' : 'Register'}
+            {loading ? 'Signing Up...' : 'Sign Up'}
           </Button>
 
           <Typography variant="caption" display="block" sx={{ mt: 1.5, textAlign: 'center', color: 'text.secondary' }}>
-            By clicking Register, you acknowledge that you have read and agree to the{' '}
+            By clicking Sign Up, you acknowledge that you have read and agree to the{' '}
             <MuiLink component="a" href="/privacy-policy" target="_blank" rel="noopener noreferrer">
               Privacy Policy
             </MuiLink>
@@ -529,7 +360,7 @@ const Register = () => {
             size="small"
             sx={{ mt: 0.5 }}
           >
-            Already have an account? Login
+            Already have an account? Sign In
           </Button>
         </Box>
       </Paper>
@@ -537,4 +368,4 @@ const Register = () => {
   );
 };
 
-export default Register; 
+export default Register;

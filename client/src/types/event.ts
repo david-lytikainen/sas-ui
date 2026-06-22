@@ -31,22 +31,17 @@ export interface ScheduleItem {
   partner_email: string;
   event_speed_date_id: number;
   match: boolean;
+  user_interested: boolean;
 }
 
-export interface TimerState {
-  has_timer: boolean;
-  message: string;
-  status: 'active' | 'paused' | 'inactive' | 'ended' | 'break_time';
-  time_remaining: number;
-  timer: {
-    id: number;
-    event_id: number;
-    current_round: number;
-    final_round: number;
-    round_duration: number;
-    round_start_time: string | null;
-    is_paused: boolean;
-    pause_time_remaining: number | null;
-    break_duration: number;
-  };
+export interface Timer {
+  id: number;
+  event_id: number;
+  current_round: number;
+  final_round: number;
+  round_duration: number;
+  round_start_time: string | null;
+  is_paused: boolean;
+  pause_time_remaining: number | null;
+  break_duration: number;
 }

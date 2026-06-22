@@ -9,23 +9,25 @@ const Footer: React.FC = () => {
     <Box 
       component="footer" 
       sx={{
-        py: 3,
+        py: 1,
         px: 2,
         mt: 'auto',
-        backgroundColor: (theme) => 
-          theme.palette.mode === 'light' ? theme.palette.grey[200] : theme.palette.grey[800],
+        backgroundColor: (theme) => theme.palette.grey[800],
         borderTop: (theme) => `1px solid ${theme.palette.divider}`
       }}
     >
       <Container maxWidth="lg">
-        <Typography variant="body2" color="text.secondary" align="center">
+        <Typography variant="caption" color="text.secondary" align="center" sx={{ display: 'block', fontSize: '0.72rem' }}>
           - Saved & Single {new Date().getFullYear()} -
         </Typography>
-        <Typography variant="body2" color="text.secondary" align="center" sx={{mt: 1}}>
-          <RouterLink to="/privacy-policy" style={{color: 'inherit', textDecoration: 'none'}}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1.5, fontSize: '0.72rem' }}>
+          <a href="mailto:savedandsingle.events@gmail.com" style={{ color: 'inherit', textDecoration: 'none' }}>
+            Contact Us
+          </a>
+          <RouterLink to="/privacy-policy" style={{ color: 'inherit', textDecoration: 'none' }}>
             Privacy Policy
           </RouterLink>
-        </Typography>
+        </Box>
       </Container>
     </Box>
   );
