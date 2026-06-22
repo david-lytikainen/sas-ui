@@ -20,11 +20,14 @@ const Footer: React.FC = () => {
         <Typography variant="caption" color="text.secondary" align="center" sx={{ display: 'block', fontSize: '0.72rem' }}>
           - Saved & Single {new Date().getFullYear()} -
         </Typography>
-        <Typography variant="caption" color="text.secondary" align="center" sx={{ display: 'block', fontSize: '0.72rem' }}>
-          <RouterLink to="/privacy-policy" style={{color: 'inherit', textDecoration: 'none'}}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1.5, fontSize: '0.72rem' }}>
+          <a href="mailto:savedandsingle.events@gmail.com" style={{ color: 'inherit', textDecoration: 'none' }}>
+            Contact Us
+          </a>
+          <RouterLink to="/privacy-policy" style={{ color: 'inherit', textDecoration: 'none' }}>
             Privacy Policy
           </RouterLink>
-        </Typography>
+        </Box>
       </Container>
     </Box>
   );

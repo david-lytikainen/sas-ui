@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Container, Box, Typography, Button, Card, CardContent, CardActions, Grid, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Alert, useMediaQuery, useTheme, TextField, Link as MuiLink, Collapse, Select, MenuItem, InputLabel, FormControl, DialogContentText, Divider } from '@mui/material';
-import { Event as EventIcon, HowToReg as SignUpIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon, AttachMoney as AttachMoneyIcon, CheckCircle as CheckInIcon, Email as EmailIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Settings as SettingsIcon, List as ListIcon, PlayArrow as StartIcon, Stop as EndIcon, Visibility as ViewIcon, Edit as EditIcon, Delete as DeleteIcon, People as PeopleIcon, CheckBox as CheckBoxIcon } from '@mui/icons-material';
+import { Container, Box, Typography, Button, Card, CardContent, CardActions, Grid, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Alert, useMediaQuery, useTheme, TextField, Collapse, Select, MenuItem, InputLabel, FormControl, DialogContentText, Divider } from '@mui/material';
+import { Event as EventIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon, AttachMoney as AttachMoneyIcon, CheckCircle as CheckInIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Settings as SettingsIcon, List as ListIcon, PlayArrow as StartIcon, Stop as EndIcon, Visibility as ViewIcon, Edit as EditIcon, Delete as DeleteIcon, People as PeopleIcon, CheckBox as CheckBoxIcon } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import { eventsApi } from '../../services/api';
@@ -14,17 +14,20 @@ import ViewRegisteredUsers from './ViewRegisteredUsers';
 import ViewWaitlistedUsers from './ViewWaitlistedUsers';
 import ConfirmDialog from '../common/ConfirmDialog';
 
+type EventView = 'all' | 'my' | 'create';
+
 const EventList = () => {
   const { refreshEvents, isRegisteredForEvent, filteredEvents } = useEvents();
   const { user, isAdmin, isOrganizer } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [activeView, setActiveView] = useState<EventView>('my');
+  const [pastEventsOpen, setPastEventsOpen] = useState(false);
   const [signUpDialogOpen, setSignUpDialogOpen] = useState(false);
   const [signUpEventId, setSignUpEventId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelEventId, setCancelEventId] = useState<string | null>(null);
-  const [showCreateCard, setShowCreateCard] = useState(false);
 
   const [globalCheckInDialogOpen, setGlobalCheckInDialogOpen] = useState(false);
   const [selectedEventForCheckIn, setSelectedEventForCheckIn] = useState<Event | null>(null);
@@ -245,9 +248,25 @@ const EventList = () => {
     return a.id - b.id;
   });
 
+  const isPastEvent = (event: Event) => {
+    if (event.status === 'Completed') return true;
+    const startTime = new Date(event.starts_at).getTime();
+    return Date.now() - startTime > 48 * 60 * 60 * 1000;
+  };
+
+  const isMyEvent = (event: Event) => {
+    if (!user) return false;
+    return isRegisteredForEvent(event.id) || Number(event.creator_id) === Number(user.id);
+  };
+
+  const baseEvents = activeView === 'my' ? sortedEvents.filter(isMyEvent) : sortedEvents;
+  const visibleEvents = baseEvents.filter(event => !isPastEvent(event));
+  const pastEvents = baseEvents.filter(isPastEvent);
+
   const renderActionButtons = (event: Event) => {
     const isUserRegistered = isRegisteredForEvent(event.id);
     const registrationStatus = event.registration?.status;
+    if (isPastEvent(event)) return null;
     const openCheckInDialog = () => {
       setSelectedEventForCheckIn(event);
       setCheckInPin('');
@@ -295,7 +314,6 @@ const EventList = () => {
         <Button
           variant="contained"
           color="primary"
-          startIcon={<SignUpIcon />}
           onClick={() => handleSignUpClick(event.id)}
           sx={{ width: { xs: '100%', sm: 'auto' }, alignSelf: {xs: 'stretch', sm: 'flex-start'} }}
         >
@@ -585,6 +603,143 @@ const EventList = () => {
     }
   };
 
+  const pillSx = (view: EventView) => ({
+    minWidth: 'auto',
+    borderRadius: 999,
+    px: 1.75,
+    py: 0.45,
+    fontSize: isMobile ? '0.8rem' : '0.875rem',
+    fontWeight: 700,
+    lineHeight: 1.2,
+    bgcolor: activeView === view ? theme.palette.primary.main : '#303030',
+    color: activeView === view ? '#000000' : theme.palette.common.white,
+    '&:hover': {
+      bgcolor: activeView === view ? theme.palette.primary.main : '#383838'
+    }
+  });
+
+  const renderEventCard = (event: Event) => (
+    <Grid item xs={12} key={event.id}>
+      <Card sx={{
+        borderRadius: 2,
+        boxShadow: theme.shadows[2],
+        transition: 'transform 0.2s, box-shadow 0.2s',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          boxShadow: theme.shadows[4],
+        }
+      }}>
+        <CardContent sx={{ p: { xs: 1.5, sm: 3 } }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 1, sm: 2 }, flexWrap: 'wrap', gap: 1}}>
+            <Typography
+              variant="h5"
+              component="h2"
+              sx={{
+                fontWeight: 600,
+                fontSize: isMobile ? '1.1rem' : '1.5rem',
+                lineHeight: 1.2
+              }}
+            >
+              {event.name}
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Chip
+                label={event.status}
+                sx={{
+                  fontWeight: 600,
+                  fontSize: isMobile ? '0.75rem' : '0.875rem',
+                  bgcolor: '#2b2b2b',
+                  color: '#f5f5f5'
+                }}
+              />
+            </Box>
+          </Box>
+
+          {event.status !== 'In Progress' && (
+          <Box sx={{ mb: { xs: 1.5, sm: 2 } }}>
+            <Typography
+              variant="body1"
+              color="text.secondary"
+              sx={{
+                  mb: { xs: 1, sm: 2 },
+                  fontSize: isMobile ? '0.85rem' : '1rem'
+              }}
+            >
+            {event.description}
+          </Typography>
+          </Box>
+          )}
+
+        {(event.status === 'In Progress' && (isAdmin() || event.registration)) && (
+          <Box sx={{ mb: { xs: 1, sm: 3 } }}>
+            <Divider sx={{ mb: { xs: 0.5, sm: 2 } }} />
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '0.875rem', sm: '1.25rem' }, mb: { xs: 0.5, sm: 2} }}>
+                Round Timer
+              </Typography>
+              {isAdmin() ? (
+                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, fontSize:  { xs: '0.675rem', sm: '1rem' }}}>
+                  Rounds: {event.num_rounds}, Tables: {event.num_tables}
+                </Typography>
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, fontSize:  { xs: '0.675rem', sm: '1rem' }}}>
+                  Rounds: {event.num_rounds}
+                </Typography>
+              )}
+            </Box>
+            <EventTimer
+              eventId={event.id}
+              isAdmin={canManageEvent(event)}
+              isCheckedIn={isRegisteredForEvent(event.id) && event.registration?.status === 'Checked In'}
+              eventStatus={event.status}
+              onRoundChange={(round) => {
+                setCurrentRounds(prev => (
+                  prev[event.id] === round ? prev : { ...prev, [event.id]: round }
+                ));
+              }}
+            />
+          </Box>
+        )}
+
+        {event.status !== 'In Progress' && (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1, sm: 2 } }}>
+          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
+            <EventIcon fontSize="small" />
+            {formatDate(event.starts_at)}
+          </Typography>
+          {typeof event.registered_attendee_count === 'number' && event.max_capacity && (
+            <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
+              <PeopleIcon fontSize="small" />
+              {`${event.registered_attendee_count}/${event.max_capacity} spots filled`}
+            </Typography>
+          )}
+          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
+            <AttachMoneyIcon fontSize="small" />
+            ${parseFloat(event.price_per_person).toFixed(2)} per person
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
+            <LocationOnIcon fontSize="small" />
+            {event.address}
+          </Typography>
+        </Box>
+        )}
+
+        {renderEventControls(event)}
+
+        {isRegisteredForEvent(event.id) && event.registration?.status === 'Checked In' && (
+          <MySchedule
+            event={event}
+            currentRound={currentRounds[event.id]}
+          />
+        )}
+      </CardContent>
+      <CardActions sx={{ p: { xs: 1, sm: 2 }, pt: 1, display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 1, justifyContent: 'flex-start' }}>
+        {renderActionButtons(event)}
+      </CardActions>
+    </Card>
+  </Grid>
+  );
+
   return (
     <>
       <Container maxWidth="lg">
@@ -597,238 +752,72 @@ const EventList = () => {
         <Box
           sx={{
             display: 'flex',
-            justifyContent: { xs: 'flex-start', sm: 'space-between' },
-            alignItems: 'center',
+            justifyContent: 'flex-start',
+            alignItems: 'flex-start',
             mb: 2,
-            flexDirection: { xs: 'row', sm: 'row' }
+            flexDirection: 'column',
+            gap: 1
           }}
         >
-          <Typography variant={isMobile ? "h5" : "h4"} component="h1" sx={{ fontWeight: 'bold', mr: 1 }}>
+          <Typography variant={isMobile ? "h5" : "h4"} component="h1" sx={{ fontWeight: 'bold' }}>
             Events
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', ml: { xs: 2, sm: 0 } }}>
-            {(isAdmin() || isOrganizer()) && !showCreateCard && (
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => setShowCreateCard(true)}
-                startIcon={<EventIcon />}
-                sx={{
-                  minWidth: { xs: 'auto', sm: 'inherit' },
-                  p: { xs: '6px 10px', sm: '6px 16px' },
-                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                  Create Event
-              </Button>
-            )}
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Button onClick={() => setActiveView('my')} sx={pillSx('my')}>My</Button>
+            <Button onClick={() => setActiveView('all')} sx={pillSx('all')}>All</Button>
+            <Button onClick={() => setActiveView('create')} sx={pillSx('create')}>Create</Button>
           </Box>
         </Box>
 
-        {showCreateCard && (isAdmin() || isOrganizer()) && (
+        {activeView === 'create' && (isAdmin() || isOrganizer()) && (
           <CreateEvent
-            onCancel={() => setShowCreateCard(false)}
-            onCreated={() => setShowCreateCard(false)}
+            onCreated={() => setActiveView('all')}
             onError={setErrorMessage}
           />
         )}
 
-        <Grid container spacing={3}>
-          {sortedEvents.map(event => (
-            <Grid item xs={12} key={event.id}>
-              <Card sx={{
-                borderRadius: 2,
-                boxShadow: theme.shadows[2],
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: theme.shadows[4],
-                }
-              }}>
-                <CardContent sx={{ p: { xs: 1.5, sm: 3 } }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 1, sm: 2 }, flexWrap: 'wrap', gap: 1}}>
-                    <Typography
-                      variant="h5"
-                      component="h2"
-                      sx={{
-                        fontWeight: 600,
-                        fontSize: isMobile ? '1.1rem' : '1.5rem',
-                        lineHeight: 1.2
-                      }}
-                    >
-                      {event.name}
-                    </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Chip
-                        label={event.status}
-                        sx={{
-                          fontWeight: 600,
-                          fontSize: isMobile ? '0.75rem' : '0.875rem',
-                          bgcolor: '#2b2b2b',
-                          color: '#f5f5f5'
-                        }}
-                      />
-                    </Box>
-                  </Box>
-
-                  {event.status !== 'In Progress' && (
-                  <Box sx={{ mb: { xs: 1.5, sm: 2 } }}>
-                    <Typography
-                      variant="body1"
-                      color="text.secondary"
-                      sx={{
-                          mb: { xs: 1, sm: 2 },
-                          fontSize: isMobile ? '0.85rem' : '1rem'
-                      }}
-                    >
-                    {event.description}
-                  </Typography>
-                  </Box>
-                  )}
-
-                {/* Round Timer */}
-                {(event.status === 'In Progress' && (isAdmin() || event.registration)) && (
-                  <Box sx={{ mb: { xs: 1, sm: 3 } }}>
-                    <Divider sx={{ mb: { xs: 0.5, sm: 2 } }} />
-                    <Box
-                      sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                    >
-                      <Typography
-                        variant="h6"
-                        gutterBottom
-                        sx={{
-                          fontSize: { xs: '0.875rem', sm: '1.25rem' },
-                          mb: { xs: 0.5, sm: 2}
-                        }}
-                      >
-                        Round Timer
-                      </Typography>
-                      {isAdmin() && (
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ fontWeight: 500, fontSize:  { xs: '0.675rem', sm: '1rem' }}}
-                        >
-                          Rounds: {event.num_rounds}, Tables: {event.num_tables}
-                        </Typography>
-                      )}
-                      {!isAdmin() && (
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ fontWeight: 500, fontSize:  { xs: '0.675rem', sm: '1rem' }}}
-                        >
-                          Rounds: {event.num_rounds}
-                        </Typography>
-                      )}
-                    </Box>
-                    <EventTimer
-                      eventId={event.id}
-                      isAdmin={canManageEvent(event)}
-                      isCheckedIn={isRegisteredForEvent(event.id) && event.registration?.status === 'Checked In'}
-                      eventStatus={event.status}
-                      onRoundChange={(round) => {
-                        setCurrentRounds(prev => (
-                          prev[event.id] === round ? prev : { ...prev, [event.id]: round }
-                        ));
-                      }}
-                    />
-                  </Box>
-                )}
-
-                {event.status !== 'In Progress' && (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1, sm: 2 } }}>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.5,
-                      fontSize: isMobile ? '0.75rem' : '0.875rem'
-                    }}
-                  >
-                  <EventIcon fontSize="small" />
-                  {formatDate(event.starts_at)}
-                </Typography>
-                  {typeof event.registered_attendee_count === 'number' && event.max_capacity && (
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5,
-                        fontSize: isMobile ? '0.75rem' : '0.875rem'
-                      }}
-                    >
-                      <PeopleIcon fontSize="small" />
-                      {`${event.registered_attendee_count}/${event.max_capacity} spots filled`}
-                    </Typography>
-                  )}
-                  {/* Add Spots Filled Display END */}
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.5,
-                      fontSize: isMobile ? '0.75rem' : '0.875rem'
-                    }}
-                  >
-                    <AttachMoneyIcon fontSize="small" />
-                    ${parseFloat(event.price_per_person).toFixed(2)} per person
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.5,
-                      fontSize: isMobile ? '0.75rem' : '0.875rem'
-                    }}
-                  >
-                  <LocationOnIcon fontSize="small" />
-                  {event.address}
-                </Typography>
-                </Box>
-                )}
-
-                {/* Event admin controls */}
-                {renderEventControls(event)}
-
-                {/* My Schedule */}
-                {isRegisteredForEvent(event.id) && event.registration?.status === 'Checked In' && (
-                  <MySchedule
-                    event={event}
-                    currentRound={currentRounds[event.id]}
-                  />
-                )}
-              </CardContent>
-              <CardActions sx={{
-                p: { xs: 1, sm: 2 },
-                pt: 1,
-                display: 'flex',
-                flexDirection: isMobile ? 'column' : 'row',
-                gap: 1,
-                justifyContent: 'flex-start'
-              }}>
-                {renderActionButtons(event)}
-              </CardActions>
-            </Card>
-          </Grid>
-        ))}
-        {sortedEvents.length === 0 && (
-          <Grid item xs={12}>
-            <Alert severity="info">
-              No events available at this time.
-            </Alert>
-          </Grid>
+        {activeView === 'create' && !isAdmin() && !isOrganizer() && (
+          <Box sx={{ py: 2 }}>
+            <Typography variant="h6">TODO</Typography>
+          </Box>
         )}
-      </Grid>
+
+        {activeView !== 'create' && (
+          <>
+            <Grid container spacing={3}>
+              {visibleEvents.map(renderEventCard)}
+            </Grid>
+
+            {activeView === 'my' && visibleEvents.length === 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body1" color="text.secondary">
+                  To sign up for an event, switch to All.
+                </Typography>
+              </Box>
+            )}
+
+            {(activeView !== 'my' || pastEvents.length > 0) && (
+              <Box sx={{ mt: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 1, overflow: 'hidden' }}>
+                <Box
+                  sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                  onClick={() => setPastEventsOpen(prev => !prev)}
+                >
+                  <Typography variant="h6" sx={{ fontSize: isMobile ? '1.1rem' : '1.5rem', fontWeight: 600 }}>
+                    Past Events
+                  </Typography>
+                  {pastEventsOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                </Box>
+                <Collapse in={pastEventsOpen}>
+                  <Box sx={{ p: 2, pt: 0 }}>
+                    <Grid container spacing={3}>
+                      {pastEvents.map(renderEventCard)}
+                    </Grid>
+                  </Box>
+                </Collapse>
+              </Box>
+            )}
+          </>
+        )}
 
       <ConfirmDialog
         open={signUpDialogOpen}
@@ -986,7 +975,7 @@ const EventList = () => {
         onCancel={() => setEndEventDialogOpen(false)}
         onConfirm={handleEndEvent}
       >
-        Are you sure you want to end "{selectedEventForEnding?.name}"? <br></br> Attendees will no longer be able to select Yes or No and all blank entries will be treated as No.
+        Are you sure you want to end "{selectedEventForEnding?.name}"? Attendees will no longer be able to select Yes or No and all blank entries will be treated as No.
       </ConfirmDialog>
 
       <ViewAllSchedules
@@ -994,29 +983,6 @@ const EventList = () => {
         event={selectedEventForAllSchedules}
         onClose={() => setViewAllSchedulesDialogOpen(false)}
       />
-
-      {/* Support email footer */}
-      <Box sx={{ mt: 4, pt: 2, display: 'flex', justifyContent: 'center', borderTop: `1px solid ${theme.palette.divider}` }}>
-        <MuiLink
-          href="mailto:savedandsingle.events@gmail.com"
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0.5,
-            color: theme.palette.text.secondary,
-            textDecoration: 'none',
-            '&:hover': {
-              color: theme.palette.primary.main,
-              textDecoration: 'underline'
-            }
-          }}
-        >
-          <EmailIcon fontSize="small" />
-          <Typography variant="body2">
-            Need help? Contact Us
-          </Typography>
-        </MuiLink>
-      </Box>
 
       {/* ADD: Edit Event Dialog */}
       <Dialog open={editEventDialogOpen} onClose={() => setEditEventDialogOpen(false)} maxWidth="sm" fullWidth>

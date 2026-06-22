@@ -151,7 +151,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const filteredEvents = useMemo(() => {
     if (!user) return [];
 
-    // only show current event for an attendee
+    // ponytail: attendee sees only checked-in in-progress event when one exists
     if (!isAdmin()) {
       const checkedInEvent = events.find(event =>
         event.registration?.status === 'Checked In' &&
