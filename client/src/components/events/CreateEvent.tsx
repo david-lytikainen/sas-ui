@@ -1,11 +1,11 @@
-import { Box, Button, Card, CardActions, CardContent, Grid, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Box, Button, Card, CardActions, CardContent, Grid, InputAdornment, TextField, useMediaQuery, useTheme } from '@mui/material';
 import { useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { useEvents } from '../../context/EventContext';
 import { EventStatus } from '../../types/event';
-import { Event as EventIcon, LocationOn as LocationOnIcon, AttachMoney as AttachMoneyIcon, People as PeopleIcon } from '@mui/icons-material';
 
 interface CreateEventProps {
+  createdEventCount: number;
   onCreated: () => void;
   onError: (message: string) => void;
 }
@@ -19,11 +19,18 @@ const initialCreateForm = {
   price_per_person: '',
 };
 
-const CreateEvent = ({ onCreated, onError }: CreateEventProps) => {
+const CreateEvent = ({ createdEventCount, onCreated, onError }: CreateEventProps) => {
   const { createEvent } = useEvents();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [createForm, setCreateForm] = useState(initialCreateForm);
+  const isIntroEvent = createdEventCount < 2;
+  const fixedFee = isIntroEvent ? 1 : 1.5;
+  const percentFee = isIntroEvent ? 5 : 8;
+  const minimumPrice = Number((fixedFee / (1 - percentFee / 100)).toFixed(2));
+  const attendeePrice = parseFloat(createForm.price_per_person || '0') || 0;
+  const platformFee = attendeePrice > 0 ? fixedFee + (attendeePrice * percentFee / 100) : 0;
+  const organizerPayout = Math.max(0, attendeePrice - platformFee);
 
   const isCreateDisabled = !createForm.name || !createForm.description || !createForm.starts_at || !createForm.address || !createForm.max_capacity || !createForm.price_per_person;
 
@@ -79,6 +86,13 @@ const CreateEvent = ({ onCreated, onError }: CreateEventProps) => {
     const value = event.target.value;
     if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
       setCreateForm(form => ({ ...form, price_per_person: value }));
+    }
+  };
+
+  const handlePriceBlur = () => {
+    if (!createForm.price_per_person) return;
+    if (attendeePrice < minimumPrice) {
+      setCreateForm(form => ({ ...form, price_per_person: minimumPrice.toFixed(2) }));
     }
   };
 
@@ -158,9 +172,18 @@ const CreateEvent = ({ onCreated, onError }: CreateEventProps) => {
               type="number"
               value={createForm.price_per_person}
               onChange={handlePriceChange}
+              onBlur={handlePriceBlur}
               fullWidth
               required
-              InputProps={{ inputProps: { min: 0, step: '0.01' } }}
+              InputProps={{
+                endAdornment: attendeePrice > 0 ? <InputAdornment position="end">{`Payout to you: $${organizerPayout.toFixed(2)}`}</InputAdornment> : undefined,
+                inputProps: { min: minimumPrice, step: '0.01' }
+              }}
+              helperText={
+                attendeePrice > 0
+                  ? `Platform fee: $${platformFee.toFixed(2)} (${isIntroEvent ? '$1.00 + 5%' : '$1.50 + 8%'})`
+                  : `Platform fee: ${isIntroEvent ? '$1.00 + 5%' : '$1.50 + 8%'}.`
+              }
               size={isMobile ? 'small' : 'medium'}
               margin="dense"
             />

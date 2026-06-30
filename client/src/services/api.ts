@@ -108,7 +108,6 @@ const realAuthApi = {
     const backendUserData = {
       email: userData.email,
       password: userData.password,
-      role_id: 1,
       first_name: userData.first_name,
       last_name: userData.last_name,
       phone: userData.phone || "",
@@ -118,12 +117,7 @@ const realAuthApi = {
     };
     
     try {
-      console.log('Sending registration data:', backendUserData);
-      // Register the user
-      const response = await axiosInstance.post('/user/signup', backendUserData);
-      console.log('Registration response:', response.data);
-      
-      // After signup, log in to get the token
+      await axiosInstance.post('/user/signup', backendUserData);
       return await realAuthApi.login(userData.email, userData.password);
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -246,12 +240,31 @@ const realAuthApi = {
     } catch {
       return [];
     }
+  },
+
+  createConnectOnboarding: async (): Promise<{ url: string }> => {
+    try {
+      const response = await axiosInstance.post('/user/connect/onboarding');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to start Stripe Connect onboarding');
+    }
+  },
+
+  refreshOrganizerStatus: async (): Promise<AuthResponse['user']> => {
+    try {
+      const response = await axiosInstance.post('/user/organizer-status/refresh');
+      return response.data.user;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to refresh organizer status');
+    }
   }
 };
 
 interface EventsApi {
   getAll: () => Promise<Event[]>;
   getById: (eventId: string) => Promise<Event>;
+  createRegistrationCheckout: (eventId: string) => Promise<{ url: string }>;
   create: (eventData: Omit<Event, 'id' | 'creator_id' | 'created_at' | 'updated_at' | 'registration_deadline'>) => Promise<Event>;
   updateEvent: (eventId: string, eventData: Partial<Event>) => Promise<{ message: string, event: Event }>;
   deleteEvent: (eventId: string) => Promise<{ message: string }>;
@@ -408,6 +421,15 @@ const realEventsApi: EventsApi = {
         throw new Error(error.response.data.error);
       }
       throw new Error('Failed to fetch event details');
+    }
+  },
+
+  createRegistrationCheckout: async (eventId: string) => {
+    try {
+      const response = await axiosInstance.post(`/events/${eventId}/checkout`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to start checkout');
     }
   },
 

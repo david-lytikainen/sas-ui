@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Container, Box, Typography, Button, Card, CardContent, CardActions, Grid, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Alert, useMediaQuery, useTheme, TextField, Collapse, Select, MenuItem, InputLabel, FormControl, DialogContentText, Divider } from '@mui/material';
 import { Event as EventIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon, AttachMoney as AttachMoneyIcon, CheckCircle as CheckInIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Settings as SettingsIcon, List as ListIcon, PlayArrow as StartIcon, Stop as EndIcon, Visibility as ViewIcon, Edit as EditIcon, Delete as DeleteIcon, People as PeopleIcon, CheckBox as CheckBoxIcon } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
-import { eventsApi } from '../../services/api';
+import authApi, { eventsApi } from '../../services/api';
 import { Event, EventStatus } from '../../types/event';
 import CreateEvent from './CreateEvent';
 import EventTimer from './EventTimer';
@@ -18,10 +19,12 @@ type EventView = 'all' | 'my' | 'create';
 
 const EventList = () => {
   const { refreshEvents, isRegisteredForEvent, filteredEvents } = useEvents();
-  const { user, isAdmin, isOrganizer } = useAuth();
+  const { user, isAdmin, isOrganizer, refreshUser } = useAuth();
+  const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [activeView, setActiveView] = useState<EventView>('my');
+  const handledOrganizerReturnRef = useRef<string | null>(null);
   const [pastEventsOpen, setPastEventsOpen] = useState(false);
   const [signUpDialogOpen, setSignUpDialogOpen] = useState(false);
   const [signUpEventId, setSignUpEventId] = useState<string | null>(null);
@@ -75,6 +78,42 @@ const EventList = () => {
   const [selectedEventForWaitlistUsers, setSelectedEventForWaitlistUsers] = useState<Event | null>(null);
   const [currentRounds, setCurrentRounds] = useState<Record<number, number>>({});
 
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const hasStartedStripeSetup = !!user?.stripe_connected_account_id;
+  const organizerSetupComplete = !!user?.stripe_connect_onboarding_complete;
+  const canCreateEvents = !!user && (isAdmin() || (isOrganizer() && organizerSetupComplete));
+
+  useEffect(() => {
+    const requestedView = searchParams.get('view');
+    if (requestedView === 'all' || requestedView === 'my' || requestedView === 'create') {
+      setActiveView(requestedView);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const syncOrganizerState = async () => {
+      if (activeView !== 'create' || !user || isAdmin()) return;
+      const shouldSync = searchParams.get('stripe_connect') === 'return' || searchParams.get('checkout') === 'success';
+      if (shouldSync && handledOrganizerReturnRef.current !== location.search) {
+        try {
+          handledOrganizerReturnRef.current = location.search;
+          await authApi.refreshOrganizerStatus();
+          await refreshUser();
+          const nextParams = new URLSearchParams(location.search);
+          nextParams.delete('checkout');
+          nextParams.delete('session_id');
+          nextParams.delete('stripe_connect');
+          nextParams.delete('organizer');
+          const nextSearch = nextParams.toString();
+          window.history.replaceState({}, '', `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}`);
+        } catch (error: any) {
+          setErrorMessage(error.message || 'Failed to refresh organizer status');
+        }
+      }
+    };
+    syncOrganizerState();
+  }, [activeView, user, isAdmin, refreshUser, searchParams, location.pathname, location.search]);
+
   const formatUTCToLocal = (utcDateString: string, includeTime: boolean = true) => {
     try {
       const date = new Date(utcDateString);
@@ -121,6 +160,18 @@ const EventList = () => {
   const handleSignUpConfirm = async () => {
     if (signUpEventId) {
       try {
+        const event = filteredEvents.find(e => e.id.toString() === signUpEventId);
+        if (!event) {
+          setErrorMessage('Event details could not be found.');
+          return;
+        }
+
+        if (parseFloat(event.price_per_person || '0') > 0) {
+          const checkout = await eventsApi.createRegistrationCheckout(signUpEventId);
+          window.location.href = checkout.url;
+          return;
+        }
+
         await eventsApi.registerForEvent(signUpEventId, { join_waitlist: false });
 
         setSignUpDialogOpen(false);
@@ -328,7 +379,7 @@ const EventList = () => {
   // Function to check if user can manage event
   const canManageEvent = (event: Event) => {
     if (!user) return false;
-    return isAdmin() || (isOrganizer() && Number(event.creator_id) === Number(user.id));
+    return isAdmin() || (canCreateEvents && Number(event.creator_id) === Number(user.id));
   };
 
   const renderEventControls = (event: Event) => {
@@ -603,6 +654,24 @@ const EventList = () => {
     }
   };
 
+  const handleConnectOnboarding = async () => {
+    try {
+      const onboarding = await authApi.createConnectOnboarding();
+      window.location.href = onboarding.url;
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Failed to start Stripe setup.');
+    }
+  };
+
+  const handleCompleteStripeSetup = async () => {
+    try {
+      await authApi.refreshOrganizerStatus();
+      await refreshUser();
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Failed to refresh Stripe setup.');
+    }
+  };
+
   const pillSx = (view: EventView) => ({
     minWidth: 'auto',
     borderRadius: 999,
@@ -740,6 +809,45 @@ const EventList = () => {
   </Grid>
   );
 
+  const renderCreateTab = () => {
+    if (isAdmin() || canCreateEvents) {
+      return (
+        <CreateEvent
+          createdEventCount={user?.created_event_count || 0}
+          onCreated={() => setActiveView('all')}
+          onError={setErrorMessage}
+        />
+      );
+    }
+
+    if (user && !organizerSetupComplete) {
+      return (
+        <Card sx={{ borderRadius: 2, boxShadow: theme.shadows[2], mb: 3 }}>
+          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+            <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
+              Set Up Stripe To Organize Events
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Attendees pay listed ticket price. Platform fee comes out of your payout.
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              <Button variant="outlined" onClick={handleConnectOnboarding}>
+                {hasStartedStripeSetup ? 'Finish Stripe Setup' : 'Continue to Stripe'}
+              </Button>
+              <Button variant="contained" onClick={handleCompleteStripeSetup} disabled={!hasStartedStripeSetup}>
+                Check Setup
+              </Button>
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+              If Stripe still needs more info, come back here and continue setup again.
+            </Typography>
+          </CardContent>
+        </Card>
+      );
+    }
+    return null;
+  };
+
   return (
     <>
       <Container maxWidth="lg">
@@ -769,18 +877,7 @@ const EventList = () => {
           </Box>
         </Box>
 
-        {activeView === 'create' && (isAdmin() || isOrganizer()) && (
-          <CreateEvent
-            onCreated={() => setActiveView('all')}
-            onError={setErrorMessage}
-          />
-        )}
-
-        {activeView === 'create' && !isAdmin() && !isOrganizer() && (
-          <Box sx={{ py: 2 }}>
-            <Typography variant="h6">TODO</Typography>
-          </Box>
-        )}
+        {activeView === 'create' && renderCreateTab()}
 
         {activeView !== 'create' && (
           <>
@@ -826,7 +923,9 @@ const EventList = () => {
         onCancel={() => setSignUpDialogOpen(false)}
         onConfirm={handleSignUpConfirm}
       >
-        Are you sure you want to sign up for this event?
+        {parseFloat(filteredEvents.find(event => event.id.toString() === signUpEventId)?.price_per_person || '0') > 0
+          ? 'Are you sure you want to sign up for this paid event? You will be sent to Stripe Checkout. Sign ups are non-refundable through app.'
+          : 'Are you sure you want to sign up for this event?'}
       </ConfirmDialog>
 
       <ConfirmDialog
@@ -838,7 +937,9 @@ const EventList = () => {
         onCancel={() => setCancelDialogOpen(false)}
         onConfirm={handleCancelConfirm}
       >
-        Are you sure you want to cancel your registration for this event?
+        {parseFloat(filteredEvents.find(event => event.id.toString() === cancelEventId)?.price_per_person || '0') > 0
+          ? 'Are you sure you want to cancel your registration for this paid event? There are no refunds through app. Contact event organizer for refund questions.'
+          : 'Are you sure you want to cancel your registration for this event?'}
       </ConfirmDialog>
 
       {/* Global Check-in Dialog (now per-event) */}

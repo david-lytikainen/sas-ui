@@ -1,6 +1,6 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Container, Box, Typography, TextField, Button, Alert, Paper, InputAdornment, IconButton, FormControl, Select, MenuItem, InputLabel, SelectChangeEvent, Link as MuiLink, Autocomplete } from '@mui/material';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { Alert, Autocomplete, Box, Button, Container, FormControl, IconButton, InputAdornment, InputLabel, Link, MenuItem, Paper, Select, SelectChangeEvent, TextField, Typography } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useAuth } from '../../context/AuthContext';
@@ -30,8 +30,7 @@ const Register = () => {
   useEffect(() => {
     const loadChurches = async () => {
       const churches = await authApi.getChurches();
-      const uniqueOptions = Array.from(new Set([...churches, 'Other']));
-      setChurchOptions(uniqueOptions);
+      setChurchOptions(Array.from(new Set([...churches, 'Other'])));
     };
     loadChurches();
   }, []);
@@ -46,54 +45,31 @@ const Register = () => {
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-
     if (name === 'phone') {
-      const digits = value.replace(/\D/g, '').slice(0, 10);
-      setFormData(prev => ({ ...prev, phone: digits }));
+      setFormData(prev => ({ ...prev, phone: value.replace(/\D/g, '').slice(0, 10) }));
       return;
     }
-
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'email' ? value.toLowerCase() : value
-    }));
+    setFormData(prev => ({ ...prev, [name]: name === 'email' ? value.toLowerCase() : value }));
   };
 
   const handleSelectChange = (e: SelectChangeEvent) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    // Validation
-    if (!formData.first_name || !formData.last_name || !formData.email || !formData.password || !formData.birthday || !formData.gender || !formData.phone) {
-      setError('All fields are required');
-      return;
+  const validateForm = () => {
+    if (!formData.first_name || !formData.last_name || !formData.email || !formData.password || !formData.confirmPassword || !formData.birthday || !formData.gender || !formData.phone || !formData.current_church) {
+      return 'All fields are required';
     }
-
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
+      return 'Passwords do not match';
     }
-
     if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
+      return 'Password must be at least 6 characters';
+    }
+    if (!/^\d{10}$/.test(formData.phone)) {
+      return 'Phone number must be exactly 10 digits';
     }
 
-    const phoneDigits = formData.phone.replace(/\D/g, '');
-    if (!/^\d{10}$/.test(phoneDigits)) {
-      setError('Phone number must be exactly 10 digits');
-      return;
-    }
-
-    // Calculate age from birthday
     const birthday = new Date(formData.birthday);
     const today = new Date();
     let age = today.getFullYear() - birthday.getFullYear();
@@ -101,32 +77,34 @@ const Register = () => {
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthday.getDate())) {
       age--;
     }
-
     if (age < 18) {
-      setError('You must be 18+ to Sign Up');
-      return;
+      return 'You must be 18+ to Sign Up';
     }
+    return null;
+  };
 
-    if (!formData.gender) {
-      setError('Please select a gender');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
     try {
       setLoading(true);
-      // Create registration data object with fields that match the API interface
-      const registrationData = {
+      await register({
         email: formData.email.toLowerCase(),
         password: formData.password,
         first_name: formData.first_name,
         last_name: formData.last_name,
         birthday: new Date(formData.birthday).toISOString().split('T')[0],
         gender: formData.gender,
-        phone: phoneDigits,
+        phone: formData.phone,
         current_church: formData.current_church || 'Other',
-      };
-      
-      await register(registrationData);
+      });
       setShowLoginSplash(true);
       navigate('/events', { replace: true });
     } catch (err: any) {
@@ -138,18 +116,10 @@ const Register = () => {
 
   return (
     <Container component="main" maxWidth="sm" sx={{ mt: 2, mb: 2 }}>
-      <Typography 
-        variant="h4"
-        component="h1" 
-        sx={{ 
-          textAlign: 'center', 
-          mb: 3,
-          fontWeight: 'bold',
-          color: 'primary.main',
-        }}
-      >
+      <Typography variant="h4" component="h1" sx={{ textAlign: 'center', mb: 3, fontWeight: 'bold', color: 'primary.main' }}>
         Saved & Single
       </Typography>
+
       <Paper elevation={1} sx={{ p: { xs: 2, sm: 2, md: 3 }, borderRadius: 2 }}>
         <Typography sx={{ textAlign: 'center', fontWeight: 'bold', fontSize: '1.2rem' }}>
           Sign Up
@@ -159,42 +129,10 @@ const Register = () => {
             {error}
           </Alert>
         )}
-
         <Box component="form" onSubmit={handleSubmit}>
-          <TextField
-            fullWidth
-            label="First Name"
-            name="first_name"
-            value={formData.first_name}
-            onChange={handleTextChange}
-            margin="dense"
-            required
-            size="small"
-          />
-          
-          <TextField
-            fullWidth
-            label="Last Name"
-            name="last_name"
-            value={formData.last_name}
-            onChange={handleTextChange}
-            margin="dense"
-            required
-            size="small"
-          />
-          
-          <TextField
-            fullWidth
-            label="Email Address"
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleTextChange}
-            margin="dense"
-            required
-            size="small"
-          />
-
+          <TextField fullWidth label="First Name" name="first_name" value={formData.first_name} onChange={handleTextChange} margin="dense" required size="small" />
+          <TextField fullWidth label="Last Name" name="last_name" value={formData.last_name} onChange={handleTextChange} margin="dense" required size="small" />
+          <TextField fullWidth label="Email Address" name="email" type="email" value={formData.email} onChange={handleTextChange} margin="dense" required size="small" />
           <TextField
             fullWidth
             label="Phone Number"
@@ -205,30 +143,19 @@ const Register = () => {
             required
             type="tel"
             size="small"
-            inputProps={{
-              inputMode: 'numeric',
-              maxLength: 14,
-              pattern: "\\(\\d{3}\\)-\\d{3}-\\d{4}",
-              title: "Enter exactly 10 digits"
-            }}
-            sx={{ mb: 1 }}
+            inputProps={{ inputMode: 'numeric', maxLength: 14, pattern: "\\(\\d{3}\\)-\\d{3}-\\d{4}" }}
           />
-
           <DatePicker
             label="Birthday"
             value={formData.birthday ? new Date(formData.birthday) : null}
-            onChange={(value) => {
-              if (!value || Number.isNaN(value.getTime())) {
-                setFormData(prev => ({ ...prev, birthday: '' }));
-                return;
-              }
-              setFormData(prev => ({ ...prev, birthday: value.toISOString().split('T')[0] }));
-            }}
+            onChange={(value) => setFormData(prev => ({ ...prev, birthday: !value || Number.isNaN(value.getTime()) ? '' : value.toISOString().split('T')[0] }))}
+            closeOnSelect
             disableFuture
             referenceDate={new Date(2000, 0, 1)}
             views={['year', 'month', 'day']}
             openTo="year"
             slotProps={{
+              actionBar: { actions: [] },
               textField: {
                 fullWidth: true,
                 required: true,
@@ -236,68 +163,23 @@ const Register = () => {
                 size: 'small',
                 helperText: '18+ only. Use calendar icon to select date.',
                 inputProps: { readOnly: true },
-                FormHelperTextProps: {
-                  sx: {
-                    fontSize: '0.75rem',
-                    marginTop: '2px',
-                    color: 'text.secondary',
-                    opacity: 0.8
-                  }
-                }
               }
             }}
           />
-
-          <FormControl fullWidth margin="dense" required size="small" sx={{ mb: -0.5 }}>
+          <FormControl fullWidth margin="dense" required size="small">
             <InputLabel id="gender-select-label">Gender</InputLabel>
-            <Select
-              labelId="gender-select-label"
-              id="gender-select"
-              name="gender"
-              value={formData.gender}
-              label="Gender"
-              onChange={handleSelectChange}
-            >
-              <MenuItem value="MALE">Male</MenuItem>
-              <MenuItem value="FEMALE">Female</MenuItem>
+            <Select labelId="gender-select-label" id="gender-select" name="gender" value={formData.gender} label="Gender" onChange={handleSelectChange}>
+              <MenuItem value="Male">Male</MenuItem>
+              <MenuItem value="Female">Female</MenuItem>
             </Select>
           </FormControl>
-
           <Autocomplete
-            fullWidth
             freeSolo
-            size="small"
             options={churchOptions}
             value={formData.current_church}
-            onChange={(event, newValue) => {
-              setFormData(prev => ({
-                ...prev,
-                current_church: newValue || ''
-              }));
-            }}
-            onInputChange={(event, newInputValue) => {
-              setFormData(prev => ({
-                ...prev,
-                current_church: newInputValue
-              }));
-            }}
-            ListboxProps={{
-              style: {
-                maxHeight: '200px', // Limits to approximately 5 options
-              },
-            }}
-            renderInput={(params) => (
-              <TextField 
-                {...params} 
-                label="Current Church" 
-                margin="dense"
-                helperText="Search for you Church. If not listed please type the name"
-                sx={{ mt: 1 }}
-              />
-            )}
-            sx={{ mt: 1 }}
+            onInputChange={(_, value) => setFormData(prev => ({ ...prev, current_church: value }))}
+            renderInput={(params) => <TextField {...params} fullWidth label="Church" margin="dense" required size="small" />}
           />
-          
           <TextField
             fullWidth
             label="Password"
@@ -311,57 +193,25 @@ const Register = () => {
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
-                  <IconButton
-                    size="small"
-                    onClick={() => setShowPassword(!showPassword)}
-                    edge="end"
-                  >
+                  <IconButton size="small" onClick={() => setShowPassword(prev => !prev)} edge="end">
                     {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
                   </IconButton>
                 </InputAdornment>
               ),
             }}
           />
-          
-          <TextField
-            fullWidth
-            label="Confirm Password"
-            name="confirmPassword"
-            type={showPassword ? 'text' : 'password'}
-            value={formData.confirmPassword}
-            onChange={handleTextChange}
-            margin="dense"
-            required
-            size="small"
-          />
-
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            size="medium"
-            sx={{ mt: 1.5, mb: 0.5 }}
-            disabled={loading}
-          >
-            {loading ? 'Signing Up...' : 'Sign Up'}
+          <TextField fullWidth label="Confirm Password" name="confirmPassword" type={showPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={handleTextChange} margin="dense" required size="small" />
+          <Button type="submit" fullWidth variant="contained" size="medium" sx={{ mt: 1.5, mb: 1 }} disabled={loading}>
+            {loading ? 'Working...' : 'Sign Up'}
           </Button>
-
-          <Typography variant="caption" display="block" sx={{ mt: 1.5, textAlign: 'center', color: 'text.secondary' }}>
-            By clicking Sign Up, you acknowledge that you have read and agree to the{' '}
-            <MuiLink component="a" href="/privacy-policy" target="_blank" rel="noopener noreferrer">
-              Privacy Policy
-            </MuiLink>
-            .
-          </Typography>
-
-          <Button
-            fullWidth
-            onClick={() => navigate('/login')}
-            size="small"
-            sx={{ mt: 0.5 }}
-          >
+          <Button fullWidth onClick={() => navigate('/login')} size="small" sx={{ mt: 0.5 }}>
             Already have an account? Sign In
           </Button>
+          <Box sx={{ textAlign: 'center' }}>
+            <Link component={RouterLink} to="/forgot-password" variant="subtitle1" sx={{ fontSize: '0.7rem' }}>
+              Forgot Password?
+            </Link>
+          </Box>
         </Box>
       </Paper>
     </Container>

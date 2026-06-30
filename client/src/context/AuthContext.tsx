@@ -25,6 +25,7 @@ interface AuthContextType {
     gender: string;
     current_church?: string;
   }) => Promise<void>;
+  refreshUser: () => Promise<void>;
   logout: () => void;
   isAdmin: () => boolean;
   isOrganizer: () => boolean;
@@ -148,6 +149,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refreshUser = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const response = await authApi.validateToken(token);
+    if (response?.user) {
+      setUser(response.user);
+    }
+  };
+
   const logout = async () => {
     setShowLogoutSplash(true);
     setUser(null);
@@ -163,6 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setError,
         login,
         register,
+        refreshUser,
         logout,
         isAdmin,
         isOrganizer,

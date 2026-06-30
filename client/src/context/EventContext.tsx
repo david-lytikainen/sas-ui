@@ -82,8 +82,9 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setError(null);
     try {
       if (!user) throw new Error('You must be logged in to create an event');
-      if (!isAdmin() && !isOrganizer()) {
-        throw new Error('Only administrators and organizers can create events');
+      const canCreate = isAdmin() || (isOrganizer() && !!user.stripe_connect_onboarding_complete);
+      if (!canCreate) {
+        throw new Error('Stripe setup is required to create events');
       }
 
       const newEvent = await eventsApi.create(eventData);
@@ -152,7 +153,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!user) return [];
 
     // ponytail: attendee sees only checked-in in-progress event when one exists
-    if (!isAdmin()) {
+    if (!isAdmin() && !isOrganizer()) {
       const checkedInEvent = events.find(event =>
         event.registration?.status === 'Checked In' &&
         event.status === 'In Progress'
