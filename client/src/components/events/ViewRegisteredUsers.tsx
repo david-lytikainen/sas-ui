@@ -61,6 +61,15 @@ const ViewRegisteredUsers = ({
 
   const formatUTCToLocal = (utcDateString: string, includeTime: boolean = true) => {
     try {
+      if (!includeTime && /^\d{4}-\d{2}-\d{2}$/.test(utcDateString)) {
+        const [year, month, day] = utcDateString.split('-').map(Number);
+        return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+      }
+
       const date = new Date(utcDateString);
       if (isNaN(date.getTime())) return 'Invalid date';
 

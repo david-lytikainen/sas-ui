@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Autocomplete, Box, Button, Card, CardContent, Container, FormControl, IconButton, InputLabel, MenuItem, Select, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Alert, Autocomplete, Box, Button, Card, CardContent, Container, Divider, IconButton, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import EditIcon from '@mui/icons-material/Edit';
+import CloseIcon from '@mui/icons-material/Close';
 import authApi from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
 const ProfilePage = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, logout } = useAuth();
   const [churchOptions, setChurchOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -23,6 +24,20 @@ const ProfilePage = () => {
     gender: '',
     current_church: '',
   });
+
+  const parseDateOnly = (value: string) => {
+    if (!value) return null;
+    const [year, month, day] = value.split('-').map(Number);
+    if (!year || !month || !day) return null;
+    return new Date(year, month - 1, day);
+  };
+
+  const formatDateOnly = (value: Date) => {
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    const day = `${value.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   useEffect(() => {
     const loadChurches = async () => {
@@ -46,6 +61,20 @@ const ProfilePage = () => {
       current_church: user.current_church || '',
     });
   }, [user]);
+
+  const resetForm = () => {
+    if (!user) return;
+
+    setFormData({
+      first_name: user.first_name || '',
+      last_name: user.last_name || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      birthday: user.birthday || '',
+      gender: user.gender || '',
+      current_church: user.current_church || '',
+    });
+  };
 
   const formattedPhone = useMemo(() => {
     const digits = formData.phone.replace(/\D/g, '').slice(0, 10);
@@ -76,7 +105,10 @@ const ProfilePage = () => {
       return 'Phone number must be exactly 10 digits.';
     }
 
-    const birthday = new Date(formData.birthday);
+    const birthday = parseDateOnly(formData.birthday);
+    if (!birthday) {
+      return 'Birthday is required.';
+    }
     const today = new Date();
     let age = today.getFullYear() - birthday.getFullYear();
     const monthDiff = today.getMonth() - birthday.getMonth();
@@ -124,30 +156,81 @@ const ProfilePage = () => {
     }
   };
 
+  const handleStopEditing = () => {
+    resetForm();
+    setIsEditing(false);
+    setMessage(null);
+    setError(null);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+  };
+
+  const formatBirthday = (birthday: string) => {
+    const parsedDate = parseDateOnly(birthday);
+    if (!parsedDate) return '';
+    return parsedDate.toLocaleDateString(undefined, {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const readOnlyRows = [
+    { label: 'First Name', value: formData.first_name },
+    { label: 'Last Name', value: formData.last_name },
+    { label: 'Email Address', value: formData.email },
+    { label: 'Phone Number', value: formattedPhone },
+    { label: 'Birthday', value: formatBirthday(formData.birthday) },
+    { label: 'Gender', value: formData.gender },
+    { label: 'Church', value: formData.current_church || 'Other' },
+  ];
+
   return (
     <Container maxWidth="sm">
       <Box sx={{ mb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
           <Typography variant={isMobile ? 'h5' : 'h4'} component="h1" sx={{ fontWeight: 'bold' }}>
             Profile
           </Typography>
-          <IconButton
-            aria-label="Edit profile"
-            onClick={() => {
-              setIsEditing(true);
-              setMessage(null);
-              setError(null);
-            }}
-            size={isMobile ? 'small' : 'medium'}
-          >
-            <EditIcon fontSize={isMobile ? 'small' : 'medium'} />
-          </IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton
+              aria-label="Edit profile"
+              onClick={() => {
+                setIsEditing(true);
+                setMessage(null);
+                setError(null);
+              }}
+              size={isMobile ? 'small' : 'medium'}
+              sx={{
+                border: '1px solid',
+                borderColor: isEditing ? 'divider' : 'primary.main',
+                borderRadius: 2.5,
+                px: 1.1,
+                py: 0.75,
+              }}
+            >
+              <EditIcon fontSize={isMobile ? 'small' : 'medium'} />
+            </IconButton>
+            {isEditing && (
+              <IconButton
+                aria-label="Stop editing profile"
+                onClick={handleStopEditing}
+                size={isMobile ? 'small' : 'medium'}
+                sx={{
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 2.5,
+                  px: 1.1,
+                  py: 0.75,
+                }}
+              >
+                <CloseIcon fontSize={isMobile ? 'small' : 'medium'} />
+              </IconButton>
+            )}
+          </Box>
         </Box>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          {isEditing
-            ? 'Update the personal details used for registration, schedules, and matches.'
-            : 'Review the personal details used for registration, schedules, and matches.'}
-        </Typography>
       </Box>
 
       {message && (
@@ -163,105 +246,104 @@ const ProfilePage = () => {
 
       <Card sx={{ borderRadius: 2 }}>
         <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          <TextField
-            label="First Name"
-            value={formData.first_name}
-            onChange={(e) => handleTextChange('first_name', e.target.value)}
-            fullWidth
-            required
-            InputProps={{ readOnly: !isEditing }}
-            size={isMobile ? 'small' : 'medium'}
-          />
-          <TextField
-            label="Last Name"
-            value={formData.last_name}
-            onChange={(e) => handleTextChange('last_name', e.target.value)}
-            fullWidth
-            required
-            InputProps={{ readOnly: !isEditing }}
-            size={isMobile ? 'small' : 'medium'}
-          />
-          <TextField
-            label="Email Address"
-            type="email"
-            value={formData.email}
-            onChange={(e) => handleTextChange('email', e.target.value)}
-            fullWidth
-            required
-            InputProps={{ readOnly: !isEditing }}
-            size={isMobile ? 'small' : 'medium'}
-          />
-          <TextField
-            label="Phone Number"
-            value={formattedPhone}
-            onChange={(e) => handleTextChange('phone', e.target.value)}
-            fullWidth
-            required
-            size={isMobile ? 'small' : 'medium'}
-            InputProps={{ readOnly: !isEditing }}
-            inputProps={{ inputMode: 'numeric', maxLength: 14 }}
-          />
-          <DatePicker
-            label="Birthday"
-            value={formData.birthday ? new Date(formData.birthday) : null}
-            onChange={(value) => {
-              if (!isEditing) return;
-              setFormData(prev => ({ ...prev, birthday: !value || Number.isNaN(value.getTime()) ? '' : value.toISOString().split('T')[0] }));
-            }}
-            readOnly={!isEditing}
-            disabled={!isEditing}
-            closeOnSelect
-            disableFuture
-            referenceDate={new Date(2000, 0, 1)}
-            views={['year', 'month', 'day']}
-            openTo="year"
-            slotProps={{
-              actionBar: { actions: [] },
-              textField: {
-                fullWidth: true,
-                required: true,
-                size: isMobile ? 'small' : 'medium',
-                helperText: '18+ only. Use calendar icon to select date.',
-                inputProps: { readOnly: true },
-                disabled: !isEditing,
-              }
-            }}
-          />
-          <FormControl fullWidth required size={isMobile ? 'small' : 'medium'}>
-            <InputLabel id="profile-gender-label">Gender</InputLabel>
-            <Select
-              labelId="profile-gender-label"
-              value={formData.gender}
-              label="Gender"
-              onChange={(e) => handleTextChange('gender', e.target.value)}
-              disabled={!isEditing}
-            >
-              <MenuItem value="Male">Male</MenuItem>
-              <MenuItem value="Female">Female</MenuItem>
-            </Select>
-          </FormControl>
-          <Autocomplete
-            freeSolo
-            options={churchOptions}
-            value={formData.current_church}
-            readOnly={!isEditing}
-            onInputChange={(_, value) => {
-              if (!isEditing) return;
-              setFormData(prev => ({ ...prev, current_church: value }));
-            }}
-            renderInput={(params) => (
+          {isEditing ? (
+            <>
               <TextField
-                {...params}
+                label="First Name"
+                value={formData.first_name}
+                onChange={(e) => handleTextChange('first_name', e.target.value)}
                 fullWidth
-                label="Church"
+                required
                 size={isMobile ? 'small' : 'medium'}
-                InputProps={{
-                  ...params.InputProps,
-                  readOnly: !isEditing,
+              />
+              <TextField
+                label="Last Name"
+                value={formData.last_name}
+                onChange={(e) => handleTextChange('last_name', e.target.value)}
+                fullWidth
+                required
+                size={isMobile ? 'small' : 'medium'}
+              />
+              <TextField
+                label="Email Address"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleTextChange('email', e.target.value)}
+                fullWidth
+                required
+                size={isMobile ? 'small' : 'medium'}
+              />
+              <TextField
+                label="Phone Number"
+                value={formattedPhone}
+                onChange={(e) => handleTextChange('phone', e.target.value)}
+                fullWidth
+                required
+                size={isMobile ? 'small' : 'medium'}
+                inputProps={{ inputMode: 'numeric', maxLength: 14 }}
+              />
+              <DatePicker
+                label="Birthday"
+                value={parseDateOnly(formData.birthday)}
+                onChange={(value) => {
+                  setFormData(prev => ({ ...prev, birthday: !value || Number.isNaN(value.getTime()) ? '' : formatDateOnly(value) }));
+                }}
+                closeOnSelect
+                disableFuture
+                referenceDate={new Date(2000, 0, 1)}
+                views={['year', 'month', 'day']}
+                openTo="year"
+                slotProps={{
+                  actionBar: { actions: [] },
+                  textField: {
+                    fullWidth: true,
+                    required: true,
+                    size: isMobile ? 'small' : 'medium',
+                    inputProps: { readOnly: true },
+                  }
                 }}
               />
-            )}
-          />
+              <Autocomplete
+                freeSolo
+                options={churchOptions}
+                value={formData.current_church}
+                onInputChange={(_, value) => {
+                  setFormData(prev => ({ ...prev, current_church: value }));
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    fullWidth
+                    label="Church"
+                    size={isMobile ? 'small' : 'medium'}
+                  />
+                )}
+              />
+            </>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              {readOnlyRows.map((row) => (
+                <Box
+                  key={row.label}
+                  sx={{
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 2,
+                    px: 2,
+                    py: 1.5,
+                    backgroundColor: 'background.paper',
+                  }}
+                >
+                  <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', letterSpacing: '0.04em', textTransform: 'uppercase', mb: 0.4 }}>
+                    {row.label}
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                    {row.value || 'Not provided'}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
           {isEditing && (
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
               <Button
@@ -273,6 +355,22 @@ const ProfilePage = () => {
               </Button>
             </Box>
           )}
+          <Divider sx={{ mt: isEditing ? 0 : 1 }} />
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <Button
+              onClick={handleLogout}
+              variant="outlined"
+              color="inherit"
+              sx={{
+                borderRadius: 999,
+                px: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+              }}
+            >
+              Log out
+            </Button>
+          </Box>
         </CardContent>
       </Card>
     </Container>

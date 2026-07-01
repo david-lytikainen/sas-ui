@@ -1,16 +1,14 @@
 import { useState } from 'react';
-import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
-import { AppBar, Toolbar, Typography, Button, Box, Container, IconButton, useTheme, useMediaQuery } from '@mui/material';
+import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { AppBar, Toolbar, Typography, Button, Box, Container, useTheme, useMediaQuery } from '@mui/material';
 import { animated, useSpring, useTrail } from '@react-spring/web';
 import { useAuth } from '../context/AuthContext';
-import { ExitToApp as ExitIcon } from '@mui/icons-material';
 
 const AnimatedBox = animated(Box);
 
 const Navigation = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -48,11 +46,6 @@ const Navigation = () => {
     to: { opacity: 1, y: 0 },
     config: { tension: 280, friction: 20 },
   });
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login', { replace: true });
-  };
 
   return (
     <AppBar 
@@ -177,12 +170,6 @@ const Navigation = () => {
                     Hi, {user.first_name}
                   </Typography>
                 </Button>
-                <IconButton
-                  onClick={handleLogout}
-                  sx={{ color: 'inherit' }}
-                >
-                  <ExitIcon />
-                </IconButton> 
               </Box>
             ) : (
               <Button
