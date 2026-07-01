@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Autocomplete, Box, Button, Card, CardContent, Container, FormControl, InputLabel, MenuItem, Select, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Alert, Autocomplete, Box, Button, Card, CardContent, Container, FormControl, IconButton, InputLabel, MenuItem, Select, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import EditIcon from '@mui/icons-material/Edit';
 import authApi from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -12,6 +13,7 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -114,6 +116,7 @@ const ProfilePage = () => {
 
       await refreshUser();
       setMessage('Profile updated.');
+      setIsEditing(false);
     } catch (submitError: any) {
       setError(submitError.message || 'Failed to update profile.');
     } finally {
@@ -124,11 +127,26 @@ const ProfilePage = () => {
   return (
     <Container maxWidth="sm">
       <Box sx={{ mb: 2 }}>
-        <Typography variant={isMobile ? 'h5' : 'h4'} component="h1" sx={{ fontWeight: 'bold' }}>
-          Profile
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant={isMobile ? 'h5' : 'h4'} component="h1" sx={{ fontWeight: 'bold' }}>
+            Profile
+          </Typography>
+          <IconButton
+            aria-label="Edit profile"
+            onClick={() => {
+              setIsEditing(true);
+              setMessage(null);
+              setError(null);
+            }}
+            size={isMobile ? 'small' : 'medium'}
+          >
+            <EditIcon fontSize={isMobile ? 'small' : 'medium'} />
+          </IconButton>
+        </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Update the personal details used for registration, schedules, and matches.
+          {isEditing
+            ? 'Update the personal details used for registration, schedules, and matches.'
+            : 'Review the personal details used for registration, schedules, and matches.'}
         </Typography>
       </Box>
 
@@ -151,6 +169,7 @@ const ProfilePage = () => {
             onChange={(e) => handleTextChange('first_name', e.target.value)}
             fullWidth
             required
+            InputProps={{ readOnly: !isEditing }}
             size={isMobile ? 'small' : 'medium'}
           />
           <TextField
@@ -159,6 +178,7 @@ const ProfilePage = () => {
             onChange={(e) => handleTextChange('last_name', e.target.value)}
             fullWidth
             required
+            InputProps={{ readOnly: !isEditing }}
             size={isMobile ? 'small' : 'medium'}
           />
           <TextField
@@ -168,6 +188,7 @@ const ProfilePage = () => {
             onChange={(e) => handleTextChange('email', e.target.value)}
             fullWidth
             required
+            InputProps={{ readOnly: !isEditing }}
             size={isMobile ? 'small' : 'medium'}
           />
           <TextField
@@ -177,12 +198,18 @@ const ProfilePage = () => {
             fullWidth
             required
             size={isMobile ? 'small' : 'medium'}
+            InputProps={{ readOnly: !isEditing }}
             inputProps={{ inputMode: 'numeric', maxLength: 14 }}
           />
           <DatePicker
             label="Birthday"
             value={formData.birthday ? new Date(formData.birthday) : null}
-            onChange={(value) => setFormData(prev => ({ ...prev, birthday: !value || Number.isNaN(value.getTime()) ? '' : value.toISOString().split('T')[0] }))}
+            onChange={(value) => {
+              if (!isEditing) return;
+              setFormData(prev => ({ ...prev, birthday: !value || Number.isNaN(value.getTime()) ? '' : value.toISOString().split('T')[0] }));
+            }}
+            readOnly={!isEditing}
+            disabled={!isEditing}
             closeOnSelect
             disableFuture
             referenceDate={new Date(2000, 0, 1)}
@@ -196,6 +223,7 @@ const ProfilePage = () => {
                 size: isMobile ? 'small' : 'medium',
                 helperText: '18+ only. Use calendar icon to select date.',
                 inputProps: { readOnly: true },
+                disabled: !isEditing,
               }
             }}
           />
@@ -206,6 +234,7 @@ const ProfilePage = () => {
               value={formData.gender}
               label="Gender"
               onChange={(e) => handleTextChange('gender', e.target.value)}
+              disabled={!isEditing}
             >
               <MenuItem value="Male">Male</MenuItem>
               <MenuItem value="Female">Female</MenuItem>
@@ -215,25 +244,35 @@ const ProfilePage = () => {
             freeSolo
             options={churchOptions}
             value={formData.current_church}
-            onInputChange={(_, value) => setFormData(prev => ({ ...prev, current_church: value }))}
+            readOnly={!isEditing}
+            onInputChange={(_, value) => {
+              if (!isEditing) return;
+              setFormData(prev => ({ ...prev, current_church: value }));
+            }}
             renderInput={(params) => (
               <TextField
                 {...params}
                 fullWidth
                 label="Church"
                 size={isMobile ? 'small' : 'medium'}
+                InputProps={{
+                  ...params.InputProps,
+                  readOnly: !isEditing,
+                }}
               />
             )}
           />
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-            <Button
-              variant="contained"
-              onClick={handleSubmit}
-              disabled={loading}
-            >
-              {loading ? 'Saving...' : 'Save Profile'}
-            </Button>
-          </Box>
+          {isEditing && (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+              <Button
+                variant="contained"
+                onClick={handleSubmit}
+                disabled={loading}
+              >
+                {loading ? 'Saving...' : 'Save Profile'}
+              </Button>
+            </Box>
+          )}
         </CardContent>
       </Card>
     </Container>

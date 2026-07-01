@@ -38,11 +38,6 @@ const Navigation = () => {
         to: '/events',
         show: true,
       },
-      {
-        label: 'PROFILE',
-        to: '/profile',
-        show: true,
-      },
     ];
   };
 
@@ -154,19 +149,34 @@ const Navigation = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {user ? (
               <Box sx={{ display: 'flex', alignItems: 'center'}}>
-                <Typography
-                  variant="body1"
+                <Button
+                  component={RouterLink}
+                  to="/profile"
+                  color="inherit"
                   sx={{
                     fontWeight: 500,
-                    color: 'inherit',
                     fontSize: '0.95rem',
-                    mr: 0
+                    mr: 0,
+                    textTransform: 'none',
+                    minWidth: 'auto',
+                    px: 1,
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    },
                   }}
-                  noWrap
                 >
-                  Hi, {user.first_name}
-                </Typography>
-                {/* TODO remove */}
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      fontWeight: 500,
+                      color: 'inherit',
+                      fontSize: '0.95rem',
+                    }}
+                    noWrap
+                  >
+                    Hi, {user.first_name}
+                  </Typography>
+                </Button>
                 <IconButton
                   onClick={handleLogout}
                   sx={{ color: 'inherit' }}
