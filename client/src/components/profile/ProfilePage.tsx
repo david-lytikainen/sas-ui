@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Autocomplete, Box, Button, Card, CardContent, Container, Divider, IconButton, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import EditIcon from '@mui/icons-material/Edit';
+import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import authApi from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -187,6 +188,22 @@ const ProfilePage = () => {
     { label: 'Church', value: formData.current_church || 'Other' },
   ];
 
+  const hasChanges = useMemo(() => {
+    if (!user) return false;
+
+    const normalizedCurrentChurch = formData.current_church || 'Other';
+    const normalizedUserChurch = user.current_church || 'Other';
+
+    return (
+      formData.first_name !== (user.first_name || '') ||
+      formData.last_name !== (user.last_name || '') ||
+      formData.email !== (user.email || '') ||
+      formData.phone !== (user.phone || '') ||
+      formData.birthday !== (user.birthday || '') ||
+      normalizedCurrentChurch !== normalizedUserChurch
+    );
+  }, [formData, user]);
+
   return (
     <Container maxWidth="sm">
       <Box sx={{ mb: 2 }}>
@@ -195,38 +212,56 @@ const ProfilePage = () => {
             Profile
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <IconButton
-              aria-label="Edit profile"
-              onClick={() => {
-                setIsEditing(true);
-                setMessage(null);
-                setError(null);
-              }}
-              size={isMobile ? 'small' : 'medium'}
-              sx={{
-                border: '1px solid',
-                borderColor: isEditing ? 'divider' : 'primary.main',
-                borderRadius: 2.5,
-                px: 1.1,
-                py: 0.75,
-              }}
-            >
-              <EditIcon fontSize={isMobile ? 'small' : 'medium'} />
-            </IconButton>
-            {isEditing && (
+            {isEditing ? (
+              <>
+                <IconButton
+                  aria-label="Save profile changes"
+                  onClick={handleSubmit}
+                  disabled={!hasChanges || loading}
+                  size={isMobile ? 'small' : 'medium'}
+                  sx={{
+                    border: '1px solid',
+                    borderColor: hasChanges && !loading ? 'primary.main' : 'divider',
+                    borderRadius: 2.5,
+                    px: 1.1,
+                    py: 0.75,
+                  }}
+                >
+                  <CheckIcon fontSize={isMobile ? 'small' : 'medium'} />
+                </IconButton>
+                <IconButton
+                  aria-label="Stop editing profile"
+                  onClick={handleStopEditing}
+                  size={isMobile ? 'small' : 'medium'}
+                  sx={{
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 2.5,
+                    px: 1.1,
+                    py: 0.75,
+                  }}
+                >
+                  <CloseIcon fontSize={isMobile ? 'small' : 'medium'} />
+                </IconButton>
+              </>
+            ) : (
               <IconButton
-                aria-label="Stop editing profile"
-                onClick={handleStopEditing}
+                aria-label="Edit profile"
+                onClick={() => {
+                  setIsEditing(true);
+                  setMessage(null);
+                  setError(null);
+                }}
                 size={isMobile ? 'small' : 'medium'}
                 sx={{
                   border: '1px solid',
-                  borderColor: 'divider',
+                  borderColor: 'primary.main',
                   borderRadius: 2.5,
                   px: 1.1,
                   py: 0.75,
                 }}
               >
-                <CloseIcon fontSize={isMobile ? 'small' : 'medium'} />
+                <EditIcon fontSize={isMobile ? 'small' : 'medium'} />
               </IconButton>
             )}
           </Box>
@@ -342,17 +377,6 @@ const ProfilePage = () => {
                   </Typography>
                 </Box>
               ))}
-            </Box>
-          )}
-          {isEditing && (
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-              <Button
-                variant="contained"
-                onClick={handleSubmit}
-                disabled={loading}
-              >
-                {loading ? 'Saving...' : 'Save Profile'}
-              </Button>
             </Box>
           )}
           <Divider sx={{ mt: isEditing ? 0 : 1 }} />
