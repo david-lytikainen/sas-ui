@@ -38,6 +38,11 @@ const Navigation = () => {
         to: '/events',
         show: true,
       },
+      {
+        label: 'PROFILE',
+        to: '/profile',
+        show: true,
+      },
     ];
   };
 

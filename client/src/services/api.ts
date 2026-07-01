@@ -242,6 +242,23 @@ const realAuthApi = {
     }
   },
 
+  updateProfile: async (userData: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    birthday: string;
+    gender: string;
+    current_church?: string;
+  }): Promise<AuthResponse['user']> => {
+    try {
+      const response = await axiosInstance.patch('/user/profile', userData);
+      return response.data.user;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to update profile');
+    }
+  },
+
   createConnectOnboarding: async (): Promise<{ url: string }> => {
     try {
       const response = await axiosInstance.post('/user/connect/onboarding');
