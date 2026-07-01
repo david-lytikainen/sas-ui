@@ -6,6 +6,7 @@ export interface Event {
   description?: string;
   creator_id: number;
   starts_at: string;
+  event_timezone?: string;
   address: string;
   max_capacity: string;
   status: EventStatus;

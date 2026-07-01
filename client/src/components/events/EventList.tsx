@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Container, Box, Typography, Button, Card, CardContent, CardActions, Grid, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Alert, useMediaQuery, useTheme, TextField, Collapse, Select, MenuItem, InputLabel, FormControl, DialogContentText, Divider } from '@mui/material';
-import { Event as EventIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon, AttachMoney as AttachMoneyIcon, CheckCircle as CheckInIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Settings as SettingsIcon, List as ListIcon, PlayArrow as StartIcon, Stop as EndIcon, Visibility as ViewIcon, Edit as EditIcon, Delete as DeleteIcon, People as PeopleIcon } from '@mui/icons-material';
+import { Event as EventIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon, AttachMoney as AttachMoneyIcon, CheckCircle as CheckInIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Settings as SettingsIcon, List as ListIcon, PlayArrow as StartIcon, Visibility as ViewIcon, Edit as EditIcon, Delete as DeleteIcon, People as PeopleIcon } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import authApi, { eventsApi } from '../../services/api';
@@ -15,6 +15,16 @@ import ViewWaitlistedUsers from './ViewWaitlistedUsers';
 import ConfirmDialog from '../common/ConfirmDialog';
 
 type EventView = 'all' | 'my' | 'create';
+
+const getBrowserTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
+const toLocalDateTimeInputValue = (isoDateTime: string) => {
+  const date = new Date(isoDateTime);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return offsetDate.toISOString().slice(0, 16);
+};
 
 const EventList = () => {
   const { refreshEvents, isRegisteredForEvent, filteredEvents } = useEvents();
@@ -34,8 +44,6 @@ const EventList = () => {
   const [viewRegisteredUsersDialogOpen, setViewRegisteredUsersDialogOpen] = useState(false);
   const [selectedEventForRegisteredUsers, setSelectedEventForRegisteredUsers] = useState<Event | null>(null);
 
-  const [endEventDialogOpen, setEndEventDialogOpen] = useState(false);
-  const [selectedEventForEnding, setSelectedEventForEnding] = useState<Event | null>(null);
   const [startEventDialogOpen, setStartEventDialogOpen] = useState(false);
   const [selectedEventForStarting, setSelectedEventForStarting] = useState<Event | null>(null);
 
@@ -57,6 +65,7 @@ const EventList = () => {
     max_capacity: '0',
     price_per_person: '0',
     status: 'Registration Open' as EventStatus,
+    event_timezone: 'UTC',
   });
 
   const [deleteEventConfirmOpen, setDeleteEventConfirmOpen] = useState<boolean>(false);
@@ -430,19 +439,6 @@ const EventList = () => {
               Generate Schedules
             </Button>
 
-            <Button
-              variant="outlined"
-              size="small"
-              color="primary"
-              startIcon={<EndIcon />}
-              onClick={() => handleEndEventClick(event)}
-              fullWidth
-              disabled={event.status !== 'In Progress'}
-              sx={{ borderRadius: 1 }}
-            >
-              End
-            </Button>
-
             <Grid container spacing={1} sx={{ mt: 0.5 }}>
               <Grid item xs={6}>
                 <Button
@@ -509,39 +505,17 @@ const EventList = () => {
   };
 
 
-  const handleEndEventClick = (event: Event) => {
-    if (event.status !== 'In Progress') {
-      setErrorMessage('Events can only be ended when they are in progress.');
-      return;
-    }
-
-    setSelectedEventForEnding(event);
-    setEndEventDialogOpen(true);
-  };
-
-  const handleEndEvent = async () => {
-    try {
-      if (!selectedEventForEnding) return;
-
-      await eventsApi.updateEventStatus(selectedEventForEnding.id.toString(), 'Completed');
-      setEndEventDialogOpen(false);
-      setSelectedEventForEnding(null);
-      await refreshEvents();
-    } catch (error: any) {
-      setErrorMessage(error.message || 'Failed to end event');
-    }
-  };
-
   const handleOpenEditEventDialog = (event: Event) => {
     setEventToEdit(event);
     setEditEventForm({
       name: event.name,
       description: event.description,
-      starts_at: event.starts_at ? new Date(new Date(event.starts_at).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '',
+      starts_at: event.starts_at ? toLocalDateTimeInputValue(event.starts_at) : '',
       address: event.address,
       max_capacity: event.max_capacity.toString(),
       price_per_person: event.price_per_person.toString(),
       status: event.status,
+      event_timezone: event.event_timezone || 'UTC',
         });
     setEditEventDialogOpen(true);
   };
@@ -571,6 +545,7 @@ const EventList = () => {
        if (dataToUpdate.starts_at) {
         dataToUpdate.starts_at = new Date(dataToUpdate.starts_at).toISOString();
       }
+      dataToUpdate.event_timezone = eventToEdit.event_timezone || editEventForm.event_timezone || getBrowserTimeZone();
 
       await eventsApi.updateEvent(eventToEdit.id.toString(), dataToUpdate);
       setEditEventDialogOpen(false);
@@ -953,18 +928,6 @@ const EventList = () => {
         <Typography variant="body1" sx={{ mt: 1, fontWeight: 'bold' }}>
           This will use {numTables} tables and {numRounds} rounds.
         </Typography>
-      </ConfirmDialog>
-
-
-      <ConfirmDialog
-        open={endEventDialogOpen}
-        title="End Event"
-        confirmLabel="Yes, End Event"
-        confirmColor="error"
-        onCancel={() => setEndEventDialogOpen(false)}
-        onConfirm={handleEndEvent}
-      >
-        Are you sure you want to end "{selectedEventForEnding?.name}"? Attendees will no longer be able to select Yes or No and all blank entries will be treated as No.
       </ConfirmDialog>
 
       <ViewAllSchedules

@@ -19,6 +19,8 @@ const initialCreateForm = {
   price_per_person: '',
 };
 
+const getBrowserTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
 const CreateEvent = ({ createdEventCount, onCreated, onError }: CreateEventProps) => {
   const { createEvent } = useEvents();
   const theme = useTheme();
@@ -45,6 +47,7 @@ const CreateEvent = ({ createdEventCount, onCreated, onError }: CreateEventProps
         name: createForm.name,
         description: createForm.description,
         starts_at: createForm.starts_at,
+        event_timezone: getBrowserTimeZone(),
         address: createForm.address,
         max_capacity: createForm.max_capacity,
         price_per_person: createForm.price_per_person,
