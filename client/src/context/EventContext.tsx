@@ -45,7 +45,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const response = await eventsApi.getAll();
         const data = response as { 
           events?: Event[]; 
-          registrations?: Array<{event_id: number, status: string, pin?: string, registration_date?: string, check_in_date?: string}>
+          registrations?: Array<{event_id: number, status: string, registration_date?: string, check_in_date?: string}>
         };
         
         if (data.events) {
@@ -55,7 +55,6 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               ...event,
               registration: registrationInfo ? {
                 status: registrationInfo.status,
-                pin: registrationInfo.pin,
                 registration_date: registrationInfo.registration_date,
                 check_in_date: registrationInfo.check_in_date
               } : event.registration
@@ -104,7 +103,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const response = await eventsApi.getAll();
       const data = response as { 
         events?: Event[]; 
-        registrations?: Array<{event_id: number, status: string, pin?: string, registration_date?: string, check_in_date?: string}>
+        registrations?: Array<{event_id: number, status: string, registration_date?: string, check_in_date?: string}>
       };
       
       if (data.events) {
@@ -114,7 +113,6 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             ...event,
             registration: registrationInfo ? {
               status: registrationInfo.status,
-              pin: registrationInfo.pin,
               registration_date: registrationInfo.registration_date,
               check_in_date: registrationInfo.check_in_date
             } : undefined

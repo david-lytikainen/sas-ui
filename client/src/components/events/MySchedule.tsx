@@ -34,7 +34,6 @@ const MySchedule = ({ event, currentRound }: MyScheduleProps) => {
   const [savedAttendeeSelections, setSavedAttendeeSelections] = useState<Record<number, boolean>>({});
   const [attendeeSelectionError, setAttendeeSelectionError] = useState<string | null>(null);
   const [saveIndicator, setSaveIndicator] = useState(false);
-  const [selectionWindowClosedError, setSelectionWindowClosedError] = useState(false);
 
   useEffect(() => {
     if (!expanded) return;
@@ -113,17 +112,9 @@ const MySchedule = ({ event, currentRound }: MyScheduleProps) => {
 
     try {
       await eventsApi.submitSpeedDateSelections(event.id.toString(), selectionsToSubmit);
-      setSelectionWindowClosedError(false);
     } catch (error: any) {
-      const specificErrorMessage = 'Speed date selections window closed 24 hours after event completion.';
       const backendErrorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
-      if (backendErrorMessage === specificErrorMessage) {
-        setSelectionWindowClosedError(true);
-        setAttendeeSelectionError(null);
-      } else {
-        setAttendeeSelectionError(backendErrorMessage || 'Failed to save your selections.');
-        setSelectionWindowClosedError(false);
-      }
+      setAttendeeSelectionError(backendErrorMessage || 'Failed to save your selections.');
     } finally {
       setTimeout(() => setSaveIndicator(false), 1200);
     }
@@ -272,11 +263,6 @@ const MySchedule = ({ event, currentRound }: MyScheduleProps) => {
                     {saveIndicator && <Typography variant="body2" color="success.main">Saved!</Typography>}
                   </Box>
                 </Box>
-              )}
-              {selectionWindowClosedError && (
-                <Typography variant="caption" color="error" sx={{ display: 'block', textAlign: 'center', mt: 0.5 }}>
-                  Selection window closed (24 hours after event end).
-                </Typography>
               )}
             </>
           ) : (

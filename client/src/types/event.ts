@@ -14,7 +14,6 @@ export interface Event {
   registered_attendee_count?: number;
   registration?: {
     status: string;
-    pin?: string;
     registration_date?: string;
     check_in_date?: string;
   };

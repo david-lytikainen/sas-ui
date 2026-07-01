@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Container, Box, Typography, Button, Card, CardContent, CardActions, Grid, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Alert, useMediaQuery, useTheme, TextField, Collapse, Select, MenuItem, InputLabel, FormControl, DialogContentText, Divider } from '@mui/material';
-import { Event as EventIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon, AttachMoney as AttachMoneyIcon, CheckCircle as CheckInIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Settings as SettingsIcon, List as ListIcon, PlayArrow as StartIcon, Stop as EndIcon, Visibility as ViewIcon, Edit as EditIcon, Delete as DeleteIcon, People as PeopleIcon, CheckBox as CheckBoxIcon } from '@mui/icons-material';
+import { Event as EventIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon, AttachMoney as AttachMoneyIcon, CheckCircle as CheckInIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Settings as SettingsIcon, List as ListIcon, PlayArrow as StartIcon, Stop as EndIcon, Visibility as ViewIcon, Edit as EditIcon, Delete as DeleteIcon, People as PeopleIcon } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import authApi, { eventsApi } from '../../services/api';
@@ -10,7 +10,6 @@ import CreateEvent from './CreateEvent';
 import EventTimer from './EventTimer';
 import MySchedule from './MySchedule';
 import ViewAllSchedules from './ViewAllSchedules';
-import ViewPins from './ViewPins';
 import ViewRegisteredUsers from './ViewRegisteredUsers';
 import ViewWaitlistedUsers from './ViewWaitlistedUsers';
 import ConfirmDialog from '../common/ConfirmDialog';
@@ -31,14 +30,7 @@ const EventList = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelEventId, setCancelEventId] = useState<string | null>(null);
-
-  const [globalCheckInDialogOpen, setGlobalCheckInDialogOpen] = useState(false);
-  const [selectedEventForCheckIn, setSelectedEventForCheckIn] = useState<Event | null>(null);
-  const [checkInPin, setCheckInPin] = useState('');
-  const [checkInError, setCheckInError] = useState<string | null>(null);
   const [expandedEventControls, setExpandedEventControls] = useState<number | null>(null);
-  const [viewPinsDialogOpen, setViewPinsDialogOpen] = useState(false);
-  const [selectedEventForPins, setSelectedEventForPins] = useState<Event | null>(null);
   const [viewRegisteredUsersDialogOpen, setViewRegisteredUsersDialogOpen] = useState(false);
   const [selectedEventForRegisteredUsers, setSelectedEventForRegisteredUsers] = useState<Event | null>(null);
 
@@ -257,31 +249,6 @@ const EventList = () => {
   };
 
 
-  const handleGlobalCheckInConfirm = async () => {
-    if (!selectedEventForCheckIn) {
-      setCheckInError('Please select an event');
-      return;
-    }
-
-    if (!checkInPin) {
-      setCheckInError('Please enter your check-in PIN');
-      return;
-    }
-
-    try {
-      await eventsApi.checkIn(selectedEventForCheckIn.id.toString(), checkInPin);
-      setGlobalCheckInDialogOpen(false);
-      setSelectedEventForCheckIn(null);
-      setCheckInPin('');
-      // Refresh events to update check-in status
-      await refreshEvents();
-    } catch (error: any) {
-      // Extract error message from API response
-      const errorMsg = error.response?.data?.error || error.message || 'Failed to check in to the event';
-      setCheckInError(errorMsg);
-    }
-  };
-
   const sortedEvents = [...filteredEvents].sort((a, b) => {
     const statusOrder: Record<EventStatus, number> = {
       'In Progress': 1,
@@ -318,12 +285,6 @@ const EventList = () => {
     const isUserRegistered = isRegisteredForEvent(event.id);
     const registrationStatus = event.registration?.status;
     if (isPastEvent(event)) return null;
-    const openCheckInDialog = () => {
-      setSelectedEventForCheckIn(event);
-      setCheckInPin('');
-      setCheckInError(null);
-      setGlobalCheckInDialogOpen(true);
-    };
 
     // Handle Waitlisted status first
     if (registrationStatus === 'Waitlisted') {
@@ -344,9 +305,7 @@ const EventList = () => {
           {registrationStatus === 'Checked In' ? (
             <Chip label="Checked In" color="success" icon={<CheckInIcon />} size="small" />
           ) : (
-            <Button size="small" variant="outlined" color="primary" onClick={openCheckInDialog} startIcon={<CheckInIcon />}>
-              Check In
-            </Button>
+            <Chip label="Registered" color="primary" size="small" />
           )}
           {registrationStatus !== 'Checked In' && (
             <Button size="small" variant="outlined" color="error" onClick={() => handleCancelClick(event.id)} startIcon={<CancelIcon />}>
@@ -424,21 +383,6 @@ const EventList = () => {
               sx={{ borderRadius: 1 }}
             >
               View Registered Users
-            </Button>
-
-            <Button
-              variant="outlined"
-              size="small"
-              color="primary"
-              startIcon={<ViewIcon />}
-              onClick={() => {
-                setSelectedEventForPins(event);
-                setViewPinsDialogOpen(true);
-              }}
-              fullWidth
-              sx={{ borderRadius: 1 }}
-            >
-              View Pins
             </Button>
 
             <Button
@@ -941,62 +885,6 @@ const EventList = () => {
           ? 'Are you sure you want to cancel your registration for this paid event? There are no refunds through app. Contact event organizer for refund questions.'
           : 'Are you sure you want to cancel your registration for this event?'}
       </ConfirmDialog>
-
-      {/* Global Check-in Dialog (now per-event) */}
-      <Dialog open={globalCheckInDialogOpen} onClose={() => setGlobalCheckInDialogOpen(false)}>
-        <DialogTitle>Event Check-In</DialogTitle>
-        <DialogContent>
-          {selectedEventForCheckIn && (
-            <>
-              <Typography variant="subtitle2" gutterBottom>
-                {selectedEventForCheckIn.name}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                {formatDate(selectedEventForCheckIn.starts_at)}
-              </Typography>
-            </>
-          )}
-          {checkInError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {checkInError}
-            </Alert>
-          )}
-          <Box>
-            <Typography variant="subtitle2" gutterBottom>
-              Enter the 4-digit PIN given to you by an admin
-            </Typography>
-            <TextField
-              sx={{ mt: 0, mb: 0 }}
-              label="PIN"
-              type="password"
-              value={checkInPin}
-              onChange={(e) => setCheckInPin(e.target.value)}
-              inputProps={{ maxLength: 4, pattern: '[0-9]*' }}
-              fullWidth
-              margin="dense"
-              disabled={!selectedEventForCheckIn}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setGlobalCheckInDialogOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleGlobalCheckInConfirm}
-            color="primary"
-            variant="contained"
-            disabled={!selectedEventForCheckIn || !checkInPin || checkInPin.length !== 4}
-            startIcon={<CheckBoxIcon />}
-          >
-            Check In
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <ViewPins
-        open={viewPinsDialogOpen}
-        event={selectedEventForPins}
-        onClose={() => setViewPinsDialogOpen(false)}
-      />
 
       <ViewRegisteredUsers
         open={viewRegisteredUsersDialogOpen}
