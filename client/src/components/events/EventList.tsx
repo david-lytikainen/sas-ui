@@ -16,8 +16,6 @@ import ConfirmDialog from '../common/ConfirmDialog';
 
 type EventView = 'all' | 'my' | 'create';
 
-const getBrowserTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-
 const toLocalDateTimeInputValue = (isoDateTime: string) => {
   const date = new Date(isoDateTime);
   if (Number.isNaN(date.getTime())) return '';
@@ -65,7 +63,6 @@ const EventList = () => {
     max_capacity: '0',
     price_per_person: '0',
     status: 'Registration Open' as EventStatus,
-    event_timezone: 'UTC',
   });
 
   const [deleteEventConfirmOpen, setDeleteEventConfirmOpen] = useState<boolean>(false);
@@ -515,7 +512,6 @@ const EventList = () => {
       max_capacity: event.max_capacity.toString(),
       price_per_person: event.price_per_person.toString(),
       status: event.status,
-      event_timezone: event.event_timezone || 'UTC',
         });
     setEditEventDialogOpen(true);
   };
@@ -545,7 +541,6 @@ const EventList = () => {
        if (dataToUpdate.starts_at) {
         dataToUpdate.starts_at = new Date(dataToUpdate.starts_at).toISOString();
       }
-      dataToUpdate.event_timezone = eventToEdit.event_timezone || editEventForm.event_timezone || getBrowserTimeZone();
 
       await eventsApi.updateEvent(eventToEdit.id.toString(), dataToUpdate);
       setEditEventDialogOpen(false);

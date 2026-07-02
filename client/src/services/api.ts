@@ -430,7 +430,6 @@ const realEventsApi: EventsApi = {
   create: async (eventData) => {
     const eventDataWithTZ = {
       ...eventData,
-      event_timezone: eventData.event_timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
       starts_at: eventData.starts_at && new Date(eventData.starts_at).toISOString()
     };
     const response = await axiosInstance.post('/events/create', eventDataWithTZ);
