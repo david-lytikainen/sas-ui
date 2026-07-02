@@ -34,7 +34,7 @@ const ViewRegisteredUsers = ({
   event,
   onClose,
 }: ViewRegisteredUsersProps) => {
-  const { isAdmin, isOrganizer } = useAuth();
+  const { user, isAdmin, isOrganizer } = useAuth();
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
   const [filteredRegisteredUsers, setFilteredRegisteredUsers] = useState<RegisteredUser[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -44,7 +44,7 @@ const ViewRegisteredUsers = ({
   const [churchOptions, setChurchOptions] = useState<string[]>([]);
   const [checkingInUserId, setCheckingInUserId] = useState<number | null>(null);
 
-  const canExport = isAdmin();
+  const canExport = isAdmin() || (isOrganizer() && !!event && Number(event.creator_id) === Number(user?.id));
   const canEdit = isAdmin() || isOrganizer();
 
   const loadRegisteredUsers = async (currentEvent: Event) => {

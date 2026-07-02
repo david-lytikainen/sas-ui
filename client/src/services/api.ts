@@ -308,9 +308,7 @@ interface EventsApi {
     first_name?: string,
     last_name?: string,
     email?: string,
-    phone?: string,
     gender?: string,
-    birthday?: string,
     church?: string
   }) => Promise<{ 
     message: string, 
@@ -341,30 +339,6 @@ interface EventsApi {
     selections: Array<{ event_speed_date_id: number; interested: boolean }>
   ) => Promise<any>;
   getEventWaitlist: (eventId: string) => Promise<{ data: any[] }>;
-  updateWaitlistUserDetails: (eventId: string, userId: string, data: {
-    first_name?: string,
-    last_name?: string,
-    email?: string,
-    phone?: string,
-    gender?: string,
-    birthday?: string,
-    church?: string,
-  }) => Promise<{ 
-    message: string,
-    updated_fields: string[],
-    user?: {
-      id: number,
-      name: string,
-      email: string,
-      first_name: string,
-      last_name: string,
-      birthday: string | null,
-      age: number,
-      gender: string | null,
-      phone: string,
-      church: string
-    }
-  }>;
   moveWaitlistUserToRegistered: (eventId: string, userId: string) => Promise<{ message: string }>;
   getTimer: (eventId: string) => Promise<Timer | null>;
   startTimerRound: (eventId: string, roundNumber?: number) => Promise<TimerActionResponse>;
@@ -494,9 +468,7 @@ const realEventsApi: EventsApi = {
     first_name?: string,
     last_name?: string,
     email?: string,
-    phone?: string,
     gender?: string,
-    birthday?: string,
     church?: string
   }) => {
     try {
@@ -580,25 +552,6 @@ const realEventsApi: EventsApi = {
         throw new Error(error.response.data.error);
       }
       throw new Error('Failed to fetch waitlist for this event.');
-    }
-  },
-  updateWaitlistUserDetails: async (eventId: string, userId: string, data: {
-    first_name?: string,
-    last_name?: string,
-    email?: string,
-    phone?: string,
-    gender?: string,
-    birthday?: string,
-    church?: string,
-  }) => {
-    try {
-      const response = await axiosInstance.patch(`/events/${eventId}/waitlist/users/${userId}`, data);
-      return response.data;
-    } catch (error: any) {
-      if (error.response?.data?.error) {
-        throw new Error(error.response.data.error);
-      }
-      throw new Error('Failed to update waitlist user details.');
     }
   },
   moveWaitlistUserToRegistered: async (eventId: string, userId: string) => {

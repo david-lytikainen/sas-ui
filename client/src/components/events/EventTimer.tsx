@@ -86,6 +86,7 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [newDuration, setNewDuration] = useState(DEFAULT_ROUND_DURATION);
+  const [newBreakDuration, setNewBreakDuration] = useState(DEFAULT_BREAK_DURATION);
   const lastNotifiedRoundRef = useRef<number | null>(null);
   const [userSchedule, setUserSchedule] = useState<ScheduleItem[] | undefined>(undefined);
 
@@ -191,17 +192,18 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
   };
 
   const handleUpdateDuration = () => {
-    if (newDuration === roundDuration) {
+    if (newDuration === roundDuration && newBreakDuration === breakDuration) {
       setIsSettingsOpen(false);
       return;
     }
 
-    runTimerAction(() => eventsApi.updateTimerDuration(eventIdString, { round_duration: newDuration }));
+    runTimerAction(() => eventsApi.updateTimerDuration(eventIdString, { round_duration: newDuration, break_duration: newBreakDuration }));
     setIsSettingsOpen(false);
   };
 
   const openSettingsDialog = () => {
     setNewDuration(roundDuration);
+    setNewBreakDuration(breakDuration);
     setIsSettingsOpen(true);
   };
 
@@ -362,7 +364,10 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
           Round Duration: <span style={{ color: theme.palette.primary.main }}>{formatTime(newDuration)}</span>
         </Typography>
         <Slider value={newDuration} min={30} max={600} step={30} onChange={(_, value) => setNewDuration(value as number)} aria-labelledby="round-duration-slider" valueLabelDisplay="auto" valueLabelFormat={(value) => formatTime(value)} sx={{ mb: 2 }} />
-        <Typography gutterBottom sx={{ mt: 2 }}>Break Duration: {formatTime(breakDuration)}</Typography>
+        <Typography id="break-duration-slider" gutterBottom fontWeight={500} sx={{ mt: 2 }}>
+          Break Duration: <span style={{ color: theme.palette.primary.main }}>{formatTime(newBreakDuration)}</span>
+        </Typography>
+        <Slider value={newBreakDuration} min={15} max={600} step={15} onChange={(_, value) => setNewBreakDuration(value as number)} aria-labelledby="break-duration-slider" valueLabelDisplay="auto" valueLabelFormat={(value) => formatTime(value)} />
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={() => setIsSettingsOpen(false)} sx={{ textTransform: 'none', fontWeight: 500 }}>Cancel</Button>

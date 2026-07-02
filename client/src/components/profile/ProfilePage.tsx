@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Autocomplete, Box, Button, Card, CardContent, Container, Divider, IconButton, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { Alert, Autocomplete, Box, Button, Card, CardContent, Container, Divider, IconButton, TextField, Typography, useMediaQuery } from '@mui/material';
+import { Theme } from '@mui/material/styles';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
@@ -8,9 +9,8 @@ import authApi from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
 const ProfilePage = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user, refreshUser, logout } = useAuth();
+  const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
   const [churchOptions, setChurchOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -40,6 +40,16 @@ const ProfilePage = () => {
     return `${year}-${month}-${day}`;
   };
 
+  const getUserFormData = (currentUser: typeof user) => ({
+    first_name: currentUser?.first_name || '',
+    last_name: currentUser?.last_name || '',
+    email: currentUser?.email || '',
+    phone: currentUser?.phone || '',
+    birthday: currentUser?.birthday || '',
+    gender: currentUser?.gender || '',
+    current_church: currentUser?.current_church || '',
+  });
+
   useEffect(() => {
     const loadChurches = async () => {
       const churches = await authApi.getChurches();
@@ -51,30 +61,12 @@ const ProfilePage = () => {
 
   useEffect(() => {
     if (!user) return;
-
-    setFormData({
-      first_name: user.first_name || '',
-      last_name: user.last_name || '',
-      email: user.email || '',
-      phone: user.phone || '',
-      birthday: user.birthday || '',
-      gender: user.gender || '',
-      current_church: user.current_church || '',
-    });
+    setFormData(getUserFormData(user));
   }, [user]);
 
   const resetForm = () => {
     if (!user) return;
-
-    setFormData({
-      first_name: user.first_name || '',
-      last_name: user.last_name || '',
-      email: user.email || '',
-      phone: user.phone || '',
-      birthday: user.birthday || '',
-      gender: user.gender || '',
-      current_church: user.current_church || '',
-    });
+    setFormData(getUserFormData(user));
   };
 
   const formattedPhone = useMemo(() => {
@@ -168,22 +160,19 @@ const ProfilePage = () => {
     await logout();
   };
 
-  const formatBirthday = (birthday: string) => {
-    const parsedDate = parseDateOnly(birthday);
-    if (!parsedDate) return '';
-    return parsedDate.toLocaleDateString(undefined, {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
   const readOnlyRows = [
     { label: 'First Name', value: formData.first_name },
     { label: 'Last Name', value: formData.last_name },
     { label: 'Email Address', value: formData.email },
     { label: 'Phone Number', value: formattedPhone },
-    { label: 'Birthday', value: formatBirthday(formData.birthday) },
+    {
+      label: 'Birthday',
+      value: parseDateOnly(formData.birthday)?.toLocaleDateString(undefined, {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      }) || '',
+    },
     { label: 'Gender', value: formData.gender },
     { label: 'Church', value: formData.current_church || 'Other' },
   ];
