@@ -217,8 +217,7 @@ const EventList = () => {
         setWaitlistDialogOpen(false);
         setEventForWaitlist(null);
         setErrorMessage(null); // Clear previous error messages
-        // Show a success message (e.g., using a Snackbar or a simple alert for now)
-        alert(`Successfully joined the waitlist for "${eventForWaitlist.name}"! You will be notified if a spot opens up.`);
+        alert(`Successfully joined the waitlist for "${eventForWaitlist.name}"! If a spot opens up, we will email you so you can come back and sign up.`);
         await refreshEvents(); // Refresh events to show waitlist status if applicable
       } catch (waitlistError: any) {
         console.error('Failed to join waitlist:', waitlistError);
