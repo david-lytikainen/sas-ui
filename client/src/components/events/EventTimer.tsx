@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Paper, Slider, Tooltip, Typography, useTheme } from '@mui/material';
-import { Pause, PlayArrow, Settings, SkipNext, Timer as TimerIcon } from '@mui/icons-material';
+import { Pause, PlayArrow, Settings, SkipNext, SkipPrevious, Timer as TimerIcon } from '@mui/icons-material';
 import { eventsApi } from '../../services/api';
 import { ScheduleItem, Timer } from '../../types/event';
 
@@ -17,6 +17,7 @@ interface EventTimerProps {
 const TIMER_POLL_MS = 5000;
 const DEFAULT_ROUND_DURATION = 210;
 const DEFAULT_BREAK_DURATION = 90;
+const PREVIOUS_ROUND_THRESHOLD_SECONDS = 5;
 const BREAK_MESSAGES = [
   "Grab a snack! 🍎",
   "Take a break! 🛋️",
@@ -74,6 +75,21 @@ const getTimerSeconds = (timer: Timer | null): number => {
 const getBreakMessage = (currentRound: number): string => {
   if (currentRound <= 0) return BREAK_MESSAGES[0];
   return BREAK_MESSAGES[currentRound % BREAK_MESSAGES.length];
+};
+
+const getElapsedSeconds = (timer: Timer | null): number => {
+  if (!timer) return 0;
+
+  if (timer.is_paused) {
+    if (timer.pause_time_remaining == null) return 0;
+    return Math.max(0, timer.round_duration - timer.pause_time_remaining);
+  }
+
+  if (!timer.round_start_time) return 0;
+
+  const startedAt = new Date(timer.round_start_time).getTime();
+  const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+  return Math.max(0, elapsedSeconds);
 };
 
 const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In Progress', onRoundChange }: EventTimerProps): React.ReactElement | null => {
@@ -181,6 +197,28 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
     runTimerAction(() => eventsApi.endTimerRound(eventIdString));
   };
 
+  const handleBackRound = () => {
+    if (!timer || isEnded) return;
+
+    if (isBreakTime) {
+      runTimerAction(() => eventsApi.startTimerRound(eventIdString, currentRound));
+      return;
+    }
+
+    const elapsedSeconds = getElapsedSeconds(timer);
+    if ((isActive || isPaused) && elapsedSeconds > PREVIOUS_ROUND_THRESHOLD_SECONDS) {
+      runTimerAction(() => eventsApi.startTimerRound(eventIdString, currentRound || 1));
+      return;
+    }
+
+    if (currentRound > 1) {
+      runTimerAction(() => eventsApi.startTimerRound(eventIdString, currentRound - 1));
+      return;
+    }
+
+    runTimerAction(() => eventsApi.startTimerRound(eventIdString, 1));
+  };
+
   const handlePauseRound = () => {
     if (!isActive) return;
     runTimerAction(() => eventsApi.pauseTimerRound(eventIdString, timeRemaining));
@@ -189,6 +227,25 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
   const handleResumeRound = () => {
     if (!isPaused) return;
     runTimerAction(() => eventsApi.resumeTimerRound(eventIdString));
+  };
+
+  const handlePrimaryControl = () => {
+    if (isActive) {
+      handlePauseRound();
+      return;
+    }
+    if (isPaused) {
+      handleResumeRound();
+      return;
+    }
+    if (isInactive || isBreakTime) {
+      handleStartRound();
+    }
+  };
+
+  const handleForwardControl = () => {
+    if (!isActive) return;
+    handleEndRound();
   };
 
   const handleUpdateDuration = () => {
@@ -290,28 +347,56 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
     }
 
     return (
-      <>
-        {isActive && (
-          <Button variant="outlined" color="primary" startIcon={<SkipNext />} onClick={handleEndRound} size="small">
-            End Round
-          </Button>
-        )}
-        {isActive && (
-          <Button variant="contained" color="warning" startIcon={<Pause />} onClick={handlePauseRound} size="small">
-            Pause Round
-          </Button>
-        )}
-        {isPaused && (
-          <Button variant="contained" color="primary" startIcon={<PlayArrow />} onClick={handleResumeRound} size="small">
-            Resume Round
-          </Button>
-        )}
-        {(isInactive || isBreakTime) && (
-          <Button variant="contained" color="primary" startIcon={<PlayArrow />} onClick={handleStartRound} size="small">
-            {getStartLabel()}
-          </Button>
-        )}
-      </>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.25 }}>
+        <Tooltip title={isBreakTime ? 'Restart this round' : 'Restart round or go to previous round'}>
+          <span>
+            <IconButton
+              onClick={handleBackRound}
+              disabled={isInactive && currentRound <= 1}
+              sx={{
+                border: `1px solid ${theme.palette.divider}`,
+                bgcolor: 'background.paper',
+                width: 42,
+                height: 42,
+              }}
+            >
+              <SkipPrevious />
+            </IconButton>
+          </span>
+        </Tooltip>
+        <Tooltip title={isActive ? 'Pause round' : isPaused ? 'Resume round' : getStartLabel()}>
+          <IconButton
+            onClick={handlePrimaryControl}
+            sx={{
+              bgcolor: isActive ? theme.palette.warning.main : theme.palette.primary.main,
+              color: isActive ? theme.palette.warning.contrastText : theme.palette.primary.contrastText,
+              width: 54,
+              height: 54,
+              '&:hover': {
+                bgcolor: isActive ? theme.palette.warning.dark : theme.palette.primary.dark,
+              },
+            }}
+          >
+            {isActive ? <Pause /> : <PlayArrow />}
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Skip to break">
+          <span>
+            <IconButton
+              onClick={handleForwardControl}
+              disabled={!isActive}
+              sx={{
+                border: `1px solid ${theme.palette.divider}`,
+                bgcolor: 'background.paper',
+                width: 42,
+                height: 42,
+              }}
+            >
+              <SkipNext />
+            </IconButton>
+          </span>
+        </Tooltip>
+      </Box>
     );
   };
 
@@ -342,8 +427,8 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
             )}
           </Box>
         </Paper>
-        <Paper elevation={1} sx={{ mt: 0.5, p: 1, width: '100%', borderRadius: '6px' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', '& .MuiButton-root': { minWidth: { xs: '90px', sm: '100px' }, textTransform: 'none', fontWeight: 500 } }}>
+        <Paper elevation={1} sx={{ mt: 0.5, p: 1.1, width: '100%', borderRadius: '6px' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             {renderAdminControls()}
           </Box>
         </Paper>
