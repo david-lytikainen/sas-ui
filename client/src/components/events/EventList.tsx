@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Container, Box, Typography, Button, Card, CardContent, CardActions, Grid, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Alert, useMediaQuery, useTheme, TextField, Collapse, Select, MenuItem, InputLabel, FormControl, DialogContentText, Divider } from '@mui/material';
+import { Checkbox, FormControlLabel } from '@mui/material';
 import { Event as EventIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon, AttachMoney as AttachMoneyIcon, CheckCircle as CheckInIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Settings as SettingsIcon, List as ListIcon, PlayArrow as StartIcon, Visibility as ViewIcon, Edit as EditIcon, Delete as DeleteIcon, People as PeopleIcon } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
@@ -62,6 +63,7 @@ const EventList = () => {
     address: '',
     max_capacity: '0',
     price_per_person: '0',
+    enforce_gender_balance: true,
     status: 'Registration Open' as EventStatus,
   });
 
@@ -510,6 +512,7 @@ const EventList = () => {
       address: event.address,
       max_capacity: event.max_capacity.toString(),
       price_per_person: event.price_per_person.toString(),
+      enforce_gender_balance: event.enforce_gender_balance ?? true,
       status: event.status,
         });
     setEditEventDialogOpen(true);
@@ -984,6 +987,20 @@ const EventList = () => {
                 size={isMobile ? "small" : "medium"}
                 margin="dense"
               />
+            </Grid>
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={(
+                  <Checkbox
+                    checked={Boolean(editEventForm.enforce_gender_balance)}
+                    onChange={(e) => setEditEventForm(prev => ({ ...prev, enforce_gender_balance: e.target.checked }))}
+                  />
+                )}
+                label="Enforce 60/40 gender balance"
+              />
+              <Typography variant="body2" color="text.secondary" sx={{ ml: 4.5, mt: -0.5 }}>
+                Keeps registrations more balanced by pausing one gender once it reaches about 60% of the event.
+              </Typography>
             </Grid>
             <Grid item xs={6} sm={6}>
               <TextField
