@@ -109,6 +109,58 @@ const LandingPage: React.FC = () => {
 
   return (
     <Box sx={{ flexGrow: 1, backgroundColor: 'background.default' }}> 
+      {!user && (
+        <Container maxWidth="lg" sx={{ pt: 1, pb: 0 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Box
+              sx={{
+                position: 'relative',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: { xs: '68%', sm: '42%', md: '32%' },
+                minWidth: { xs: 220, sm: 240 },
+                maxWidth: 310,
+                px: 1.5,
+                py: 0.9,
+                borderRadius: '999px',
+                bgcolor: 'rgba(25, 118, 210, 0.14)',
+                border: '1px solid rgba(25, 118, 210, 0.4)',
+                color: 'text.primary',
+              }}
+            >
+              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: { xs: '0.78rem', sm: '0.86rem' }, textAlign: 'center' }}>
+                Sign in to attend or organize events.
+              </Typography>
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: -13,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: 0,
+                  height: 0,
+                  borderLeft: '10px solid transparent',
+                  borderRight: '10px solid transparent',
+                  borderBottom: '14px solid rgba(25, 118, 210, 0.4)',
+                  '&::after': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 2,
+                    left: -9,
+                    width: 0,
+                    height: 0,
+                    borderLeft: '9px solid transparent',
+                    borderRight: '9px solid transparent',
+                    borderBottom: '12px solid rgba(18, 18, 18, 0.96)',
+                  },
+                }}
+              />
+            </Box>
+          </Box>
+        </Container>
+      )}
+
       {/* Hero Section */}
       <Container maxWidth="lg" sx={{ textAlign: 'center', mt: 2, pt: 0 }}>
         <Typography 
@@ -137,51 +189,6 @@ const LandingPage: React.FC = () => {
             {displayedText || '\u00A0'}
           </Typography>
         </Box>
-        {!user && (
-          <Box
-            sx={{
-              position: 'relative',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mt: 1,
-              px: 2,
-              py: 1.25,
-              borderRadius: '999px',
-              bgcolor: 'rgba(25, 118, 210, 0.14)',
-              border: '1px solid rgba(25, 118, 210, 0.4)',
-              color: 'text.primary',
-              maxWidth: 360,
-            }}
-          >
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              Sign in above to attend or organize events.
-            </Typography>
-            <Box
-              sx={{
-                position: 'absolute',
-                top: -13,
-                right: { xs: 48, sm: 28 },
-                width: 0,
-                height: 0,
-                borderLeft: '10px solid transparent',
-                borderRight: '10px solid transparent',
-                borderBottom: '14px solid rgba(25, 118, 210, 0.4)',
-                '&::after': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 2,
-                  left: -9,
-                  width: 0,
-                  height: 0,
-                  borderLeft: '9px solid transparent',
-                  borderRight: '9px solid transparent',
-                  borderBottom: '12px solid rgba(18, 18, 18, 0.96)',
-                },
-              }}
-            />
-          </Box>
-        )}
       </Container>
 
       {/* Photos Carousel Section */}
