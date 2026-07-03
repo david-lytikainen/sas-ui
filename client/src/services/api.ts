@@ -225,6 +225,15 @@ const realAuthApi = {
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Failed to refresh organizer status');
     }
+  },
+
+  getProfileDashboard: async (): Promise<any> => {
+    try {
+      const response = await axiosInstance.get('/user/profile/dashboard');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || 'Failed to load profile dashboard');
+    }
   }
 };
 

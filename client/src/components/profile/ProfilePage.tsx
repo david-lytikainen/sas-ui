@@ -12,7 +12,9 @@ const ProfilePage = () => {
   const { user, refreshUser, logout } = useAuth();
   const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
   const [churchOptions, setChurchOptions] = useState<string[]>([]);
+  const [dashboard, setDashboard] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -62,6 +64,37 @@ const ProfilePage = () => {
   useEffect(() => {
     if (!user) return;
     setFormData(getUserFormData(user));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || (user.role_id !== 2 && user.role_id !== 3)) {
+      setDashboard(null);
+      return;
+    }
+
+    let active = true;
+    const loadDashboard = async () => {
+      try {
+        setDashboardLoading(true);
+        const response = await authApi.getProfileDashboard();
+        if (active) {
+          setDashboard(response);
+        }
+      } catch (dashboardError: any) {
+        if (active) {
+          setError(dashboardError.message || 'Failed to load profile dashboard.');
+        }
+      } finally {
+        if (active) {
+          setDashboardLoading(false);
+        }
+      }
+    };
+
+    loadDashboard();
+    return () => {
+      active = false;
+    };
   }, [user]);
 
   const resetForm = () => {
@@ -160,6 +193,22 @@ const ProfilePage = () => {
     await logout();
   };
 
+  const ownBilling = dashboard?.billing?.own_summary;
+  const organizerOverview = dashboard?.billing?.organizer_overview || [];
+  const latestRuns = dashboard?.admin_tools?.latest_runs || [];
+  const recentFailures = dashboard?.admin_tools?.recent_failures || [];
+
+  const billingHighlights = ownBilling
+    ? [
+        { label: 'Gross', value: `$${ownBilling.gross_amount}` },
+        { label: 'Refunded', value: `$${ownBilling.refunded_amount}` },
+        { label: 'Net', value: `$${ownBilling.net_amount}` },
+        { label: 'Registrations', value: String(ownBilling.successful_registrations ?? 0) },
+        { label: 'Refund Issues', value: String(ownBilling.refund_failures ?? 0) },
+        { label: 'Mismatches', value: String(ownBilling.payment_mismatches ?? 0) },
+      ]
+    : [];
+
   const readOnlyRows = [
     { label: 'First Name', value: formData.first_name },
     { label: 'Last Name', value: formData.last_name },
@@ -195,6 +244,197 @@ const ProfilePage = () => {
 
   return (
     <Container maxWidth="sm">
+      {user?.role_id === 3 && (
+        <Card sx={{ borderRadius: 2, mb: 2 }}>
+          <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Typography variant={isMobile ? 'h6' : 'h5'} sx={{ fontWeight: 700 }}>
+              Admin Tools
+            </Typography>
+            {dashboardLoading ? (
+              <Typography variant="body2" color="text.secondary">
+                Loading scheduler status...
+              </Typography>
+            ) : (
+              <>
+                <Box sx={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: 1.25 }}>
+                  {latestRuns.map((run: any) => (
+                    <Box
+                      key={run.job_name}
+                      sx={{
+                        border: '1px solid',
+                        borderColor: run.status === 'failed' ? 'error.light' : 'divider',
+                        borderRadius: 2,
+                        px: 2,
+                        py: 1.5,
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', textTransform: 'uppercase', mb: 0.4 }}>
+                        {run.job_name}
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.3 }}>
+                        {run.status === 'failed' ? 'Failed' : 'Healthy'}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Processed {run.processed_count ?? 0} item(s)
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {run.created_at ? new Date(run.created_at).toLocaleString() : 'No run recorded'}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+                {recentFailures.length > 0 && (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      Recent Scheduler Failures
+                    </Typography>
+                    {recentFailures.map((failure: any, index: number) => (
+                      <Box
+                        key={`${failure.job_name}-${index}`}
+                        sx={{
+                          border: '1px solid',
+                          borderColor: 'error.light',
+                          borderRadius: 2,
+                          px: 2,
+                          py: 1.5,
+                          backgroundColor: 'rgba(211, 47, 47, 0.04)',
+                        }}
+                      >
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {failure.job_name}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {failure.error_message || 'Unknown error'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {failure.created_at ? new Date(failure.created_at).toLocaleString() : ''}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {(user?.role_id === 2 || user?.role_id === 3) && (
+        <Card sx={{ borderRadius: 2, mb: 2 }}>
+          <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Typography variant={isMobile ? 'h6' : 'h5'} sx={{ fontWeight: 700 }}>
+              Billing
+            </Typography>
+            {dashboardLoading ? (
+              <Typography variant="body2" color="text.secondary">
+                Loading billing summary...
+              </Typography>
+            ) : (
+              <>
+                <Box sx={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))', gap: 1.25 }}>
+                  {billingHighlights.map((item) => (
+                    <Box
+                      key={item.label}
+                      sx={{
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 2,
+                        px: 1.5,
+                        py: 1.25,
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', textTransform: 'uppercase', mb: 0.4 }}>
+                        {item.label}
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                        {item.value}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+                <Box
+                  sx={{
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 2,
+                    px: 2,
+                    py: 1.5,
+                  }}
+                >
+                  <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', textTransform: 'uppercase', mb: 0.4 }}>
+                    Stripe Account
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                    {dashboard?.billing?.stripe_connect_onboarding_complete ? 'Connected' : 'Not Connected'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
+                    {dashboard?.billing?.stripe_connected_account_id || 'No connected Stripe account'}
+                  </Typography>
+                </Box>
+                {ownBilling?.recent_activity?.length > 0 && (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      Recent Billing Activity
+                    </Typography>
+                    {ownBilling.recent_activity.map((activity: any, index: number) => (
+                      <Box
+                        key={`${activity.created_at || activity.event_name}-${index}`}
+                        sx={{
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          borderRadius: 2,
+                          px: 2,
+                          py: 1.5,
+                        }}
+                      >
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {activity.event_name}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {activity.attendee_name} • ${activity.amount}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Payment {activity.payment_status} | Registration {activity.registration_status}{activity.refund_status ? ` | Refund ${activity.refund_status}` : ''}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+                {user?.role_id === 3 && organizerOverview.length > 0 && (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      Organizer Overview
+                    </Typography>
+                    {organizerOverview.map((organizer: any) => (
+                      <Box
+                        key={organizer.organizer_id}
+                        sx={{
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          borderRadius: 2,
+                          px: 2,
+                          py: 1.5,
+                        }}
+                      >
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {organizer.organizer_name}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {organizer.organizer_email}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Gross ${organizer.gross_amount} | Net ${organizer.net_amount} | {organizer.onboarding_complete ? 'Connected' : 'Not Connected'}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <Box sx={{ mb: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
           <Typography variant={isMobile ? 'h5' : 'h4'} component="h1" sx={{ fontWeight: 'bold' }}>
