@@ -2,7 +2,17 @@ import axios from 'axios';
 import { AuthResponse, TokenValidationResponse } from '../types/user';
 import { Event, ScheduleItem, Timer } from '../types/event';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+const getApiBaseUrl = () => {
+    const runtimeApiUrl = (globalThis as typeof globalThis & { REACT_APP_API_URL?: string }).REACT_APP_API_URL;
+    return (
+        localStorage.getItem('apiBaseUrl') ||
+        runtimeApiUrl ||
+        process.env.REACT_APP_API_URL ||
+        'http://localhost:5001/api'
+    );
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 
 const axiosInstance = axios.create({
