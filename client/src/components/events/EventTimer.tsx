@@ -18,16 +18,6 @@ const TIMER_POLL_MS = 5000;
 const DEFAULT_ROUND_DURATION = 210;
 const DEFAULT_BREAK_DURATION = 90;
 const PREVIOUS_ROUND_THRESHOLD_SECONDS = 5;
-const BREAK_MESSAGES = [
-  "Grab a snack! 🍎",
-  "Take a break! 🛋️",
-  "Time to stretch your legs! 🤸‍♂️",
-  "Enjoy a quick rest! 😌",
-  "Refill your drink and relax! 🥤",
-  "Chat with someone new! 💬",
-  "Take a breather, next round soon! 🌬️",
-  "Perfect time for a bathroom break! 🚻",
-];
 
 const formatTime = (seconds: number): string => {
   const safeSeconds = Math.max(0, Math.floor(seconds));
@@ -72,11 +62,6 @@ const getTimerSeconds = (timer: Timer | null): number => {
   return 0;
 };
 
-const getBreakMessage = (currentRound: number): string => {
-  if (currentRound <= 0) return BREAK_MESSAGES[0];
-  return BREAK_MESSAGES[currentRound % BREAK_MESSAGES.length];
-};
-
 const getElapsedSeconds = (timer: Timer | null): number => {
   if (!timer) return 0;
 
@@ -92,7 +77,7 @@ const getElapsedSeconds = (timer: Timer | null): number => {
   return Math.max(0, elapsedSeconds);
 };
 
-const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In Progress', onRoundChange }: EventTimerProps): React.ReactElement | null => {
+const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In Progress', onRoundChange }: EventTimerProps): JSX.Element | null => {
   const theme = useTheme();
   const isEventActive = eventStatus === 'In Progress' || eventStatus === 'Paused';
   const eventIdString = eventId.toString();
@@ -118,6 +103,22 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
   const isEnded = timerStatus === 'ended';
   const isInactive = timerStatus === 'inactive';
   const isAlmostDone = isActive && timeRemaining <= 10;
+  const adminTitle = isEnded ? 'Finished' : isBreakTime ? 'Break' : `Round ${currentRound || '-'}`;
+  const mainTime = isEnded ? '--:--' : isActive || isPaused || isBreakTime ? formatTime(timeRemaining) : '--:--';
+  const startLabel = isBreakTime ? `Start Round ${currentRound + 1}` : 'Start Round';
+  const attendeeMessage = isEnded
+    ? 'Event Finished - Save your selections!'
+    : isInactive
+      ? 'Event will be starting shortly!'
+      : isPaused && currentRoundSchedule
+        ? `Round ${currentRound} paused`
+        : isBreakTime
+          ? `Get to your table for Round ${currentRound + 1}!`
+          : currentRoundSchedule
+            ? `Table ${currentRoundSchedule.table} with ${currentRoundSchedule.partner_name}`
+            : currentRound > 0
+              ? 'You are on break this round'
+              : 'Waiting for round...';
 
   const fetchTimer = useCallback(async () => {
     if (!isEventActive) return;
@@ -276,36 +277,6 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
     if (!isActive || roundDuration <= 0) return 0;
     return (timeRemaining / roundDuration) * 100;
   }, [isActive, roundDuration, timeRemaining]);
-
-  const getAdminTitle = () => {
-    if (isEnded) return 'Finished';
-    if (isBreakTime) return 'Break';
-    return `Round ${currentRound || '-'}`;
-  };
-
-  const getMainTime = () => {
-    if (isEnded) return '--:--';
-    if (isActive || isPaused || isBreakTime) return formatTime(timeRemaining);
-    return '--:--';
-  };
-
-  const getStartLabel = () => {
-    if (!isBreakTime) return 'Start Round';
-    return `Start Round ${currentRound + 1}`;
-  };
-
-  const getAttendeeMessage = () => {
-    if (isEnded) return 'Event Finished - Save your selections!';
-    if (isInactive) return 'Event will be starting shortly!';
-    if (isPaused && currentRoundSchedule) return `Round ${currentRound} paused`;
-    if (isBreakTime) return `Get to your table for Round ${currentRound + 1}!`;
-    if (currentRoundSchedule) return `Table ${currentRoundSchedule.table} with ${currentRoundSchedule.partner_name}`;
-    if (currentRound > 0) return 'You are on break this round';
-    return 'Waiting for round...';
-  };
-
-
-
   const renderLoading = () => (
     <Box display="flex" justifyContent="center" p={{ xs: 0.25, sm: 0.5 }}>
       <CircularProgress size={16} />
@@ -316,24 +287,22 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
     if (isLoading) return renderLoading();
 
     return (
-      <>
-        <Box sx={{ display: 'flex', alignItems: 'center', minHeight: { xs: '40px', sm: '48px' }, p: { xs: 1.2, sm: 1.5 }, my: 1, borderRadius: '4px', bgcolor: theme.palette.background.paper, border: `1px solid ${panelColors.border}`, boxShadow: '0px 1px 2px rgba(0,0,0,0.1)' }}>
-          <TimerIcon sx={{ mr: 1, color: panelColors.icon, fontSize: { xs: '1.1rem', sm: '1.3rem' }, flexShrink: 0 }} />
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2, fontSize: { xs: '0.9rem', sm: '1rem' } }}>
-              {getAdminTitle()}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2, fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
-              {getAttendeeMessage()}
-            </Typography>
-          </Box>
-          {(isActive || isBreakTime || isPaused) && (
-            <Typography color="primary" variant="body2" sx={{ fontWeight: 700, ml: 1 }}>
-              {getMainTime()}
-            </Typography>
-          )}
+      <Box sx={{ display: 'flex', alignItems: 'center', minHeight: { xs: '40px', sm: '48px' }, p: { xs: 1.2, sm: 1.5 }, my: 1, borderRadius: '4px', bgcolor: theme.palette.background.paper, border: `1px solid ${panelColors.border}`, boxShadow: '0px 1px 2px rgba(0,0,0,0.1)' }}>
+        <TimerIcon sx={{ mr: 1, color: panelColors.icon, fontSize: { xs: '1.1rem', sm: '1.3rem' }, flexShrink: 0 }} />
+        <Box sx={{ flexGrow: 1 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2, fontSize: { xs: '0.9rem', sm: '1rem' } }}>
+            {adminTitle}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2, fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
+            {attendeeMessage}
+          </Typography>
         </Box>
-      </>
+        {(isActive || isBreakTime || isPaused) && (
+          <Typography color="primary" variant="body2" sx={{ fontWeight: 700, ml: 1 }}>
+            {mainTime}
+          </Typography>
+        )}
+      </Box>
     );
   };
 
@@ -364,7 +333,7 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
             </IconButton>
           </span>
         </Tooltip>
-        <Tooltip title={isActive ? 'Pause round' : isPaused ? 'Resume round' : getStartLabel()}>
+        <Tooltip title={isActive ? 'Pause round' : isPaused ? 'Resume round' : startLabel}>
           <IconButton
             onClick={handlePrimaryControl}
             sx={{
@@ -411,11 +380,11 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
           <Box sx={{ display: 'flex', alignItems: 'center', zIndex: 2, position: 'absolute', left: { xs: 1, sm: 1.5 } }}>
             <TimerIcon sx={{ mr: 1, color: panelColors.icon, fontSize: { xs: '1.2rem', sm: '1.4rem' } }} />
             <Typography variant="h6" sx={{ fontWeight: 500, lineHeight: 1.2, fontSize: { xs: '0.9rem', sm: '1.1rem' } }}>
-              {getAdminTitle()}
+              {adminTitle}
             </Typography>
           </Box>
           <Typography variant="h3" component="div" color={panelColors.icon} sx={{ fontWeight: 600, fontSize: { xs: '2rem', sm: '2.1rem' }, zIndex: 2, textAlign: 'center' }}>
-            {getMainTime()}
+            {mainTime}
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', zIndex: 2, position: 'absolute', right: { xs: 1, sm: 1.5 } }}>
             {!isActive && !isPaused && (

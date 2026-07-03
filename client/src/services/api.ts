@@ -14,7 +14,6 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
-
 const axiosInstance = axios.create({
     baseURL: API_BASE_URL,
     headers: {
@@ -44,24 +43,19 @@ axiosInstance.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
-        // If the error is 401 and we haven't tried to refresh the token yet
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
 
             try {
-                const token = localStorage.getItem('token');
-                if (!token) {
+                if (!localStorage.getItem('token')) {
                     throw new Error('No token found');
                 }
 
-                // Try to validate the token
                 const response = await axiosInstance.get('/user/validate-token');
                 if (response.data && response.data.user) {
-                    // Token is valid, retry the original request
                     return axiosInstance(originalRequest);
                 }
-            } catch (refreshError) {
-                // If token refresh fails, just reject the error
+            } catch {
                 return Promise.reject(error);
             }
         }
@@ -70,19 +64,16 @@ axiosInstance.interceptors.response.use(
     }
 );
 
-// Real Auth API implementation to connect with Flask backend
 const realAuthApi = {
   login: async (email: string, password: string): Promise<AuthResponse> => {
     try {
       const response = await axiosInstance.post('/user/signin', { email, password }, { withCredentials: true });
       const { token, user } = response.data;
       
-      // Ensure token is properly formatted
       if (!token || typeof token !== 'string') {
         throw new Error('Invalid token received from server');
       }
-      
-      // Store token
+
       localStorage.setItem('token', token);
       
       return {
@@ -90,13 +81,10 @@ const realAuthApi = {
         token
       };
     } catch (error: any) {
-      // Handle 401 Unauthorized error specifically
       if (error.response && error.response.status === 401) {
-        // Extract the error message from the backend if available
         const errorMessage = error.response.data?.message || error.response.data?.error || 'Invalid email or password';
         throw new Error(errorMessage);
       }
-      // For other errors, rethrow with a more specific message
       if (error.response && error.response.data) {
         throw new Error(error.response.data.message || error.response.data.error || 'Login failed');
       }
@@ -114,13 +102,12 @@ const realAuthApi = {
     gender: string;
     current_church?: string;
   }): Promise<AuthResponse> => {
-    // Prepare data for backend format
     const backendUserData = {
       email: userData.email,
       password: userData.password,
       first_name: userData.first_name,
       last_name: userData.last_name,
-      phone: userData.phone || "",
+      phone: userData.phone || '',
       gender: userData.gender, 
       birthday: userData.birthday,
       current_church: userData.current_church || 'Other',
@@ -146,10 +133,8 @@ const realAuthApi = {
         return null;
       }
 
-      // Remove any existing Bearer prefix if present
       token = token.replace('Bearer ', '');
 
-      // Check if token is properly formatted
       if (!token || token.split('.').length !== 3) {
         console.error('Invalid token format');
         return null;
@@ -176,57 +161,12 @@ const realAuthApi = {
     }
   },
 
-  // Additional methods to match the mock API structure
-  getRoles: async () => {
-    // This would call a backend endpoint to get roles
-    // For now, return default roles
-    return [
-      { id: 1, name: 'admin', permission_level: 100 },
-      { id: 2, name: 'organizer', permission_level: 50 },
-      { id: 3, name: 'attendee', permission_level: 10 },
-    ];
-  },
-  
-  getUsers: async () => {
-    // This would call a backend endpoint to get users
-    // For now, return an empty array
-    return [];
-  },
-  
-  updateUser: async (userId: string, userData: any) => {
-    try {
-      const response = await axiosInstance.patch(`/user/users/${userId}`, userData);
-      return response.data.user;
-    } catch (error) {
-      console.error('Error updating user:', error);
-      throw error;
-    }
-  },
-  
-  createUser: async (userData: any) => {
-    // This would call a backend endpoint to create a user
-    // For now, return the userData with a mock ID
-    return { ...userData, id: 'new-user-id' };
-  },
-  
-  deleteUser: async (userId: string) => {
-    // This would call a backend endpoint to delete a user
-    // For now, return success
-    return { success: true };
-  },
-
   forgotPassword: async (email: string): Promise<{ message: string }> => {
     try {
       const response = await axiosInstance.post('/user/forgot-password', { email });
       return response.data;
     } catch (error: any) {
-      // Avoid revealing if an email exists or not.
-      // For the frontend, we can treat it as a success.
-      // Log the actual error for developers.
       console.error("Forgot password error:", error.response?.data || error.message);
-      // We are not re-throwing the error to the component
-      // to prevent showing specific errors to the user.
-      // The component will show a generic success message.
       return { message: 'If an account with that email exists, a password reset link has been sent.' };
     }
   },
@@ -298,7 +238,6 @@ interface EventsApi {
   registerForEvent: (eventId: string, body?: { join_waitlist: boolean }) => Promise<{ message: string, waitlist_available?: boolean }>;
   cancelRegistration: (eventId: string) => Promise<{ message: string }>;
   manualCheckInAttendee: (eventId: string, attendeeId: string) => Promise<{ message: string }>;
-  testGetEvents: () => Promise<Event[]>;
   updateEventStatus: (eventId: string, status: string) => Promise<{ message: string }>;
   getEventAttendees: (eventId: string) => Promise<{ data: {
     id: number,
@@ -444,25 +383,6 @@ const realEventsApi: EventsApi = {
     return response.data;
   },
 
-  testGetEvents: async () => {
-    try {
-      const token = localStorage.getItem('token'); // Get token from localStorage
-  
-      const response = await axiosInstance.get('/events', {
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        withCredentials: true
-      });
-  
-      console.log('Test get_events response:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('Error testing get_events:', error);
-      throw error;
-    }
-  },
-  
   updateEventStatus: async (eventId: string, status: string) => {
     const response = await axiosInstance.patch(`/events/${eventId}/status`, { status });
     return response.data;
