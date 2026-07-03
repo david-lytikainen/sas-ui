@@ -655,7 +655,7 @@ const EventList = () => {
           </Box>
           )}
 
-        {(event.status === 'In Progress' && (isAdmin() || event.registration)) && (
+        {(event.status === 'In Progress' && (canManageEvent(event) || event.registration)) && (
           <Box sx={{ mb: { xs: 1, sm: 3 } }}>
             <Divider sx={{ mb: { xs: 0.5, sm: 2 } }} />
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
