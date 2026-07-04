@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Paper, Slider, Tooltip, Typography, useTheme } from '@mui/material';
+import { Alert, Box, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Paper, Slider, Tooltip, Typography, useTheme } from '@mui/material';
 import { Pause, PlayArrow, Settings, SkipNext, SkipPrevious, Timer as TimerIcon } from '@mui/icons-material';
 import { eventsApi } from '../../services/api';
 import { ScheduleItem, Timer } from '../../types/event';

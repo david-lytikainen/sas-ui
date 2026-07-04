@@ -13,6 +13,7 @@ const getApiBaseUrl = () => {
 };
 
 const API_BASE_URL = getApiBaseUrl();
+const getApiErrorMessage = (error: any, fallback: string) => error.response?.data?.message || error.response?.data?.error || fallback;
 
 const axiosInstance = axios.create({
     baseURL: API_BASE_URL,
@@ -32,9 +33,7 @@ axiosInstance.interceptors.request.use(
         }
         return config;
     },
-    (error) => {
-        return Promise.reject(error);
-    }
+    Promise.reject
 );
 
 // Response interceptor for API calls
@@ -42,8 +41,9 @@ axiosInstance.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
+        const isTokenValidationRequest = originalRequest?.url?.includes('/user/validate-token');
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        if (error.response?.status === 401 && !originalRequest._retry && !isTokenValidationRequest) {
             originalRequest._retry = true;
 
             try {
@@ -69,26 +69,17 @@ const realAuthApi = {
     try {
       const response = await axiosInstance.post('/user/signin', { email, password }, { withCredentials: true });
       const { token, user } = response.data;
-      
+
       if (!token || typeof token !== 'string') {
         throw new Error('Invalid token received from server');
       }
 
-      localStorage.setItem('token', token);
-      
-      return {
-        user,
-        token
-      };
+      return { user, token };
     } catch (error: any) {
       if (error.response && error.response.status === 401) {
-        const errorMessage = error.response.data?.message || error.response.data?.error || 'Invalid email or password';
-        throw new Error(errorMessage);
+        throw new Error(getApiErrorMessage(error, 'Invalid email or password'));
       }
-      if (error.response && error.response.data) {
-        throw new Error(error.response.data.message || error.response.data.error || 'Login failed');
-      }
-      throw new Error('Login failed. Please try again.');
+      throw new Error(getApiErrorMessage(error, 'Login failed. Please try again.'));
     }
   },
 
@@ -118,11 +109,7 @@ const realAuthApi = {
       return await realAuthApi.login(userData.email, userData.password);
     } catch (error: any) {
       console.error('Registration error:', error);
-      const backendMessage = error.response?.data?.message || error.response?.data?.error;
-      if (backendMessage) {
-        throw new Error(backendMessage);
-      }
-      throw new Error('Registration failed. Please try again.');
+      throw new Error(getApiErrorMessage(error, 'Registration failed. Please try again.'));
     }
   },
 
@@ -176,10 +163,7 @@ const realAuthApi = {
       const response = await axiosInstance.post(`/user/reset-password/${token}`, { password });
       return response.data;
     } catch (error: any) {
-      if (error.response && error.response.data) {
-        throw new Error(error.response.data.message || error.response.data.error || 'Password reset failed');
-      }
-      throw new Error('Password reset failed. Please try again.');
+      throw new Error(getApiErrorMessage(error, 'Password reset failed. Please try again.'));
     }
   },
 
@@ -205,7 +189,7 @@ const realAuthApi = {
       const response = await axiosInstance.patch('/user/profile', userData);
       return response.data.user;
     } catch (error: any) {
-      throw new Error(error.response?.data?.error || 'Failed to update profile');
+      throw new Error(getApiErrorMessage(error, 'Failed to update profile'));
     }
   },
 
@@ -214,7 +198,7 @@ const realAuthApi = {
       const response = await axiosInstance.post('/user/connect/onboarding');
       return response.data;
     } catch (error: any) {
-      throw new Error(error.response?.data?.error || 'Failed to start Stripe Connect onboarding');
+      throw new Error(getApiErrorMessage(error, 'Failed to start Stripe Connect onboarding'));
     }
   },
 
@@ -223,7 +207,7 @@ const realAuthApi = {
       const response = await axiosInstance.post('/user/organizer-status/refresh');
       return response.data.user;
     } catch (error: any) {
-      throw new Error(error.response?.data?.error || 'Failed to refresh organizer status');
+      throw new Error(getApiErrorMessage(error, 'Failed to refresh organizer status'));
     }
   },
 
@@ -232,7 +216,7 @@ const realAuthApi = {
       const response = await axiosInstance.get('/user/profile/dashboard');
       return response.data;
     } catch (error: any) {
-      throw new Error(error.response?.data?.error || 'Failed to load profile dashboard');
+      throw new Error(getApiErrorMessage(error, 'Failed to load profile dashboard'));
     }
   }
 };
@@ -342,10 +326,7 @@ const realEventsApi: EventsApi = {
       return response.data;
     } catch (error: any) {
       console.error(`Error fetching event with ID ${eventId}:`, error);
-      if (error.response?.data?.error) {
-        throw new Error(error.response.data.error);
-      }
-      throw new Error('Failed to fetch event details');
+      throw new Error(getApiErrorMessage(error, 'Failed to fetch event details'));
     }
   },
 
@@ -354,7 +335,7 @@ const realEventsApi: EventsApi = {
       const response = await axiosInstance.post(`/events/${eventId}/checkout`);
       return response.data;
     } catch (error: any) {
-      throw new Error(error.response?.data?.error || 'Failed to start checkout');
+      throw new Error(getApiErrorMessage(error, 'Failed to start checkout'));
     }
   },
 
@@ -413,10 +394,7 @@ const realEventsApi: EventsApi = {
       const response = await axiosInstance.patch(`/events/${eventId}/attendees/${attendeeId}`, data);
       return response.data;
     } catch (error: any) {
-      if (error.response?.data?.error) {
-        throw new Error(error.response.data.error);
-      }
-      throw new Error('Failed to update attendee details');
+      throw new Error(getApiErrorMessage(error, 'Failed to update attendee details'));
     }
   },
   
@@ -425,10 +403,7 @@ const realEventsApi: EventsApi = {
       const response = await axiosInstance.get(`/events/${eventId}/schedule`);
       return response.data;
     } catch (error: any) {
-      if (error.response?.data?.error) {
-        throw new Error(error.response.data.error);
-      }
-      throw new Error('Failed to retrieve schedule');
+      throw new Error(getApiErrorMessage(error, 'Failed to retrieve schedule'));
     }
   },
   
@@ -437,10 +412,7 @@ const realEventsApi: EventsApi = {
       const response = await axiosInstance.get(`/events/${eventId}/all-schedules`);
       return response.data;
     } catch (error: any) {
-      if (error.response?.data?.error) {
-        throw new Error(error.response.data.error);
-      }
-      throw new Error('Failed to retrieve all schedules');
+      throw new Error(getApiErrorMessage(error, 'Failed to retrieve all schedules'));
     }
   },
   
@@ -453,23 +425,16 @@ const realEventsApi: EventsApi = {
       const response = await axiosInstance.post(`/events/${eventId}/generate/schedules`, payload);
       return response.data;
     } catch (error: any) {
-      if (error.response?.data?.error) {
-        throw new Error(error.response.data.error);
-      }
-      throw new Error('Failed to generate schedules');
+      throw new Error(getApiErrorMessage(error, 'Failed to generate schedules'));
     }
   },
   
   resumeEvent: async (eventId: string) => {
     try {
-      // Use the updateEventStatus method to set the event back to "In Progress"
       const response = await axiosInstance.patch(`/events/${eventId}/status`, { status: 'In Progress' });
       return response.data;
     } catch (error: any) {
-      if (error.response?.data?.error) {
-        throw new Error(error.response.data.error);
-      }
-      throw new Error('Failed to resume event');
+      throw new Error(getApiErrorMessage(error, 'Failed to resume event'));
     }
   },
   
@@ -483,13 +448,10 @@ const realEventsApi: EventsApi = {
   getEventWaitlist: async (eventId: string) => {
     try {
       const response = await axiosInstance.get(`/events/${eventId}/waitlist`);
-      return { data: response.data }; // Assuming response.data is the array of waitlisted users
+      return { data: response.data };
     } catch (error: any) {
       console.error(`Error fetching waitlist for event ${eventId}:`, error);
-      if (error.response?.data?.error) {
-        throw new Error(error.response.data.error);
-      }
-      throw new Error('Failed to fetch waitlist for this event.');
+      throw new Error(getApiErrorMessage(error, 'Failed to fetch waitlist for this event.'));
     }
   },
   getTimer: async (eventId: string) => {
