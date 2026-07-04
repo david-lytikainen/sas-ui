@@ -13,15 +13,15 @@ interface ViewAllSchedulesProps {
 }
 
 const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [allSchedules, setAllSchedules] = useState<Record<number, any[]>>({});
   const [filteredSchedules, setFilteredSchedules] = useState<Record<number, any[]>>({});
   const [usersMap, setUsersMap] = useState<Record<number, { id: number, first_name: string, last_name: string }>>({});
   const [loadingAllSchedules, setLoadingAllSchedules] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'ascending' | 'descending' } | null>(null);
-  const [speedDateSelections, setSpeedDateSelections] = useState<Record<number, boolean>>({});
   const [selectionErrorMessage, setSelectionErrorMessage] = useState<string | null>(null);
+  const canExportSchedules = !!event && (isAdmin() || (user?.role_id === 2 && String(event.creator_id) === String(user.id)));
 
   useEffect(() => {
     if (!open || !event) return;
@@ -31,7 +31,6 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
         setLoadingAllSchedules(true);
         setSearchTerm('');
         setSortConfig(null);
-        setSpeedDateSelections({});
         setSelectionErrorMessage(null);
 
         const response = await eventsApi.getAllSchedules(event.id.toString());
@@ -143,31 +142,6 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
     applyFilterAndSort(value, sortConfig);
   };
 
-  const handleSaveSpeedDateSelections = async () => {
-    if (!event) {
-      setSelectionErrorMessage('No event selected for saving selections.');
-      return;
-    }
-
-    const selectionsToSubmit = Object.entries(speedDateSelections).map(([id, interested]) => ({
-      event_speed_date_id: Number(id),
-      interested,
-    }));
-
-    if (selectionsToSubmit.length === 0) {
-      setSelectionErrorMessage('No selections have been made to save.');
-      return;
-    }
-
-    try {
-      setSelectionErrorMessage(null);
-      await eventsApi.submitSpeedDateSelections(event.id.toString(), selectionsToSubmit);
-      alert('Speed date selections saved successfully!');
-    } catch (error: any) {
-      setSelectionErrorMessage(error.response?.data?.message || error.message || 'Failed to save speed date selections.');
-    }
-  };
-
   const handleExportSchedules = () => {
     if (!event || !filteredSchedules || Object.keys(filteredSchedules).length === 0) {
       setSelectionErrorMessage('No schedules available to export');
@@ -175,13 +149,13 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
     }
 
     try {
-      let csvContent = 'User Name,Round,Table,Partner Name,Partner Age\n';
+      let csvContent = 'Name 1,Name 2,Round,Table\n';
       Object.entries(filteredSchedules).forEach(([userId, userSchedule]) => {
         if (!Array.isArray(userSchedule) || userSchedule.length === 0) return;
         const user = Object.values(usersMap).find(u => u.id === Number(userId));
         const userName = user ? `${user.first_name} ${user.last_name}` : `User ${userId}`;
         userSchedule.forEach((item: any) => {
-          csvContent += `"${userName}",${item.round},${item.table},"${item.partner_name}",${item.partner_age || 'N/A'}\n`;
+          csvContent += `"${userName}","${item.partner_name}",${item.round},${item.table}\n`;
         });
       });
 
@@ -225,7 +199,7 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
             <Box sx={{ mb: 2, px: 1, display: 'flex', gap: 2, alignItems: 'center' }}>
               <TextField
                 label="Search"
-                placeholder="Search by name, round, table..."
+                placeholder="Search by name..."
                 variant="outlined"
                 size="small"
                 fullWidth
@@ -239,7 +213,7 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
                   ),
                 }}
               />
-              {isAdmin() && (
+              {canExportSchedules && (
                 <Button variant="outlined" color="primary" onClick={handleExportSchedules} startIcon={<DownloadIcon />} sx={{ whiteSpace: 'nowrap' }}>
                   Export CSV
                 </Button>
@@ -258,12 +232,9 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
                 <TableHead>
                   <TableRow>
                     {renderSortableHeader('user', 'User')}
+                    {renderSortableHeader('partner', 'Partner')}
                     {renderSortableHeader('round', 'Round')}
                     {renderSortableHeader('table', 'Table')}
-                    {renderSortableHeader('partner', 'Partner')}
-                    <TableCell><strong>User Church</strong></TableCell>
-                    <TableCell><strong>Partner Church</strong></TableCell>
-                    <TableCell><strong>Age Difference</strong></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -274,12 +245,9 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
                     return userSchedule.map((item: any, index: number) => (
                       <TableRow key={`${userId}-${index}`}>
                         <TableCell>{userName}</TableCell>
+                        <TableCell>{item.partner_name}</TableCell>
                         <TableCell>{item.round}</TableCell>
                         <TableCell>{item.table}</TableCell>
-                        <TableCell>{item.partner_name}</TableCell>
-                        <TableCell>{item.user_church || 'Other'}</TableCell>
-                        <TableCell>{item.partner_church || 'Other'}</TableCell>
-                        <TableCell>{typeof item.user_age === 'number' && typeof item.partner_age === 'number' ? Math.abs(item.user_age - item.partner_age) : 'N/A'}</TableCell>
                       </TableRow>
                     ));
                   })}
@@ -295,9 +263,6 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Close</Button>
-        <Button onClick={handleSaveSpeedDateSelections} color="primary" variant="contained" disabled={Object.keys(speedDateSelections).length === 0 || loadingAllSchedules}>
-          Save Selections
-        </Button>
       </DialogActions>
     </Dialog>
   );

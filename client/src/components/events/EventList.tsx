@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Container, Box, Typography, Button, Card, CardContent, CardActions, Grid, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Alert, useMediaQuery, useTheme, TextField, Collapse, Select, MenuItem, InputLabel, FormControl, DialogContentText, Divider } from '@mui/material';
+import { Container, Box, Typography, Button, Card, CardContent, CardActions, Grid, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Alert, useMediaQuery, useTheme, TextField, Collapse, DialogContentText, Divider } from '@mui/material';
 import { Checkbox, FormControlLabel } from '@mui/material';
 import { Event as EventIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon, AttachMoney as AttachMoneyIcon, CheckCircle as CheckInIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Settings as SettingsIcon, List as ListIcon, PlayArrow as StartIcon, Visibility as ViewIcon, Edit as EditIcon, Delete as DeleteIcon, People as PeopleIcon } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import authApi, { eventsApi } from '../../services/api';
-import { Event, EventStatus } from '../../types/event';
+import { Event } from '../../types/event';
 import CreateEvent from './CreateEvent';
 import EventTimer from './EventTimer';
 import MySchedule from './MySchedule';
@@ -64,7 +64,6 @@ const EventList = () => {
     max_capacity: '0',
     price_per_person: '0',
     enforce_gender_balance: true,
-    status: 'Registration Open' as EventStatus,
   });
 
   const [deleteEventConfirmOpen, setDeleteEventConfirmOpen] = useState<boolean>(false);
@@ -1027,23 +1026,6 @@ const EventList = () => {
                 size={isMobile ? "small" : "medium"}
                 margin="dense"
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth size={isMobile ? "small" : "medium"} margin="dense">
-                <InputLabel id="edit-event-status-label">Status</InputLabel>
-                <Select
-                  labelId="edit-event-status-label"
-                  name="status"
-                  value={editEventForm.status || 'Registration Open'}
-                  label="Status"
-                  onChange={(e) => setEditEventForm(prev => ({ ...prev, status: e.target.value as EventStatus }))}
-                >
-                  <MenuItem value="Registration Open">Registration Open</MenuItem>
-                  <MenuItem value="In Progress">In Progress</MenuItem>
-                  <MenuItem value="Completed">Completed</MenuItem>
-                  <MenuItem value="Cancelled">Cancelled</MenuItem>
-                </Select>
-              </FormControl>
             </Grid>
           </Grid>
         </DialogContent>

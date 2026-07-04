@@ -367,9 +367,6 @@ const ProfilePage = () => {
                   <Typography variant="body1" sx={{ fontWeight: 600 }}>
                     {dashboard?.billing?.stripe_connect_onboarding_complete ? 'Connected' : 'Not Connected'}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
-                    {dashboard?.billing?.stripe_connected_account_id || 'No connected Stripe account'}
-                  </Typography>
                 </Box>
                 {ownBilling?.recent_activity?.length > 0 && (
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
