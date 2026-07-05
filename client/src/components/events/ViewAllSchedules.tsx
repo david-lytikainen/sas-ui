@@ -2,7 +2,7 @@ import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogContent
 import { Download as DownloadIcon } from '@mui/icons-material';
 import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { Event } from '../../types/event';
+import type { Event } from '../../types/event';
 import { eventsApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -22,6 +22,10 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'ascending' | 'descending' } | null>(null);
   const [selectionErrorMessage, setSelectionErrorMessage] = useState<string | null>(null);
   const canExportSchedules = !!event && (isAdmin() || (user?.role_id === 2 && String(event.creator_id) === String(user.id)));
+  const getUserName = (userId: number) => {
+    const userRecord = usersMap[userId];
+    return userRecord ? `${userRecord.first_name} ${userRecord.last_name}` : `User ${userId}`;
+  };
 
   useEffect(() => {
     if (!open || !event) return;
@@ -66,8 +70,7 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
       const lowercaseSearch = search.toLowerCase().trim();
       Object.entries(allSchedules).forEach(([userId, userSchedule]) => {
         if (!Array.isArray(userSchedule) || userSchedule.length === 0) return;
-        const user = Object.values(usersMap).find(u => u.id === Number(userId));
-        const userName = user ? `${user.first_name} ${user.last_name}`.toLowerCase() : '';
+        const userName = getUserName(Number(userId)).toLowerCase();
         const nameWords = userName.split(/\s+/);
         const nameMatch = nameWords.some(word => word.startsWith(lowercaseSearch));
         if (nameMatch) filtered[Number(userId)] = userSchedule;
@@ -78,8 +81,7 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
       let allItems: any[] = [];
       Object.entries(filtered).forEach(([userId, userSchedule]) => {
         if (!Array.isArray(userSchedule)) return;
-        const user = Object.values(usersMap).find(u => u.id === Number(userId));
-        const userName = user ? `${user.first_name} ${user.last_name}` : `User ${userId}`;
+        const userName = getUserName(Number(userId));
         userSchedule.forEach((item: any) => {
           allItems.push({ userId: Number(userId), userName, ...item });
         });
@@ -152,8 +154,7 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
       let csvContent = 'Name 1,Name 2,Round,Table\n';
       Object.entries(filteredSchedules).forEach(([userId, userSchedule]) => {
         if (!Array.isArray(userSchedule) || userSchedule.length === 0) return;
-        const user = Object.values(usersMap).find(u => u.id === Number(userId));
-        const userName = user ? `${user.first_name} ${user.last_name}` : `User ${userId}`;
+        const userName = getUserName(Number(userId));
         userSchedule.forEach((item: any) => {
           csvContent += `"${userName}","${item.partner_name}",${item.round},${item.table}\n`;
         });
@@ -240,8 +241,7 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
                 <TableBody>
                   {Object.entries(filteredSchedules).flatMap(([userId, userSchedule]) => {
                     if (!Array.isArray(userSchedule) || userSchedule.length === 0) return [];
-                    const user = Object.values(usersMap).find(u => u.id === Number(userId));
-                    const userName = user ? `${user.first_name} ${user.last_name}` : `User ${userId}`;
+                    const userName = getUserName(Number(userId));
                     return userSchedule.map((item: any, index: number) => (
                       <TableRow key={`${userId}-${index}`}>
                         <TableCell>{userName}</TableCell>
