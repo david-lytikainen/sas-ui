@@ -5,7 +5,6 @@ import { Event, ScheduleItem, Timer } from '../types/event';
 const getApiBaseUrl = () => {
     const runtimeApiUrl = (globalThis as typeof globalThis & { REACT_APP_API_URL?: string }).REACT_APP_API_URL;
     return (
-        localStorage.getItem('apiBaseUrl') ||
         runtimeApiUrl ||
         process.env.REACT_APP_API_URL ||
         'http://localhost:5001/api'
@@ -105,10 +104,15 @@ const realAuthApi = {
     };
     
     try {
-      await axiosInstance.post('/user/signup', backendUserData);
-      return await realAuthApi.login(userData.email, userData.password);
+      const response = await axiosInstance.post('/user/signup', backendUserData);
+      const { token, user } = response.data;
+
+      if (!token || typeof token !== 'string') {
+        throw new Error('Invalid token received from server');
+      }
+
+      return { user, token };
     } catch (error: any) {
-      console.error('Registration error:', error);
       throw new Error(getApiErrorMessage(error, 'Registration failed. Please try again.'));
     }
   },
@@ -116,14 +120,12 @@ const realAuthApi = {
   validateToken: async (token: string): Promise<TokenValidationResponse | null> => {
     try {
       if (!token) {
-        console.error('No token provided for validation');
         return null;
       }
 
       token = token.replace('Bearer ', '');
 
       if (!token || token.split('.').length !== 3) {
-        console.error('Invalid token format');
         return null;
       }
 
@@ -134,7 +136,6 @@ const realAuthApi = {
       });
 
       if (!response.data || !response.data.user) {
-        console.error('Invalid response format:', response.data);
         return null;
       }
 
@@ -142,7 +143,6 @@ const realAuthApi = {
         user: response.data.user
       };
     } catch (error: any) {
-      console.error('Token validation failed:', error.response?.data || error.message);
       localStorage.removeItem('token');
       return null;
     }
@@ -152,8 +152,7 @@ const realAuthApi = {
     try {
       const response = await axiosInstance.post('/user/forgot-password', { email });
       return response.data;
-    } catch (error: any) {
-      console.error("Forgot password error:", error.response?.data || error.message);
+    } catch {
       return { message: 'If an account with that email exists, a password reset link has been sent.' };
     }
   },
@@ -325,7 +324,6 @@ const realEventsApi: EventsApi = {
       const response = await axiosInstance.get(`/events/${eventId}`);
       return response.data;
     } catch (error: any) {
-      console.error(`Error fetching event with ID ${eventId}:`, error);
       throw new Error(getApiErrorMessage(error, 'Failed to fetch event details'));
     }
   },
@@ -450,7 +448,6 @@ const realEventsApi: EventsApi = {
       const response = await axiosInstance.get(`/events/${eventId}/waitlist`);
       return { data: response.data };
     } catch (error: any) {
-      console.error(`Error fetching waitlist for event ${eventId}:`, error);
       throw new Error(getApiErrorMessage(error, 'Failed to fetch waitlist for this event.'));
     }
   },

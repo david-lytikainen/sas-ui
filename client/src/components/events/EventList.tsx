@@ -6,7 +6,7 @@ import { Event as EventIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon,
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import authApi, { eventsApi } from '../../services/api';
-import { Event } from '../../types/event';
+import type { Event, EventStatus } from '../../types/event';
 import CreateEvent from './CreateEvent';
 import EventTimer from './EventTimer';
 import MySchedule from './MySchedule';
@@ -25,8 +25,10 @@ const toLocalDateTimeInputValue = (isoDateTime: string) => {
   return offsetDate.toISOString().slice(0, 16);
 };
 
+const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms));
+
 const EventList = () => {
-  const { refreshEvents, isRegisteredForEvent, filteredEvents } = useEvents();
+  const { refreshEvents, isRegisteredForEvent, filteredEvents, userRegisteredEvents } = useEvents();
   const { user, isAdmin, isOrganizer, refreshUser } = useAuth();
   const location = useLocation();
   const theme = useTheme();
@@ -76,9 +78,10 @@ const EventList = () => {
   const [viewWaitlistDialogOpen, setViewWaitlistDialogOpen] = useState<boolean>(false);
   const [selectedEventForWaitlistUsers, setSelectedEventForWaitlistUsers] = useState<Event | null>(null);
   const [currentRounds, setCurrentRounds] = useState<Record<number, number>>({});
+  const handledCheckoutReturnRef = useRef<string | null>(null);
 
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
-  const hasStartedStripeSetup = !!user?.stripe_connected_account_id;
+  const hasStartedStripeSetup = !!user?.has_started_stripe_setup;
   const organizerSetupComplete = !!user?.stripe_connect_onboarding_complete;
   const canCreateEvents = !!user && (isAdmin() || (isOrganizer() && organizerSetupComplete));
 
@@ -113,6 +116,37 @@ const EventList = () => {
     syncOrganizerState();
   }, [activeView, user, isAdmin, refreshUser, searchParams, location.pathname, location.search]);
 
+  useEffect(() => {
+    let isActive = true;
+
+    const syncCheckoutReturn = async () => {
+      if (!user || searchParams.get('checkout') !== 'success') return;
+      if (handledCheckoutReturnRef.current === location.search) return;
+
+      handledCheckoutReturnRef.current = location.search;
+
+      for (let attempt = 0; attempt < 6 && isActive; attempt += 1) {
+        await refreshEvents();
+        if (attempt < 5) {
+          await wait(1500);
+        }
+      }
+
+      if (!isActive) return;
+
+      const nextParams = new URLSearchParams(location.search);
+      nextParams.delete('checkout');
+      nextParams.delete('session_id');
+      const nextSearch = nextParams.toString();
+      window.history.replaceState({}, '', `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}`);
+    };
+
+    syncCheckoutReturn();
+    return () => {
+      isActive = false;
+    };
+  }, [location.pathname, location.search, refreshEvents, searchParams, user]);
+
   const formatUTCToLocal = (utcDateString: string, includeTime: boolean = true) => {
     try {
       const date = new Date(utcDateString);
@@ -128,8 +162,7 @@ const EventList = () => {
       };
 
       return date.toLocaleString(undefined, options);
-    } catch (error) {
-      console.error('Error formatting date:', error);
+    } catch {
       return 'Invalid date';
     }
   };
@@ -180,14 +213,12 @@ const EventList = () => {
         try {
           await refreshEvents();
         } catch (refreshError: any) {
-          console.error(`Registration for event ${successfullyRegisteredEventId} was successful, but failed to refresh the events list:`, refreshError);
           const backendMsg = refreshError.response?.data?.message || refreshError.response?.data?.error; // Renamed to avoid conflict
           setErrorMessage(
             `You've been registered for the event, but we couldn't update the list automatically. Error: ${backendMsg || refreshError.message}. Please try refreshing the page.`
           );
         }
       } catch (registrationError: any) {
-        console.error('Failed to register for event:', registrationError);
         const backendError = registrationError.response?.data?.error;
         const backendMsg = registrationError.response?.data?.message;
         const waitlistAvailable = registrationError.response?.data?.waitlist_available === true;
@@ -221,7 +252,6 @@ const EventList = () => {
         alert(`Successfully joined the waitlist for "${eventForWaitlist.name}"! If a spot opens up, we will email you so you can come back and sign up.`);
         await refreshEvents(); // Refresh events to show waitlist status if applicable
       } catch (waitlistError: any) {
-        console.error('Failed to join waitlist:', waitlistError);
         const backendError = waitlistError.response?.data?.error;
         const backendMessage = waitlistError.response?.data?.message;
         setErrorMessage(backendError || backendMessage || waitlistError.message || 'An error occurred while trying to join the waitlist.');
@@ -282,6 +312,8 @@ const EventList = () => {
     if (!user) return false;
     return isRegisteredForEvent(event.id) || Number(event.creator_id) === Number(user.id);
   };
+
+  const userHasAnyRegistrations = userRegisteredEvents.length > 0;
 
   const baseEvents = activeView === 'my' ? sortedEvents.filter(isMyEvent) : sortedEvents;
   const visibleEvents = baseEvents.filter(event => !isPastEvent(event));
@@ -808,7 +840,7 @@ const EventList = () => {
               </Box>
             )}
 
-            {(activeView !== 'my' || pastEvents.length > 0) && (
+            {(activeView !== 'my' || pastEvents.length > 0 || userHasAnyRegistrations) && (
               <Box sx={{ mt: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 1, overflow: 'hidden' }}>
                 <Box
                   sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}

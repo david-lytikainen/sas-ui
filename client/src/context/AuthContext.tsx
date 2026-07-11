@@ -96,8 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.removeItem('token');
           setUser(null);
         }
-      } catch (err) {
-        console.error('Token validation failed:', err);
+      } catch {
         localStorage.removeItem('token');
         setUser(null);
       } finally {
