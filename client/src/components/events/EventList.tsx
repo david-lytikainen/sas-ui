@@ -1,21 +1,29 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Container, Box, Typography, Button, Card, CardContent, CardActions, Grid, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Alert, useMediaQuery, useTheme, TextField, Collapse, Select, MenuItem, InputLabel, FormControl, DialogContentText, Divider } from '@mui/material';
-import { Event as EventIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon, AttachMoney as AttachMoneyIcon, CheckCircle as CheckInIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Settings as SettingsIcon, List as ListIcon, PlayArrow as StartIcon, Stop as EndIcon, Visibility as ViewIcon, Edit as EditIcon, Delete as DeleteIcon, People as PeopleIcon, CheckBox as CheckBoxIcon } from '@mui/icons-material';
+import { Container, Box, Typography, Button, Card, CardContent, CardActions, Grid, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Alert, useMediaQuery, useTheme, TextField, Collapse, DialogContentText, Divider } from '@mui/material';
+import { Checkbox, FormControlLabel } from '@mui/material';
+import { Event as EventIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon, AttachMoney as AttachMoneyIcon, CheckCircle as CheckInIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Settings as SettingsIcon, List as ListIcon, PlayArrow as StartIcon, Visibility as ViewIcon, Edit as EditIcon, Delete as DeleteIcon, People as PeopleIcon } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import authApi, { eventsApi } from '../../services/api';
-import { Event, EventStatus } from '../../types/event';
+import { Event } from '../../types/event';
 import CreateEvent from './CreateEvent';
 import EventTimer from './EventTimer';
 import MySchedule from './MySchedule';
 import ViewAllSchedules from './ViewAllSchedules';
-import ViewPins from './ViewPins';
 import ViewRegisteredUsers from './ViewRegisteredUsers';
 import ViewWaitlistedUsers from './ViewWaitlistedUsers';
 import ConfirmDialog from '../common/ConfirmDialog';
 
 type EventView = 'all' | 'my' | 'create';
+
+const toLocalDateTimeInputValue = (isoDateTime: string) => {
+  const date = new Date(isoDateTime);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return offsetDate.toISOString().slice(0, 16);
+};
 
 const EventList = () => {
   const { refreshEvents, isRegisteredForEvent, filteredEvents } = useEvents();
@@ -31,19 +39,10 @@ const EventList = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelEventId, setCancelEventId] = useState<string | null>(null);
-
-  const [globalCheckInDialogOpen, setGlobalCheckInDialogOpen] = useState(false);
-  const [selectedEventForCheckIn, setSelectedEventForCheckIn] = useState<Event | null>(null);
-  const [checkInPin, setCheckInPin] = useState('');
-  const [checkInError, setCheckInError] = useState<string | null>(null);
   const [expandedEventControls, setExpandedEventControls] = useState<number | null>(null);
-  const [viewPinsDialogOpen, setViewPinsDialogOpen] = useState(false);
-  const [selectedEventForPins, setSelectedEventForPins] = useState<Event | null>(null);
   const [viewRegisteredUsersDialogOpen, setViewRegisteredUsersDialogOpen] = useState(false);
   const [selectedEventForRegisteredUsers, setSelectedEventForRegisteredUsers] = useState<Event | null>(null);
 
-  const [endEventDialogOpen, setEndEventDialogOpen] = useState(false);
-  const [selectedEventForEnding, setSelectedEventForEnding] = useState<Event | null>(null);
   const [startEventDialogOpen, setStartEventDialogOpen] = useState(false);
   const [selectedEventForStarting, setSelectedEventForStarting] = useState<Event | null>(null);
 
@@ -64,7 +63,7 @@ const EventList = () => {
     address: '',
     max_capacity: '0',
     price_per_person: '0',
-    status: 'Registration Open' as EventStatus,
+    enforce_gender_balance: true,
   });
 
   const [deleteEventConfirmOpen, setDeleteEventConfirmOpen] = useState<boolean>(false);
@@ -219,8 +218,7 @@ const EventList = () => {
         setWaitlistDialogOpen(false);
         setEventForWaitlist(null);
         setErrorMessage(null); // Clear previous error messages
-        // Show a success message (e.g., using a Snackbar or a simple alert for now)
-        alert(`Successfully joined the waitlist for "${eventForWaitlist.name}"! You will be notified if a spot opens up.`);
+        alert(`Successfully joined the waitlist for "${eventForWaitlist.name}"! If a spot opens up, we will email you so you can come back and sign up.`);
         await refreshEvents(); // Refresh events to show waitlist status if applicable
       } catch (waitlistError: any) {
         console.error('Failed to join waitlist:', waitlistError);
@@ -256,31 +254,6 @@ const EventList = () => {
     }
   };
 
-
-  const handleGlobalCheckInConfirm = async () => {
-    if (!selectedEventForCheckIn) {
-      setCheckInError('Please select an event');
-      return;
-    }
-
-    if (!checkInPin) {
-      setCheckInError('Please enter your check-in PIN');
-      return;
-    }
-
-    try {
-      await eventsApi.checkIn(selectedEventForCheckIn.id.toString(), checkInPin);
-      setGlobalCheckInDialogOpen(false);
-      setSelectedEventForCheckIn(null);
-      setCheckInPin('');
-      // Refresh events to update check-in status
-      await refreshEvents();
-    } catch (error: any) {
-      // Extract error message from API response
-      const errorMsg = error.response?.data?.error || error.message || 'Failed to check in to the event';
-      setCheckInError(errorMsg);
-    }
-  };
 
   const sortedEvents = [...filteredEvents].sort((a, b) => {
     const statusOrder: Record<EventStatus, number> = {
@@ -318,12 +291,6 @@ const EventList = () => {
     const isUserRegistered = isRegisteredForEvent(event.id);
     const registrationStatus = event.registration?.status;
     if (isPastEvent(event)) return null;
-    const openCheckInDialog = () => {
-      setSelectedEventForCheckIn(event);
-      setCheckInPin('');
-      setCheckInError(null);
-      setGlobalCheckInDialogOpen(true);
-    };
 
     // Handle Waitlisted status first
     if (registrationStatus === 'Waitlisted') {
@@ -344,9 +311,7 @@ const EventList = () => {
           {registrationStatus === 'Checked In' ? (
             <Chip label="Checked In" color="success" icon={<CheckInIcon />} size="small" />
           ) : (
-            <Button size="small" variant="outlined" color="primary" onClick={openCheckInDialog} startIcon={<CheckInIcon />}>
-              Check In
-            </Button>
+            <Chip label="Registered" color="primary" size="small" />
           )}
           {registrationStatus !== 'Checked In' && (
             <Button size="small" variant="outlined" color="error" onClick={() => handleCancelClick(event.id)} startIcon={<CancelIcon />}>
@@ -430,21 +395,6 @@ const EventList = () => {
               variant="outlined"
               size="small"
               color="primary"
-              startIcon={<ViewIcon />}
-              onClick={() => {
-                setSelectedEventForPins(event);
-                setViewPinsDialogOpen(true);
-              }}
-              fullWidth
-              sx={{ borderRadius: 1 }}
-            >
-              View Pins
-            </Button>
-
-            <Button
-              variant="outlined"
-              size="small"
-              color="primary"
               startIcon={<ListIcon />}
               onClick={() => {
                 setSelectedEventForWaitlistUsers(event);
@@ -484,19 +434,6 @@ const EventList = () => {
               sx={{ borderRadius: 1 }}
             >
               Generate Schedules
-            </Button>
-
-            <Button
-              variant="outlined"
-              size="small"
-              color="primary"
-              startIcon={<EndIcon />}
-              onClick={() => handleEndEventClick(event)}
-              fullWidth
-              disabled={event.status !== 'In Progress'}
-              sx={{ borderRadius: 1 }}
-            >
-              End
             </Button>
 
             <Grid container spacing={1} sx={{ mt: 0.5 }}>
@@ -565,38 +502,16 @@ const EventList = () => {
   };
 
 
-  const handleEndEventClick = (event: Event) => {
-    if (event.status !== 'In Progress') {
-      setErrorMessage('Events can only be ended when they are in progress.');
-      return;
-    }
-
-    setSelectedEventForEnding(event);
-    setEndEventDialogOpen(true);
-  };
-
-  const handleEndEvent = async () => {
-    try {
-      if (!selectedEventForEnding) return;
-
-      await eventsApi.updateEventStatus(selectedEventForEnding.id.toString(), 'Completed');
-      setEndEventDialogOpen(false);
-      setSelectedEventForEnding(null);
-      await refreshEvents();
-    } catch (error: any) {
-      setErrorMessage(error.message || 'Failed to end event');
-    }
-  };
-
   const handleOpenEditEventDialog = (event: Event) => {
     setEventToEdit(event);
     setEditEventForm({
       name: event.name,
       description: event.description,
-      starts_at: event.starts_at ? new Date(new Date(event.starts_at).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '',
+      starts_at: event.starts_at ? toLocalDateTimeInputValue(event.starts_at) : '',
       address: event.address,
       max_capacity: event.max_capacity.toString(),
       price_per_person: event.price_per_person.toString(),
+      enforce_gender_balance: event.enforce_gender_balance ?? true,
       status: event.status,
         });
     setEditEventDialogOpen(true);
@@ -739,7 +654,7 @@ const EventList = () => {
           </Box>
           )}
 
-        {(event.status === 'In Progress' && (isAdmin() || event.registration)) && (
+        {(event.status === 'In Progress' && (canManageEvent(event) || event.registration)) && (
           <Box sx={{ mb: { xs: 1, sm: 3 } }}>
             <Divider sx={{ mb: { xs: 0.5, sm: 2 } }} />
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -942,62 +857,6 @@ const EventList = () => {
           : 'Are you sure you want to cancel your registration for this event?'}
       </ConfirmDialog>
 
-      {/* Global Check-in Dialog (now per-event) */}
-      <Dialog open={globalCheckInDialogOpen} onClose={() => setGlobalCheckInDialogOpen(false)}>
-        <DialogTitle>Event Check-In</DialogTitle>
-        <DialogContent>
-          {selectedEventForCheckIn && (
-            <>
-              <Typography variant="subtitle2" gutterBottom>
-                {selectedEventForCheckIn.name}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                {formatDate(selectedEventForCheckIn.starts_at)}
-              </Typography>
-            </>
-          )}
-          {checkInError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {checkInError}
-            </Alert>
-          )}
-          <Box>
-            <Typography variant="subtitle2" gutterBottom>
-              Enter the 4-digit PIN given to you by an admin
-            </Typography>
-            <TextField
-              sx={{ mt: 0, mb: 0 }}
-              label="PIN"
-              type="password"
-              value={checkInPin}
-              onChange={(e) => setCheckInPin(e.target.value)}
-              inputProps={{ maxLength: 4, pattern: '[0-9]*' }}
-              fullWidth
-              margin="dense"
-              disabled={!selectedEventForCheckIn}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setGlobalCheckInDialogOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleGlobalCheckInConfirm}
-            color="primary"
-            variant="contained"
-            disabled={!selectedEventForCheckIn || !checkInPin || checkInPin.length !== 4}
-            startIcon={<CheckBoxIcon />}
-          >
-            Check In
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <ViewPins
-        open={viewPinsDialogOpen}
-        event={selectedEventForPins}
-        onClose={() => setViewPinsDialogOpen(false)}
-      />
-
       <ViewRegisteredUsers
         open={viewRegisteredUsersDialogOpen}
         event={selectedEventForRegisteredUsers}
@@ -1067,18 +926,6 @@ const EventList = () => {
         </Typography>
       </ConfirmDialog>
 
-
-      <ConfirmDialog
-        open={endEventDialogOpen}
-        title="End Event"
-        confirmLabel="Yes, End Event"
-        confirmColor="error"
-        onCancel={() => setEndEventDialogOpen(false)}
-        onConfirm={handleEndEvent}
-      >
-        Are you sure you want to end "{selectedEventForEnding?.name}"? Attendees will no longer be able to select Yes or No and all blank entries will be treated as No.
-      </ConfirmDialog>
-
       <ViewAllSchedules
         open={viewAllSchedulesDialogOpen}
         event={selectedEventForAllSchedules}
@@ -1140,6 +987,20 @@ const EventList = () => {
                 margin="dense"
               />
             </Grid>
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={(
+                  <Checkbox
+                    checked={Boolean(editEventForm.enforce_gender_balance)}
+                    onChange={(e) => setEditEventForm(prev => ({ ...prev, enforce_gender_balance: e.target.checked }))}
+                  />
+                )}
+                label="Enforce 60/40 gender balance"
+              />
+              <Typography variant="body2" color="text.secondary" sx={{ ml: 4.5, mt: -0.5 }}>
+                Keeps registrations more balanced by pausing one gender once it reaches about 60% of the event.
+              </Typography>
+            </Grid>
             <Grid item xs={6} sm={6}>
               <TextField
                 label="Max Capacity"
@@ -1165,23 +1026,6 @@ const EventList = () => {
                 size={isMobile ? "small" : "medium"}
                 margin="dense"
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth size={isMobile ? "small" : "medium"} margin="dense">
-                <InputLabel id="edit-event-status-label">Status</InputLabel>
-                <Select
-                  labelId="edit-event-status-label"
-                  name="status"
-                  value={editEventForm.status || 'Registration Open'}
-                  label="Status"
-                  onChange={(e) => setEditEventForm(prev => ({ ...prev, status: e.target.value as EventStatus }))}
-                >
-                  <MenuItem value="Registration Open">Registration Open</MenuItem>
-                  <MenuItem value="In Progress">In Progress</MenuItem>
-                  <MenuItem value="Completed">Completed</MenuItem>
-                  <MenuItem value="Cancelled">Cancelled</MenuItem>
-                </Select>
-              </FormControl>
             </Grid>
           </Grid>
         </DialogContent>

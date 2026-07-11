@@ -19,6 +19,7 @@ import { ColorModeContext } from './context/ColorModeContext';
 import AnimatedWrapper from './components/common/AnimatedWrapper';
 import PrivacyPolicy from './components/legal/PrivacyPolicy';
 import LandingPage from './components/landing/LandingPage';
+import ProfilePage from './components/profile/ProfilePage';
 import Footer from './components/common/Footer'; // Assuming you have/want a global footer
 import SplashScreen from './components/common/SplashScreen';
 import { SplashProvider, useSplash } from './context/SplashContext';
@@ -254,6 +255,16 @@ const ProtectedRoutes = () => {
           <PrivateRoute>
             <AnimatedWrapper>
               <EventList />
+            </AnimatedWrapper>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <PrivateRoute>
+            <AnimatedWrapper>
+              <ProfilePage />
             </AnimatedWrapper>
           </PrivateRoute>
         }

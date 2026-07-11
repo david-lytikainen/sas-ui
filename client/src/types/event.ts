@@ -9,12 +9,12 @@ export interface Event {
   address: string;
   max_capacity: string;
   status: EventStatus;
+  enforce_gender_balance?: boolean;
   price_per_person: string;
   registration_deadline: string;
   registered_attendee_count?: number;
   registration?: {
     status: string;
-    pin?: string;
     registration_date?: string;
     check_in_date?: string;
   };

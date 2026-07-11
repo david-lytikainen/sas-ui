@@ -5,7 +5,6 @@ import type { ChangeEvent } from 'react';
 import { Event } from '../../types/event';
 import { eventsApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import ConfirmDialog from '../common/ConfirmDialog';
 
 interface ViewWaitlistedUsersProps {
   open: boolean;
@@ -23,13 +22,20 @@ const ViewWaitlistedUsers = ({
   const [filteredWaitlistedUsers, setFilteredWaitlistedUsers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [confirmMoveOpen, setConfirmMoveOpen] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
   const canManageUsers = isAdmin() || (isOrganizer() && !!event && Number(event.creator_id) === Number(user?.id));
 
   const formatUTCToLocal = (utcDateString: string, includeTime: boolean = true) => {
     try {
+      if (!includeTime && /^\d{4}-\d{2}-\d{2}$/.test(utcDateString)) {
+        const [year, month, day] = utcDateString.split('-').map(Number);
+        return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+      }
+
       const date = new Date(utcDateString);
       if (isNaN(date.getTime())) return 'Invalid date';
 
@@ -56,9 +62,9 @@ const ViewWaitlistedUsers = ({
 
         const response = await eventsApi.getEventWaitlist(event.id.toString());
         const sortedData = [...response.data].sort((a, b) => {
-          if (!a.waitlisted_at) return 1;
-          if (!b.waitlisted_at) return -1;
-          return new Date(b.waitlisted_at).getTime() - new Date(a.waitlisted_at).getTime();
+          if (!a.waitlisted_at) return -1;
+          if (!b.waitlisted_at) return 1;
+          return new Date(a.waitlisted_at).getTime() - new Date(b.waitlisted_at).getTime();
         });
 
         setWaitlistedUsers(sortedData);
@@ -70,13 +76,6 @@ const ViewWaitlistedUsers = ({
 
     fetchWaitlistedUsers();
   }, [open, event]);
-
-  useEffect(() => {
-    if (!open) {
-      setConfirmMoveOpen(false);
-      setSelectedUserId(null);
-    }
-  }, [open]);
 
   const handleSearchChange = (searchEvent: ChangeEvent<HTMLInputElement>) => {
     const value = searchEvent.target.value;
@@ -101,34 +100,6 @@ const ViewWaitlistedUsers = ({
     });
 
     setFilteredWaitlistedUsers(filtered);
-  };
-
-  const handleMoveToRegistered = async (userId: number) => {
-    if (!event) {
-      setErrorMessage('No event selected.');
-      return;
-    }
-
-    try {
-      await eventsApi.moveWaitlistUserToRegistered(event.id.toString(), userId.toString());
-      setWaitlistedUsers(prev => prev.filter(user => user.id !== userId));
-      setFilteredWaitlistedUsers(prev => prev.filter(user => user.id !== userId));
-      setErrorMessage(null);
-    } catch (error: any) {
-      setErrorMessage(error.message || 'Failed to move waitlist user to registered.');
-    }
-  };
-
-  const handleOpenMoveConfirm = (userId: number) => {
-    setSelectedUserId(userId);
-    setConfirmMoveOpen(true);
-  };
-
-  const handleConfirmMove = async () => {
-    if (!selectedUserId) return;
-    await handleMoveToRegistered(selectedUserId);
-    setConfirmMoveOpen(false);
-    setSelectedUserId(null);
   };
 
   const handleExport = () => {
@@ -193,6 +164,9 @@ const ViewWaitlistedUsers = ({
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, px: { xs: 1, sm: 0 } }}>
               Showing {filteredWaitlistedUsers.length} of {waitlistedUsers.length} users on waitlist
             </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, px: { xs: 1, sm: 0 } }}>
+              Waitlisted users stay on the waitlist until they return and sign up themselves after a spot opens.
+            </Typography>
             <TableContainer component={Paper} sx={{ maxHeight: 500, overflowX: 'auto' }}>
               <Table stickyHeader size="small">
                 <TableHead>
@@ -204,9 +178,6 @@ const ViewWaitlistedUsers = ({
                     <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Birthday</strong></TableCell>
                     <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Church</strong></TableCell>
                     <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Waitlisted At</strong></TableCell>
-                    {canManageUsers && (
-                      <TableCell sx={{ width: 150, minWidth: 140, textAlign: 'center' }}><strong>Actions</strong></TableCell>
-                    )}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -219,19 +190,6 @@ const ViewWaitlistedUsers = ({
                       <TableCell>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</TableCell>
                       <TableCell>{user.church || 'Other'}</TableCell>
                       <TableCell>{user.waitlisted_at ? formatUTCToLocal(user.waitlisted_at, true) : 'N/A'}</TableCell>
-                      {canManageUsers && (
-                        <TableCell sx={{ textAlign: 'center' }}>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            size="small"
-                            onClick={() => handleOpenMoveConfirm(user.id)}
-                            sx={{ minWidth: 0, px: 1.25, py: 0.5, fontSize: '0.75rem', whiteSpace: 'nowrap' }}
-                          >
-                            Move to Registered
-                          </Button>
-                        </TableCell>
-                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -254,20 +212,6 @@ const ViewWaitlistedUsers = ({
         </Box>
         <Button onClick={onClose}>Close</Button>
       </DialogActions>
-
-      <ConfirmDialog
-        open={confirmMoveOpen}
-        title="Are you sure?"
-        confirmLabel="Yes"
-        cancelLabel="NO"
-        onCancel={() => {
-          setConfirmMoveOpen(false);
-          setSelectedUserId(null);
-        }}
-        onConfirm={handleConfirmMove}
-      >
-        The user will be added to the list of Registered attendees. This cannot be undone.
-      </ConfirmDialog>
     </Dialog>
   );
 };

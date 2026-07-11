@@ -1,4 +1,4 @@
-import { Box, Button, Card, CardActions, CardContent, Grid, InputAdornment, TextField, useMediaQuery, useTheme } from '@mui/material';
+import { Box, Button, Card, CardActions, CardContent, Checkbox, FormControlLabel, Grid, InputAdornment, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { useEvents } from '../../context/EventContext';
@@ -17,6 +17,7 @@ const initialCreateForm = {
   address: '',
   max_capacity: '',
   price_per_person: '',
+  enforce_gender_balance: true,
 };
 
 const CreateEvent = ({ createdEventCount, onCreated, onError }: CreateEventProps) => {
@@ -48,6 +49,7 @@ const CreateEvent = ({ createdEventCount, onCreated, onError }: CreateEventProps
         address: createForm.address,
         max_capacity: createForm.max_capacity,
         price_per_person: createForm.price_per_person,
+        enforce_gender_balance: createForm.enforce_gender_balance,
         status: 'Registration Open' as EventStatus,
       });
 
@@ -61,6 +63,11 @@ const CreateEvent = ({ createdEventCount, onCreated, onError }: CreateEventProps
   const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = event.target;
     setCreateForm(prevForm => ({ ...prevForm, [name]: value }));
+  };
+
+  const handleCheckboxChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = event.target;
+    setCreateForm(prevForm => ({ ...prevForm, [name]: checked }));
   };
 
   const handleDateChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -199,6 +206,21 @@ const CreateEvent = ({ createdEventCount, onCreated, onError }: CreateEventProps
               size={isMobile ? 'small' : 'medium'}
               margin="dense"
             />
+          </Grid>
+          <Grid item xs={12}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={createForm.enforce_gender_balance}
+                  onChange={handleCheckboxChange}
+                  name="enforce_gender_balance"
+                />
+              }
+              label="Enforce 60/40 gender balance"
+            />
+            <Typography variant="body2" color="text.secondary" sx={{ ml: 4.5, mt: -0.5 }}>
+              Keeps registrations more balanced by pausing one gender once it reaches about 60% of the event.
+            </Typography>
           </Grid>
         </Grid>
       </CardContent>

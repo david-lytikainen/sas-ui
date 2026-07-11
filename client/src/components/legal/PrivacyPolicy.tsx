@@ -9,7 +9,7 @@ const PrivacyPolicy = () => {
           Privacy Policy for Saved & Single
         </Typography>
         <Typography variant="subtitle2" align="center" color="text.secondary" sx={{ mb: 3 }}>
-          Last updated: May 27, 2025 
+          Last updated: July 5, 2026
         </Typography>
 
         <Box sx={{ my: 2, borderBottom: 1, borderColor: 'divider' }} />
@@ -38,7 +38,7 @@ const PrivacyPolicy = () => {
             </li>
             <li>
               <Typography variant="body1">
-                <strong>Birthday:</strong> Provided at sign-up. Needed to verify you meet age requirements and to show age-based matches (if applicable). We verify you are between 20 and 40 years old for our specific service.
+                <strong>Birthday:</strong> Provided at sign-up. Needed to verify you meet age requirements and to support age-aware matching when applicable. Users must be at least 18 years old to use the service.
               </Typography>
             </li>
             <li>
@@ -48,7 +48,7 @@ const PrivacyPolicy = () => {
             </li>
             <li>
               <Typography variant="body1">
-                <strong>Phone number:</strong> Provided at sign-up. Used for account verification, and potentially for SMS alerts if you opt-in.
+                <strong>Phone number:</strong> Provided at sign-up. Used as contact information for your account and event-related coordination.
               </Typography>
             </li>
             <li>
@@ -56,9 +56,24 @@ const PrivacyPolicy = () => {
                 <strong>Gender:</strong> Provided at sign-up. Used to facilitate matching within our events.
               </Typography>
             </li>
+            <li>
+              <Typography variant="body1">
+                <strong>Church and denomination details:</strong> Provided at sign-up or in your profile. Used for profile display and event participation context.
+              </Typography>
+            </li>
+            <li>
+              <Typography variant="body1">
+                <strong>Event and registration data:</strong> We store the events you create or join, your registration status, check-in status, schedule participation, and your speed-dating selections and matches for completed events.
+              </Typography>
+            </li>
+            <li>
+              <Typography variant="body1">
+                <strong>Payment and payout records:</strong> For paid events, Stripe processes payment details. We store limited payment-related records such as checkout status, amounts, refunds, and connected-account onboarding state.
+              </Typography>
+            </li>
           </ul>
           <Typography variant="body1" paragraph>
-            We do not collect profile photos or direct messages between users.
+            We do not collect profile photos or in-app direct messages between users.
           </Typography>
         </Box>
 
@@ -68,13 +83,13 @@ const PrivacyPolicy = () => {
           </Typography>
           <Typography variant="body1" component="div" paragraph>
             <ul>
-              <li>Traffic between your device and our servers uses TLS 1.3.</li>
-              <li>Personal data fields are stored using AES-256 encryption at rest.</li>
-              <li>Passwords are salted and hashed with bcrypt.</li>
+              <li>Passwords are stored as salted password hashes rather than plain text.</li>
+              <li>Account access is protected by server-side authentication controls.</li>
+              <li>We limit access to production systems to the extent reasonably necessary to operate the service.</li>
             </ul>
           </Typography>
           <Typography variant="body1" paragraph>
-            No system is perfectly secure. By using Saved & Single you accept this risk.
+            No system is perfectly secure, and we cannot guarantee absolute security.
           </Typography>
         </Box>
 
@@ -93,7 +108,7 @@ const PrivacyPolicy = () => {
             </li>
             <li>
               <Typography variant="body1">
-                Contact you – service updates, match notifications, and other important information.
+                Contact you – password resets, registration confirmations, event reminders, waitlist spot-open notices, and other important service information.
               </Typography>
             </li>
             <li>
@@ -103,7 +118,7 @@ const PrivacyPolicy = () => {
             </li>
             <li>
               <Typography variant="body1">
-                Other purposes you agree to by signing up – research about dating trends (using aggregated or anonymized data), improving our product, and limited marketing of Saved & Single or its future features. Any external reports use aggregated or anonymized data, never your direct contact details.
+                Operate payments and payouts – support paid event registration, Stripe-connected organizer payouts, refund handling, and payment troubleshooting.
               </Typography>
             </li>
           </ol>
@@ -119,12 +134,12 @@ const PrivacyPolicy = () => {
           <ul>
             <li>
               <Typography variant="body1">
-                <strong>Hosting and email service providers:</strong> To run the app and send messages to you.
+                <strong>Hosting, infrastructure, and email service providers:</strong> To run the app and send messages to you.
               </Typography>
             </li>
             <li>
               <Typography variant="body1">
-                <strong>Researchers or partners (anonymized data only):</strong> To study aggregated trends and improve the service.
+                <strong>Stripe and related payment providers:</strong> To process attendee payments, refunds, and organizer payouts.
               </Typography>
             </li>
             <li>
@@ -150,7 +165,7 @@ const PrivacyPolicy = () => {
           <ul>
             <li>
               <Typography variant="body1">
-                <strong>Active accounts:</strong> Until you request to delete your account.
+                <strong>Active accounts and event records:</strong> We keep them while your account remains active and as reasonably needed to operate the service, support organizers and attendees, maintain payment records, and resolve disputes or abuse issues.
               </Typography>
             </li>
           </ul>
@@ -161,7 +176,7 @@ const PrivacyPolicy = () => {
             7. Your choices and rights
           </Typography>
           <Typography variant="body1" paragraph>
-            Depending on where you live, you may:
+            Depending on where you live and the laws that apply to you, you may:
           </Typography>
           <ul>
             <li>
@@ -179,12 +194,9 @@ const PrivacyPolicy = () => {
             <li>
               <Typography variant="body1">Receive your data in a portable file.</Typography>
             </li>
-            <li>
-              <Typography variant="body1">Complain to a data-protection authority.</Typography>
-            </li>
           </ul>
           <Typography variant="body1" paragraph>
-            Write to savedandsingle.events@gmail.com and we'll respond within 30 days.
+            Write to savedandsingle.events@gmail.com and we will respond within a reasonable time.
           </Typography>
         </Box>
 
@@ -193,7 +205,7 @@ const PrivacyPolicy = () => {
             8. Children and Age Restrictions
           </Typography>
           <Typography variant="body1" paragraph>
-            You must be at least 20 years old and no older than 40 years old to use Saved & Single. We may delete any account that violates our terms.
+            You must be at least 18 years old to use Saved & Single. We may delete any account that violates our terms.
           </Typography>
         </Box>
 
@@ -202,7 +214,7 @@ const PrivacyPolicy = () => {
             9. Changes to this policy
           </Typography>
           <Typography variant="body1" paragraph>
-            If we make significant changes, we'll email you or post an in-app notice at least 30 days before they take effect. Using the service after that date means you accept the new policy.
+            If we make significant changes, we may update this page, email you, or post an in-app notice. Your continued use of the service after the updated policy is posted means you accept the revised policy.
           </Typography>
         </Box>
 

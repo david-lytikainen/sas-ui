@@ -1,16 +1,14 @@
 import { useState } from 'react';
-import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
-import { AppBar, Toolbar, Typography, Button, Box, Container, IconButton, useTheme, useMediaQuery } from '@mui/material';
+import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { AppBar, Toolbar, Typography, Button, Box, Container, useTheme, useMediaQuery } from '@mui/material';
 import { animated, useSpring, useTrail } from '@react-spring/web';
 import { useAuth } from '../context/AuthContext';
-import { ExitToApp as ExitIcon } from '@mui/icons-material';
 
 const AnimatedBox = animated(Box);
 
 const Navigation = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -48,11 +46,6 @@ const Navigation = () => {
     to: { opacity: 1, y: 0 },
     config: { tension: 280, friction: 20 },
   });
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login', { replace: true });
-  };
 
   return (
     <AppBar 
@@ -149,25 +142,34 @@ const Navigation = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {user ? (
               <Box sx={{ display: 'flex', alignItems: 'center'}}>
-                <Typography
-                  variant="body1"
+                <Button
+                  component={RouterLink}
+                  to="/profile"
+                  color="inherit"
                   sx={{
                     fontWeight: 500,
-                    color: 'inherit',
                     fontSize: '0.95rem',
-                    mr: 0
+                    mr: 0,
+                    textTransform: 'none',
+                    minWidth: 'auto',
+                    px: 1,
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    },
                   }}
-                  noWrap
                 >
-                  Hi, {user.first_name}
-                </Typography>
-                {/* TODO remove */}
-                <IconButton
-                  onClick={handleLogout}
-                  sx={{ color: 'inherit' }}
-                >
-                  <ExitIcon />
-                </IconButton> 
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      fontWeight: 500,
+                      color: 'inherit',
+                      fontSize: '0.95rem',
+                    }}
+                    noWrap
+                  >
+                    Hi, {user.first_name}
+                  </Typography>
+                </Button>
               </Box>
             ) : (
               <Button

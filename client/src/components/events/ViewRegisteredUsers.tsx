@@ -20,7 +20,6 @@ export interface RegisteredUser {
   registration_date: string | null;
   check_in_date: string | null;
   status: string;
-  pin: string;
   church?: string;
 }
 
@@ -35,7 +34,7 @@ const ViewRegisteredUsers = ({
   event,
   onClose,
 }: ViewRegisteredUsersProps) => {
-  const { isAdmin, isOrganizer } = useAuth();
+  const { user, isAdmin, isOrganizer } = useAuth();
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
   const [filteredRegisteredUsers, setFilteredRegisteredUsers] = useState<RegisteredUser[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,12 +42,34 @@ const ViewRegisteredUsers = ({
   const [editFormData, setEditFormData] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [churchOptions, setChurchOptions] = useState<string[]>([]);
+  const [checkingInUserId, setCheckingInUserId] = useState<number | null>(null);
 
-  const canExport = isAdmin();
+  const canExport = isAdmin() || (isOrganizer() && !!event && Number(event.creator_id) === Number(user?.id));
   const canEdit = isAdmin() || isOrganizer();
+
+  const loadRegisteredUsers = async (currentEvent: Event) => {
+    const response = await eventsApi.getEventAttendees(currentEvent.id.toString());
+    const sortedData = [...response.data].sort((a, b) => {
+      if (!a.registration_date) return -1;
+      if (!b.registration_date) return 1;
+      return new Date(b.registration_date).getTime() - new Date(a.registration_date).getTime();
+    });
+
+    setRegisteredUsers(sortedData);
+    setFilteredRegisteredUsers(sortedData);
+  };
 
   const formatUTCToLocal = (utcDateString: string, includeTime: boolean = true) => {
     try {
+      if (!includeTime && /^\d{4}-\d{2}-\d{2}$/.test(utcDateString)) {
+        const [year, month, day] = utcDateString.split('-').map(Number);
+        return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+      }
+
       const date = new Date(utcDateString);
       if (isNaN(date.getTime())) return 'Invalid date';
 
@@ -75,15 +96,7 @@ const ViewRegisteredUsers = ({
         setEditFormData(null);
         setErrorMessage(null);
 
-        const response = await eventsApi.getEventAttendees(event.id.toString());
-        const sortedData = [...response.data].sort((a, b) => {
-          if (!a.registration_date) return -1;
-          if (!b.registration_date) return 1;
-          return new Date(b.registration_date).getTime() - new Date(a.registration_date).getTime();
-        });
-
-        setRegisteredUsers(sortedData);
-        setFilteredRegisteredUsers(sortedData);
+        await loadRegisteredUsers(event);
       } catch (error: any) {
         setErrorMessage(error.message || 'Failed to fetch registered users');
       }
@@ -190,6 +203,24 @@ const ViewRegisteredUsers = ({
     }
   };
 
+  const handleManualCheckIn = async (userId: number) => {
+    if (!event) {
+      setErrorMessage('No event selected');
+      return;
+    }
+
+    try {
+      setCheckingInUserId(userId);
+      await eventsApi.manualCheckInAttendee(event.id.toString(), userId.toString());
+      await loadRegisteredUsers(event);
+      setErrorMessage(null);
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Failed to check in attendee');
+    } finally {
+      setCheckingInUserId(null);
+    }
+  };
+
   const handleExport = () => {
     const usersToExport = searchTerm.trim() ? filteredRegisteredUsers : registeredUsers;
 
@@ -268,7 +299,7 @@ const ViewRegisteredUsers = ({
                     <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Status</strong></TableCell>
                     <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Check-in Time</strong></TableCell>
                     {canEdit && (
-                      <TableCell sx={{ width: 100, minWidth: 90, textAlign: 'center' }}><strong>Actions</strong></TableCell>
+                      <TableCell sx={{ width: 150, minWidth: 140, textAlign: 'center' }}><strong>Actions</strong></TableCell>
                     )}
                   </TableRow>
                 </TableHead>
@@ -333,9 +364,22 @@ const ViewRegisteredUsers = ({
                           <TableCell>{user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'}</TableCell>
                           {canEdit && (
                             <TableCell sx={{ textAlign: 'center' }}>
-                              <IconButton size="small" color="primary" onClick={() => handleStartEditing(user)} title="Edit">
-                                <EditIcon fontSize="small" />
-                              </IconButton>
+                              <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', flexWrap: 'wrap' }}>
+                                {user.status !== 'Checked In' && (
+                                  <Button
+                                    size="small"
+                                    variant="contained"
+                                    onClick={() => handleManualCheckIn(user.id)}
+                                    disabled={checkingInUserId === user.id}
+                                    sx={{ whiteSpace: 'nowrap' }}
+                                  >
+                                    {checkingInUserId === user.id ? 'Checking In...' : 'Check In'}
+                                  </Button>
+                                )}
+                                <IconButton size="small" color="primary" onClick={() => handleStartEditing(user)} title="Edit">
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              </Box>
                             </TableCell>
                           )}
                         </>

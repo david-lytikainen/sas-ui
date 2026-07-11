@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Paper, Slider, Tooltip, Typography, useTheme } from '@mui/material';
-import { Pause, PlayArrow, Settings, SkipNext, Timer as TimerIcon } from '@mui/icons-material';
+import { Alert, Box, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Paper, Slider, Tooltip, Typography, useTheme } from '@mui/material';
+import { Pause, PlayArrow, Settings, SkipNext, SkipPrevious, Timer as TimerIcon } from '@mui/icons-material';
 import { eventsApi } from '../../services/api';
 import { ScheduleItem, Timer } from '../../types/event';
 
@@ -17,16 +17,7 @@ interface EventTimerProps {
 const TIMER_POLL_MS = 5000;
 const DEFAULT_ROUND_DURATION = 210;
 const DEFAULT_BREAK_DURATION = 90;
-const BREAK_MESSAGES = [
-  "Grab a snack! 🍎",
-  "Take a break! 🛋️",
-  "Time to stretch your legs! 🤸‍♂️",
-  "Enjoy a quick rest! 😌",
-  "Refill your drink and relax! 🥤",
-  "Chat with someone new! 💬",
-  "Take a breather, next round soon! 🌬️",
-  "Perfect time for a bathroom break! 🚻",
-];
+const PREVIOUS_ROUND_THRESHOLD_SECONDS = 5;
 
 const formatTime = (seconds: number): string => {
   const safeSeconds = Math.max(0, Math.floor(seconds));
@@ -71,12 +62,22 @@ const getTimerSeconds = (timer: Timer | null): number => {
   return 0;
 };
 
-const getBreakMessage = (currentRound: number): string => {
-  if (currentRound <= 0) return BREAK_MESSAGES[0];
-  return BREAK_MESSAGES[currentRound % BREAK_MESSAGES.length];
+const getElapsedSeconds = (timer: Timer | null): number => {
+  if (!timer) return 0;
+
+  if (timer.is_paused) {
+    if (timer.pause_time_remaining == null) return 0;
+    return Math.max(0, timer.round_duration - timer.pause_time_remaining);
+  }
+
+  if (!timer.round_start_time) return 0;
+
+  const startedAt = new Date(timer.round_start_time).getTime();
+  const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+  return Math.max(0, elapsedSeconds);
 };
 
-const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In Progress', onRoundChange }: EventTimerProps): React.ReactElement | null => {
+const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In Progress', onRoundChange }: EventTimerProps): JSX.Element | null => {
   const theme = useTheme();
   const isEventActive = eventStatus === 'In Progress' || eventStatus === 'Paused';
   const eventIdString = eventId.toString();
@@ -86,6 +87,7 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [newDuration, setNewDuration] = useState(DEFAULT_ROUND_DURATION);
+  const [newBreakDuration, setNewBreakDuration] = useState(DEFAULT_BREAK_DURATION);
   const lastNotifiedRoundRef = useRef<number | null>(null);
   const [userSchedule, setUserSchedule] = useState<ScheduleItem[] | undefined>(undefined);
 
@@ -101,6 +103,22 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
   const isEnded = timerStatus === 'ended';
   const isInactive = timerStatus === 'inactive';
   const isAlmostDone = isActive && timeRemaining <= 10;
+  const adminTitle = isEnded ? 'Finished' : isBreakTime ? 'Break' : `Round ${currentRound || '-'}`;
+  const mainTime = isEnded ? '--:--' : isActive || isPaused || isBreakTime ? formatTime(timeRemaining) : '--:--';
+  const startLabel = isBreakTime ? `Start Round ${currentRound + 1}` : 'Start Round';
+  const attendeeMessage = isEnded
+    ? 'Event Finished - Save your selections!'
+    : isInactive
+      ? 'Event will be starting shortly!'
+      : isPaused && currentRoundSchedule
+        ? `Round ${currentRound} paused`
+        : isBreakTime
+          ? `Get to your table for Round ${currentRound + 1}!`
+          : currentRoundSchedule
+            ? `Table ${currentRoundSchedule.table} with ${currentRoundSchedule.partner_name}`
+            : currentRound > 0
+              ? 'You are on break this round'
+              : 'Waiting for round...';
 
   const fetchTimer = useCallback(async () => {
     if (!isEventActive) return;
@@ -180,6 +198,28 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
     runTimerAction(() => eventsApi.endTimerRound(eventIdString));
   };
 
+  const handleBackRound = () => {
+    if (!timer || isEnded) return;
+
+    if (isBreakTime) {
+      runTimerAction(() => eventsApi.startTimerRound(eventIdString, currentRound));
+      return;
+    }
+
+    const elapsedSeconds = getElapsedSeconds(timer);
+    if ((isActive || isPaused) && elapsedSeconds > PREVIOUS_ROUND_THRESHOLD_SECONDS) {
+      runTimerAction(() => eventsApi.startTimerRound(eventIdString, currentRound || 1));
+      return;
+    }
+
+    if (currentRound > 1) {
+      runTimerAction(() => eventsApi.startTimerRound(eventIdString, currentRound - 1));
+      return;
+    }
+
+    runTimerAction(() => eventsApi.startTimerRound(eventIdString, 1));
+  };
+
   const handlePauseRound = () => {
     if (!isActive) return;
     runTimerAction(() => eventsApi.pauseTimerRound(eventIdString, timeRemaining));
@@ -190,18 +230,38 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
     runTimerAction(() => eventsApi.resumeTimerRound(eventIdString));
   };
 
+  const handlePrimaryControl = () => {
+    if (isActive) {
+      handlePauseRound();
+      return;
+    }
+    if (isPaused) {
+      handleResumeRound();
+      return;
+    }
+    if (isInactive || isBreakTime) {
+      handleStartRound();
+    }
+  };
+
+  const handleForwardControl = () => {
+    if (!isActive) return;
+    handleEndRound();
+  };
+
   const handleUpdateDuration = () => {
-    if (newDuration === roundDuration) {
+    if (newDuration === roundDuration && newBreakDuration === breakDuration) {
       setIsSettingsOpen(false);
       return;
     }
 
-    runTimerAction(() => eventsApi.updateTimerDuration(eventIdString, { round_duration: newDuration }));
+    runTimerAction(() => eventsApi.updateTimerDuration(eventIdString, { round_duration: newDuration, break_duration: newBreakDuration }));
     setIsSettingsOpen(false);
   };
 
   const openSettingsDialog = () => {
     setNewDuration(roundDuration);
+    setNewBreakDuration(breakDuration);
     setIsSettingsOpen(true);
   };
 
@@ -217,36 +277,6 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
     if (!isActive || roundDuration <= 0) return 0;
     return (timeRemaining / roundDuration) * 100;
   }, [isActive, roundDuration, timeRemaining]);
-
-  const getAdminTitle = () => {
-    if (isEnded) return 'Finished';
-    if (isBreakTime) return 'Break';
-    return `Round ${currentRound || '-'}`;
-  };
-
-  const getMainTime = () => {
-    if (isEnded) return '--:--';
-    if (isActive || isPaused || isBreakTime) return formatTime(timeRemaining);
-    return '--:--';
-  };
-
-  const getStartLabel = () => {
-    if (!isBreakTime) return 'Start Round';
-    return `Start Round ${currentRound + 1}`;
-  };
-
-  const getAttendeeMessage = () => {
-    if (isEnded) return 'Event Finished - Save your selections!';
-    if (isInactive) return 'Event will be starting shortly!';
-    if (isPaused && currentRoundSchedule) return `Round ${currentRound} paused`;
-    if (isBreakTime) return `Get to your table for Round ${currentRound + 1}!`;
-    if (currentRoundSchedule) return `Table ${currentRoundSchedule.table} with ${currentRoundSchedule.partner_name}`;
-    if (currentRound > 0) return 'You are on break this round';
-    return 'Waiting for round...';
-  };
-
-
-
   const renderLoading = () => (
     <Box display="flex" justifyContent="center" p={{ xs: 0.25, sm: 0.5 }}>
       <CircularProgress size={16} />
@@ -257,24 +287,22 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
     if (isLoading) return renderLoading();
 
     return (
-      <>
-        <Box sx={{ display: 'flex', alignItems: 'center', minHeight: { xs: '40px', sm: '48px' }, p: { xs: 1.2, sm: 1.5 }, my: 1, borderRadius: '4px', bgcolor: theme.palette.background.paper, border: `1px solid ${panelColors.border}`, boxShadow: '0px 1px 2px rgba(0,0,0,0.1)' }}>
-          <TimerIcon sx={{ mr: 1, color: panelColors.icon, fontSize: { xs: '1.1rem', sm: '1.3rem' }, flexShrink: 0 }} />
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2, fontSize: { xs: '0.9rem', sm: '1rem' } }}>
-              {getAdminTitle()}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2, fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
-              {getAttendeeMessage()}
-            </Typography>
-          </Box>
-          {(isActive || isBreakTime || isPaused) && (
-            <Typography color="primary" variant="body2" sx={{ fontWeight: 700, ml: 1 }}>
-              {getMainTime()}
-            </Typography>
-          )}
+      <Box sx={{ display: 'flex', alignItems: 'center', minHeight: { xs: '40px', sm: '48px' }, p: { xs: 1.2, sm: 1.5 }, my: 1, borderRadius: '4px', bgcolor: theme.palette.background.paper, border: `1px solid ${panelColors.border}`, boxShadow: '0px 1px 2px rgba(0,0,0,0.1)' }}>
+        <TimerIcon sx={{ mr: 1, color: panelColors.icon, fontSize: { xs: '1.1rem', sm: '1.3rem' }, flexShrink: 0 }} />
+        <Box sx={{ flexGrow: 1 }}>
+          <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2, fontSize: { xs: '0.9rem', sm: '1rem' } }}>
+            {adminTitle}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2, fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
+            {attendeeMessage}
+          </Typography>
         </Box>
-      </>
+        {(isActive || isBreakTime || isPaused) && (
+          <Typography color="primary" variant="body2" sx={{ fontWeight: 700, ml: 1 }}>
+            {mainTime}
+          </Typography>
+        )}
+      </Box>
     );
   };
 
@@ -288,28 +316,56 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
     }
 
     return (
-      <>
-        {isActive && (
-          <Button variant="outlined" color="primary" startIcon={<SkipNext />} onClick={handleEndRound} size="small">
-            End Round
-          </Button>
-        )}
-        {isActive && (
-          <Button variant="contained" color="warning" startIcon={<Pause />} onClick={handlePauseRound} size="small">
-            Pause Round
-          </Button>
-        )}
-        {isPaused && (
-          <Button variant="contained" color="primary" startIcon={<PlayArrow />} onClick={handleResumeRound} size="small">
-            Resume Round
-          </Button>
-        )}
-        {(isInactive || isBreakTime) && (
-          <Button variant="contained" color="primary" startIcon={<PlayArrow />} onClick={handleStartRound} size="small">
-            {getStartLabel()}
-          </Button>
-        )}
-      </>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.25 }}>
+        <Tooltip title={isBreakTime ? 'Restart this round' : 'Restart round or go to previous round'}>
+          <span>
+            <IconButton
+              onClick={handleBackRound}
+              disabled={isInactive && currentRound <= 1}
+              sx={{
+                border: `1px solid ${theme.palette.divider}`,
+                bgcolor: 'background.paper',
+                width: 42,
+                height: 42,
+              }}
+            >
+              <SkipPrevious />
+            </IconButton>
+          </span>
+        </Tooltip>
+        <Tooltip title={isActive ? 'Pause round' : isPaused ? 'Resume round' : startLabel}>
+          <IconButton
+            onClick={handlePrimaryControl}
+            sx={{
+              bgcolor: isActive ? theme.palette.warning.main : theme.palette.primary.main,
+              color: isActive ? theme.palette.warning.contrastText : theme.palette.primary.contrastText,
+              width: 54,
+              height: 54,
+              '&:hover': {
+                bgcolor: isActive ? theme.palette.warning.dark : theme.palette.primary.dark,
+              },
+            }}
+          >
+            {isActive ? <Pause /> : <PlayArrow />}
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Skip to break">
+          <span>
+            <IconButton
+              onClick={handleForwardControl}
+              disabled={!isActive}
+              sx={{
+                border: `1px solid ${theme.palette.divider}`,
+                bgcolor: 'background.paper',
+                width: 42,
+                height: 42,
+              }}
+            >
+              <SkipNext />
+            </IconButton>
+          </span>
+        </Tooltip>
+      </Box>
     );
   };
 
@@ -324,11 +380,11 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
           <Box sx={{ display: 'flex', alignItems: 'center', zIndex: 2, position: 'absolute', left: { xs: 1, sm: 1.5 } }}>
             <TimerIcon sx={{ mr: 1, color: panelColors.icon, fontSize: { xs: '1.2rem', sm: '1.4rem' } }} />
             <Typography variant="h6" sx={{ fontWeight: 500, lineHeight: 1.2, fontSize: { xs: '0.9rem', sm: '1.1rem' } }}>
-              {getAdminTitle()}
+              {adminTitle}
             </Typography>
           </Box>
           <Typography variant="h3" component="div" color={panelColors.icon} sx={{ fontWeight: 600, fontSize: { xs: '2rem', sm: '2.1rem' }, zIndex: 2, textAlign: 'center' }}>
-            {getMainTime()}
+            {mainTime}
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', zIndex: 2, position: 'absolute', right: { xs: 1, sm: 1.5 } }}>
             {!isActive && !isPaused && (
@@ -340,8 +396,8 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
             )}
           </Box>
         </Paper>
-        <Paper elevation={1} sx={{ mt: 0.5, p: 1, width: '100%', borderRadius: '6px' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', '& .MuiButton-root': { minWidth: { xs: '90px', sm: '100px' }, textTransform: 'none', fontWeight: 500 } }}>
+        <Paper elevation={1} sx={{ mt: 0.5, p: 1.1, width: '100%', borderRadius: '6px' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             {renderAdminControls()}
           </Box>
         </Paper>
@@ -362,7 +418,10 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
           Round Duration: <span style={{ color: theme.palette.primary.main }}>{formatTime(newDuration)}</span>
         </Typography>
         <Slider value={newDuration} min={30} max={600} step={30} onChange={(_, value) => setNewDuration(value as number)} aria-labelledby="round-duration-slider" valueLabelDisplay="auto" valueLabelFormat={(value) => formatTime(value)} sx={{ mb: 2 }} />
-        <Typography gutterBottom sx={{ mt: 2 }}>Break Duration: {formatTime(breakDuration)}</Typography>
+        <Typography id="break-duration-slider" gutterBottom fontWeight={500} sx={{ mt: 2 }}>
+          Break Duration: <span style={{ color: theme.palette.primary.main }}>{formatTime(newBreakDuration)}</span>
+        </Typography>
+        <Slider value={newBreakDuration} min={15} max={600} step={15} onChange={(_, value) => setNewBreakDuration(value as number)} aria-labelledby="break-duration-slider" valueLabelDisplay="auto" valueLabelFormat={(value) => formatTime(value)} />
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={() => setIsSettingsOpen(false)} sx={{ textTransform: 'none', fontWeight: 500 }}>Cancel</Button>

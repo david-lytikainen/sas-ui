@@ -7,6 +7,20 @@ import { useAuth } from '../../context/AuthContext';
 import { useSplash } from '../../context/SplashContext';
 import authApi from '../../services/api';
 
+const parseDateOnly = (value: string) => {
+  if (!value) return null;
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+};
+
+const formatDateOnly = (value: Date) => {
+  const year = value.getFullYear();
+  const month = `${value.getMonth() + 1}`.padStart(2, '0');
+  const day = `${value.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const Register = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
@@ -70,7 +84,10 @@ const Register = () => {
       return 'Phone number must be exactly 10 digits';
     }
 
-    const birthday = new Date(formData.birthday);
+    const birthday = parseDateOnly(formData.birthday);
+    if (!birthday) {
+      return 'Birthday is required';
+    }
     const today = new Date();
     let age = today.getFullYear() - birthday.getFullYear();
     const monthDiff = today.getMonth() - birthday.getMonth();
@@ -100,7 +117,7 @@ const Register = () => {
         password: formData.password,
         first_name: formData.first_name,
         last_name: formData.last_name,
-        birthday: new Date(formData.birthday).toISOString().split('T')[0],
+        birthday: formData.birthday,
         gender: formData.gender,
         phone: formData.phone,
         current_church: formData.current_church || 'Other',
@@ -147,8 +164,8 @@ const Register = () => {
           />
           <DatePicker
             label="Birthday"
-            value={formData.birthday ? new Date(formData.birthday) : null}
-            onChange={(value) => setFormData(prev => ({ ...prev, birthday: !value || Number.isNaN(value.getTime()) ? '' : value.toISOString().split('T')[0] }))}
+            value={parseDateOnly(formData.birthday)}
+            onChange={(value) => setFormData(prev => ({ ...prev, birthday: !value || Number.isNaN(value.getTime()) ? '' : formatDateOnly(value) }))}
             closeOnSelect
             disableFuture
             referenceDate={new Date(2000, 0, 1)}
