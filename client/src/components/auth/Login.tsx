@@ -63,7 +63,7 @@ const Login = () => {
       </Typography>
       <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
         <Typography sx={{ textAlign: 'center', fontWeight: 'bold', fontSize: '1.2rem' }}>
-          Sign In
+          Login
         </Typography>
         {error && (<Fade in={!!error}>
           <Alert 
@@ -135,7 +135,7 @@ const Login = () => {
             sx={{ mt: 1.5, mb: 1 }}
             disabled={loading}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? 'Logging in...' : 'Login'}
           </Button>
           <Button
             fullWidth
@@ -143,7 +143,7 @@ const Login = () => {
             size="small"
             sx={{ mt: 0.5 }}
           >
-            Don't have an account? Sign Up
+            Don't have an account? Register
           </Button>
           <Box sx={{ textAlign: 'center'}}>
             <Link component={RouterLink} to="/forgot-password" variant="subtitle1" sx={{ fontSize: '0.7rem'}}>

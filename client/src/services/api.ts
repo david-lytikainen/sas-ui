@@ -224,6 +224,7 @@ interface EventsApi {
   getAll: () => Promise<Event[]>;
   getById: (eventId: string) => Promise<Event>;
   createRegistrationCheckout: (eventId: string) => Promise<{ url: string }>;
+  completeRegistrationCheckout: (sessionId: string) => Promise<{ message: string; status?: string }>;
   create: (eventData: Omit<Event, 'id' | 'creator_id' | 'created_at' | 'updated_at' | 'registration_deadline'>) => Promise<Event>;
   updateEvent: (eventId: string, eventData: Partial<Event>) => Promise<{ message: string, event: Event }>;
   deleteEvent: (eventId: string) => Promise<{ message: string }>;
@@ -334,6 +335,17 @@ const realEventsApi: EventsApi = {
       return response.data;
     } catch (error: any) {
       throw new Error(getApiErrorMessage(error, 'Failed to start checkout'));
+    }
+  },
+
+  completeRegistrationCheckout: async (sessionId: string) => {
+    try {
+      const response = await axiosInstance.post('/events/checkout/complete', {
+        session_id: sessionId,
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(getApiErrorMessage(error, 'Failed to confirm checkout'));
     }
   },
 

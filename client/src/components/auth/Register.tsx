@@ -95,7 +95,7 @@ const Register = () => {
       age--;
     }
     if (age < 18) {
-      return 'You must be 18+ to Sign Up';
+      return 'You must be 18+ to Register';
     }
     return null;
   };
@@ -139,7 +139,7 @@ const Register = () => {
 
       <Paper elevation={1} sx={{ p: { xs: 2, sm: 2, md: 3 }, borderRadius: 2 }}>
         <Typography sx={{ textAlign: 'center', fontWeight: 'bold', fontSize: '1.2rem' }}>
-          Sign Up
+          Register
         </Typography>
         {error && (
           <Alert severity="error" sx={{ mb: 1, fontSize: '0.8rem', py: 0.5 }}>
@@ -219,10 +219,10 @@ const Register = () => {
           />
           <TextField fullWidth label="Confirm Password" name="confirmPassword" type={showPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={handleTextChange} margin="dense" required size="small" />
           <Button type="submit" fullWidth variant="contained" size="medium" sx={{ mt: 1.5, mb: 1 }} disabled={loading}>
-            {loading ? 'Working...' : 'Sign Up'}
+            {loading ? 'Working...' : 'Register'}
           </Button>
           <Button fullWidth onClick={() => navigate('/login')} size="small" sx={{ mt: 0.5 }}>
-            Already have an account? Sign In
+            Already have an account? Login
           </Button>
           <Box sx={{ textAlign: 'center' }}>
             <Link component={RouterLink} to="/forgot-password" variant="subtitle1" sx={{ fontSize: '0.7rem' }}>

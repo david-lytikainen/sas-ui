@@ -238,7 +238,7 @@ const PrivacyPolicy = () => {
         <Box sx={{ my: 2, borderBottom: 1, borderColor: 'divider' }} />
 
         <Typography variant="body2" color="text.secondary" sx={{ mt: 2, textAlign: 'center' }}>
-          By clicking Sign Up or continuing to use Saved & Single, you consent to the collection, use, and sharing of your information as described above.
+          By clicking Register or continuing to use Saved & Single, you consent to the collection, use, and sharing of your information as described above.
         </Typography>
       </Paper>
     </Container>

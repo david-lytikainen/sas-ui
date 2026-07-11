@@ -124,6 +124,18 @@ const EventList = () => {
       if (handledCheckoutReturnRef.current === location.search) return;
 
       handledCheckoutReturnRef.current = location.search;
+      const sessionId = searchParams.get('session_id');
+
+      if (sessionId) {
+        try {
+          await eventsApi.completeRegistrationCheckout(sessionId);
+        } catch (error: any) {
+          setErrorMessage(
+            error.message ||
+            'Checkout completed, but registration could not be verified automatically yet.'
+          );
+        }
+      }
 
       for (let attempt = 0; attempt < 6 && isActive; attempt += 1) {
         await refreshEvents();

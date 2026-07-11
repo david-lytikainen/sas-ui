@@ -119,9 +119,9 @@ const Navigation = () => {
                         minWidth: isMobile ? 'auto' : undefined,
                         letterSpacing: '0.08em',
                       }}
-                    >
-                      <Typography
-                        component="span"
+                >
+                  <Typography
+                    component="span"
                         sx={{
                           color: 'inherit',
                           fontSize: '1rem',
@@ -200,10 +200,10 @@ const Navigation = () => {
                     fontWeight: 'bold',
                     letterSpacing: '0.08em',
                   }}
-                >
-                  SIGN IN
-                </Typography>
-              </Button>
+                  >
+                  LOGIN
+                  </Typography>
+                </Button>
             )}
           </Box>
         </Toolbar>
