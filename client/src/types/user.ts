@@ -8,9 +8,6 @@ export interface User {
   gender: string;
   age: number;
   birthday: string;
-  church_id?: number | null;
-  denomination_id?: number | null;
-  current_church?: string;
   created_event_count?: number;
   has_started_stripe_setup?: boolean;
   stripe_connect_onboarding_complete?: boolean | null;

@@ -23,7 +23,6 @@ interface AuthContextType {
     phone?: string;
     birthday: string;
     gender: string;
-    current_church?: string;
   }) => Promise<void>;
   refreshUser: () => Promise<void>;
   logout: () => void;
@@ -131,7 +130,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     phone?: string;
     birthday: string;
     gender: string;
-    current_church?: string;
   }) => {
     setError(null);
     try {

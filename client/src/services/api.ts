@@ -90,7 +90,6 @@ const realAuthApi = {
     phone?: string;
     birthday: string;
     gender: string;
-    current_church?: string;
   }): Promise<AuthResponse> => {
     const backendUserData = {
       email: userData.email,
@@ -100,7 +99,6 @@ const realAuthApi = {
       phone: userData.phone || '',
       gender: userData.gender, 
       birthday: userData.birthday,
-      current_church: userData.current_church || 'Other',
     };
     
     try {
@@ -166,15 +164,6 @@ const realAuthApi = {
     }
   },
 
-  getChurches: async (): Promise<string[]> => {
-    try {
-      const response = await axiosInstance.get('/user/churches');
-      return Array.isArray(response.data) ? response.data : [];
-    } catch {
-      return [];
-    }
-  },
-
   updateProfile: async (userData: {
     first_name: string;
     last_name: string;
@@ -182,7 +171,6 @@ const realAuthApi = {
     phone: string;
     birthday: string;
     gender: string;
-    current_church?: string;
   }): Promise<AuthResponse['user']> => {
     try {
       const response = await axiosInstance.patch('/user/profile', userData);
@@ -251,7 +239,6 @@ interface EventsApi {
     last_name?: string,
     email?: string,
     gender?: string,
-    church?: string
   }) => Promise<{ 
     message: string, 
     updated_fields: string[],
@@ -265,7 +252,6 @@ interface EventsApi {
       age: number,
       gender: string | null,
       phone: string,
-      church: string
     }
   }>;
   getSchedule: (eventId: string) => Promise<{ 
@@ -398,7 +384,6 @@ const realEventsApi: EventsApi = {
     last_name?: string,
     email?: string,
     gender?: string,
-    church?: string
   }) => {
     try {
       const response = await axiosInstance.patch(`/events/${eventId}/attendees/${attendeeId}`, data);

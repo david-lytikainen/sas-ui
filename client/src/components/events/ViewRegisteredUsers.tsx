@@ -1,9 +1,8 @@
-import { Alert, Autocomplete, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material';
 import { Cancel as CancelEditIcon, Download as DownloadIcon, Edit as EditIcon, Save as SaveIcon } from '@mui/icons-material';
 import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { Event } from '../../types/event';
-import authApi from '../../services/api';
 import { eventsApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -20,7 +19,6 @@ export interface RegisteredUser {
   registration_date: string | null;
   check_in_date: string | null;
   status: string;
-  church?: string;
 }
 
 interface ViewRegisteredUsersProps {
@@ -41,7 +39,6 @@ const ViewRegisteredUsers = ({
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [editFormData, setEditFormData] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [churchOptions, setChurchOptions] = useState<string[]>([]);
   const [checkingInUserId, setCheckingInUserId] = useState<number | null>(null);
 
   const canExport = isAdmin() || (isOrganizer() && !!event && Number(event.creator_id) === Number(user?.id));
@@ -105,14 +102,6 @@ const ViewRegisteredUsers = ({
     fetchRegisteredUsers();
   }, [open, event]);
 
-  useEffect(() => {
-    const loadChurches = async () => {
-      const churches = await authApi.getChurches();
-      setChurchOptions(Array.from(new Set([...churches, 'Other'])));
-    };
-    loadChurches();
-  }, []);
-
   const handleSearchChange = (searchEvent: ChangeEvent<HTMLInputElement>) => {
     const value = searchEvent.target.value;
     setSearchTerm(value);
@@ -140,7 +129,6 @@ const ViewRegisteredUsers = ({
       last_name: user.last_name,
       email: user.email,
       gender: user.gender,
-      church: user.church,
     });
   };
 
@@ -230,13 +218,13 @@ const ViewRegisteredUsers = ({
     }
 
     try {
-      let csvContent = 'Name,Email,Gender,Age,Birthday,Church,Registration Date,Check-in Time,Status\n';
+      let csvContent = 'Name,Email,Gender,Age,Birthday,Registration Date,Check-in Time,Status\n';
 
       usersToExport.forEach((user) => {
         const birthday = user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A';
         const registrationDate = user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A';
         const checkInDate = user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in';
-        csvContent += `"${user.name}","${user.email}",${user.gender || 'N/A'},${user.age || 'N/A'},${birthday},"${user.church || 'Other'}",${registrationDate},${checkInDate},${user.status}\n`;
+        csvContent += `"${user.name}","${user.email}",${user.gender || 'N/A'},${user.age || 'N/A'},${birthday},${registrationDate},${checkInDate},${user.status}\n`;
       });
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -294,7 +282,6 @@ const ViewRegisteredUsers = ({
                     <TableCell sx={{ width: 80, minWidth: 70 }}><strong>Gender</strong></TableCell>
                     <TableCell sx={{ width: 60, minWidth: 50, textAlign: 'center' }}><strong>Age</strong></TableCell>
                     <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Birthday</strong></TableCell>
-                    <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Church</strong></TableCell>
                     <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Registered</strong></TableCell>
                     <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Status</strong></TableCell>
                     <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Check-in Time</strong></TableCell>
@@ -326,19 +313,6 @@ const ViewRegisteredUsers = ({
                           </TableCell>
                           <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
                           <TableCell>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</TableCell>
-                          <TableCell>
-                            <Autocomplete
-                              fullWidth
-                              freeSolo
-                              size="small"
-                              options={churchOptions}
-                              value={editFormData.church || ''}
-                              onChange={(_event, newValue) => handleEditFormChange(newValue || '', 'church')}
-                              onInputChange={(_event, newInputValue) => handleEditFormChange(newInputValue, 'church')}
-                              ListboxProps={{ style: { maxHeight: '200px' } }}
-                              renderInput={(params) => <TextField {...params} label="Church" size="small" />}
-                            />
-                          </TableCell>
                           <TableCell>{user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'}</TableCell>
                           <TableCell><Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /></TableCell>
                           <TableCell>{user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'}</TableCell>
@@ -358,7 +332,6 @@ const ViewRegisteredUsers = ({
                           <TableCell>{user.gender}</TableCell>
                           <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
                           <TableCell>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</TableCell>
-                          <TableCell>{user.church || 'Other'}</TableCell>
                           <TableCell>{user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'}</TableCell>
                           <TableCell><Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /></TableCell>
                           <TableCell>{user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'}</TableCell>

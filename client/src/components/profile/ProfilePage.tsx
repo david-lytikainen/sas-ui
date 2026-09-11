@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Autocomplete, Box, Button, Card, CardContent, Container, Divider, IconButton, TextField, Typography, useMediaQuery } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Container, Divider, IconButton, TextField, Typography, useMediaQuery } from '@mui/material';
 import { Theme } from '@mui/material/styles';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import EditIcon from '@mui/icons-material/Edit';
@@ -11,7 +11,6 @@ import { useAuth } from '../../context/AuthContext';
 const ProfilePage = () => {
   const { user, refreshUser, logout } = useAuth();
   const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
-  const [churchOptions, setChurchOptions] = useState<string[]>([]);
   const [dashboard, setDashboard] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [dashboardLoading, setDashboardLoading] = useState(false);
@@ -25,7 +24,6 @@ const ProfilePage = () => {
     phone: '',
     birthday: '',
     gender: '',
-    current_church: '',
   });
 
   const parseDateOnly = (value: string) => {
@@ -49,17 +47,7 @@ const ProfilePage = () => {
     phone: currentUser?.phone || '',
     birthday: currentUser?.birthday || '',
     gender: currentUser?.gender || '',
-    current_church: currentUser?.current_church || '',
   });
-
-  useEffect(() => {
-    const loadChurches = async () => {
-      const churches = await authApi.getChurches();
-      setChurchOptions(Array.from(new Set([...churches, 'Other'])));
-    };
-
-    loadChurches();
-  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -169,7 +157,6 @@ const ProfilePage = () => {
         phone: formData.phone,
         birthday: formData.birthday,
         gender: formData.gender,
-        current_church: formData.current_church || 'Other',
       });
 
       await refreshUser();
@@ -223,22 +210,17 @@ const ProfilePage = () => {
       }) || '',
     },
     { label: 'Gender', value: formData.gender },
-    { label: 'Church', value: formData.current_church || 'Other' },
   ];
 
   const hasChanges = useMemo(() => {
     if (!user) return false;
-
-    const normalizedCurrentChurch = formData.current_church || 'Other';
-    const normalizedUserChurch = user.current_church || 'Other';
 
     return (
       formData.first_name !== (user.first_name || '') ||
       formData.last_name !== (user.last_name || '') ||
       formData.email !== (user.email || '') ||
       formData.phone !== (user.phone || '') ||
-      formData.birthday !== (user.birthday || '') ||
-      normalizedCurrentChurch !== normalizedUserChurch
+      formData.birthday !== (user.birthday || '')
     );
   }, [formData, user]);
 
@@ -563,22 +545,6 @@ const ProfilePage = () => {
                     inputProps: { readOnly: true },
                   }
                 }}
-              />
-              <Autocomplete
-                freeSolo
-                options={churchOptions}
-                value={formData.current_church}
-                onInputChange={(_, value) => {
-                  setFormData(prev => ({ ...prev, current_church: value }));
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    fullWidth
-                    label="Church"
-                    size={isMobile ? 'small' : 'medium'}
-                  />
-                )}
               />
             </>
           ) : (

@@ -1091,7 +1091,7 @@ const EventList = () => {
       >
         {waitlistReason}. Would you like to be added to the waitlist?
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          If a spot opens up, you may be automatically registered.
+          If a spot opens, we will email you so you can return and sign up yourself.
         </Typography>
       </ConfirmDialog>
 

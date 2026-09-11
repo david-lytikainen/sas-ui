@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import { Alert, Autocomplete, Box, Button, Container, FormControl, IconButton, InputAdornment, InputLabel, Link, MenuItem, Paper, Select, SelectChangeEvent, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Container, FormControl, IconButton, InputAdornment, InputLabel, Link, MenuItem, Paper, Select, SelectChangeEvent, TextField, Typography } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useAuth } from '../../context/AuthContext';
@@ -34,20 +34,10 @@ const Register = () => {
     birthday: '',
     gender: '',
     phone: '',
-    current_church: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [churchOptions, setChurchOptions] = useState<string[]>([]);
-
-  useEffect(() => {
-    const loadChurches = async () => {
-      const churches = await authApi.getChurches();
-      setChurchOptions(Array.from(new Set([...churches, 'Other'])));
-    };
-    loadChurches();
-  }, []);
 
   const formattedPhone = useMemo(() => {
     const digits = formData.phone.replace(/\D/g, '').slice(0, 10);
@@ -71,7 +61,7 @@ const Register = () => {
   };
 
   const validateForm = () => {
-    if (!formData.first_name || !formData.last_name || !formData.email || !formData.password || !formData.confirmPassword || !formData.birthday || !formData.gender || !formData.phone || !formData.current_church) {
+    if (!formData.first_name || !formData.last_name || !formData.email || !formData.password || !formData.confirmPassword || !formData.birthday || !formData.gender || !formData.phone) {
       return 'All fields are required';
     }
     if (formData.password !== formData.confirmPassword) {
@@ -120,7 +110,6 @@ const Register = () => {
         birthday: formData.birthday,
         gender: formData.gender,
         phone: formData.phone,
-        current_church: formData.current_church || 'Other',
       });
       setShowLoginSplash(true);
       navigate('/events', { replace: true });
@@ -190,13 +179,6 @@ const Register = () => {
               <MenuItem value="Female">Female</MenuItem>
             </Select>
           </FormControl>
-          <Autocomplete
-            freeSolo
-            options={churchOptions}
-            value={formData.current_church}
-            onInputChange={(_, value) => setFormData(prev => ({ ...prev, current_church: value }))}
-            renderInput={(params) => <TextField {...params} fullWidth label="Church" margin="dense" required size="small" />}
-          />
           <TextField
             fullWidth
             label="Password"
