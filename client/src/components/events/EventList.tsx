@@ -6,7 +6,7 @@ import { Event as EventIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon,
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import authApi, { eventsApi } from '../../services/api';
-import type { Event, EventStatus } from '../../types/event';
+import type { Event } from '../../types/event';
 import CreateEvent from './CreateEvent';
 import EventTimer from './EventTimer';
 import MySchedule from './MySchedule';
@@ -298,20 +298,8 @@ const EventList = () => {
 
 
   const sortedEvents = [...filteredEvents].sort((a, b) => {
-    const statusOrder: Record<EventStatus, number> = {
-      'In Progress': 1,
-      'Registration Open': 2,
-      'Completed': 3,
-      'Cancelled': 4
-    };
-
-    const statusCompare = statusOrder[a.status] - statusOrder[b.status];
-    if (statusCompare !== 0) return statusCompare;
-
-    if (a.starts_at < b.starts_at) return 1;
-    if (a.starts_at > b.starts_at) return -1;
-
-    return a.id - b.id;
+    const startTimeDifference = new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+    return startTimeDifference || a.id - b.id;
   });
 
   const isPastEvent = (event: Event) => {
