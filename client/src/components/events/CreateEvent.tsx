@@ -10,21 +10,29 @@ interface CreateEventProps {
   onError: (message: string) => void;
 }
 
-const initialCreateForm = {
+const getDefaultStartTime = () => {
+  const startTime = new Date();
+  startTime.setDate(startTime.getDate() + 1);
+  startTime.setHours(18, 0, 0, 0);
+  const offset = startTime.getTimezoneOffset() * 60000;
+  return new Date(startTime.getTime() - offset).toISOString().slice(0, 16);
+};
+
+const createInitialForm = () => ({
   name: '',
   description: '',
-  starts_at: '',
+  starts_at: getDefaultStartTime(),
   address: '',
   max_capacity: '',
   price_per_person: '',
   enforce_gender_balance: true,
-};
+});
 
 const CreateEvent = ({ createdEventCount, onCreated, onError }: CreateEventProps) => {
   const { createEvent } = useEvents();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [createForm, setCreateForm] = useState(initialCreateForm);
+  const [createForm, setCreateForm] = useState(createInitialForm);
   const isIntroEvent = createdEventCount < 2;
   const fixedFee = isIntroEvent ? 1 : 1.5;
   const percentFee = isIntroEvent ? 5 : 8;
@@ -53,7 +61,7 @@ const CreateEvent = ({ createdEventCount, onCreated, onError }: CreateEventProps
         status: 'Registration Open' as EventStatus,
       });
 
-      setCreateForm(initialCreateForm);
+      setCreateForm(createInitialForm());
       onCreated();
     } catch (error: any) {
       onError(error.message || 'Failed to create event');
