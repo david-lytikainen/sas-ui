@@ -48,7 +48,7 @@ const Login = () => {
   };
 
   return (
-    <Container component="main" maxWidth="sm" sx={{ mt: 2, mb: 2 }}>
+    <Container component="main" maxWidth="sm" sx={{ mt: 4, mb: 2 }}>
       <Typography 
         variant="h4" 
         component="h1" 

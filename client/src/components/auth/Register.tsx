@@ -121,7 +121,7 @@ const Register = () => {
   };
 
   return (
-    <Container component="main" maxWidth="sm" sx={{ mt: 2, mb: 2 }}>
+    <Container component="main" maxWidth="sm" sx={{ mt: 4, mb: 2 }}>
       <Typography variant="h4" component="h1" sx={{ textAlign: 'center', mb: 3, fontWeight: 'bold', color: 'primary.main' }}>
         Saved & Single
       </Typography>
@@ -167,7 +167,7 @@ const Register = () => {
                 required: true,
                 margin: 'dense',
                 size: 'small',
-                helperText: '18+ only. Use calendar icon to select date.',
+                helperText: '18+ only',
                 inputProps: { readOnly: true },
               }
             }}
