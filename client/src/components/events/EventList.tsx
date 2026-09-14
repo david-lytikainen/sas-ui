@@ -126,7 +126,7 @@ const EventList = () => {
       handledCheckoutReturnRef.current = location.search;
       const sessionId = searchParams.get('session_id');
 
-      if (sessionId) {
+      if (sessionId?.startsWith('cs_')) {
         try {
           await eventsApi.completeRegistrationCheckout(sessionId);
         } catch (error: any) {
@@ -135,6 +135,8 @@ const EventList = () => {
             'Checkout completed, but registration could not be verified automatically yet.'
           );
         }
+      } else if (sessionId) {
+        setErrorMessage('Checkout completed, but the return link did not include a valid session ID.');
       }
 
       for (let attempt = 0; attempt < 6 && isActive; attempt += 1) {
