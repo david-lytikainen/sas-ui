@@ -234,26 +234,6 @@ interface EventsApi {
     check_in_date: string | null,
     status: string
   }[] }>;
-  updateAttendeeDetails: (eventId: string, attendeeId: string, data: {
-    first_name?: string,
-    last_name?: string,
-    email?: string,
-    gender?: string,
-  }) => Promise<{ 
-    message: string, 
-    updated_fields: string[],
-    attendee?: {
-      id: number,
-      name: string,
-      email: string,
-      first_name: string,
-      last_name: string,
-      birthday: string | null,
-      age: number,
-      gender: string | null,
-      phone: string,
-    }
-  }>;
   getSchedule: (eventId: string) => Promise<{ 
     schedule: Array<ScheduleItem> 
   }>;
@@ -377,20 +357,6 @@ const realEventsApi: EventsApi = {
   getEventAttendees: async (eventId: string) => {
     const response = await axiosInstance.get(`/events/${eventId}/attendees`);
     return { data: response.data };
-  },
-  
-  updateAttendeeDetails: async (eventId: string, attendeeId: string, data: {
-    first_name?: string,
-    last_name?: string,
-    email?: string,
-    gender?: string,
-  }) => {
-    try {
-      const response = await axiosInstance.patch(`/events/${eventId}/attendees/${attendeeId}`, data);
-      return response.data;
-    } catch (error: any) {
-      throw new Error(getApiErrorMessage(error, 'Failed to update attendee details'));
-    }
   },
   
   getSchedule: async (eventId: string) => {

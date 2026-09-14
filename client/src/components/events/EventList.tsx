@@ -33,7 +33,7 @@ const EventList = () => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [activeView, setActiveView] = useState<EventView>('my');
+  const [activeView, setActiveView] = useState<EventView>('all');
   const handledOrganizerReturnRef = useRef<string | null>(null);
   const [pastEventsOpen, setPastEventsOpen] = useState(false);
   const [signUpDialogOpen, setSignUpDialogOpen] = useState(false);
@@ -55,6 +55,8 @@ const EventList = () => {
   const [numTables, setNumTables] = useState<number>(10);
   const [numRounds, setNumRounds] = useState<number>(10);
   const [isTableConfigOpen, setIsTableConfigOpen] = useState<boolean>(false);
+  const [checkedInConfirmationOpen, setCheckedInConfirmationOpen] = useState(false);
+  const [checkedInAttendeeCount, setCheckedInAttendeeCount] = useState(0);
 
   const [editEventDialogOpen, setEditEventDialogOpen] = useState<boolean>(false);
   const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
@@ -422,7 +424,7 @@ const EventList = () => {
               color="primary"
               sx={{ borderRadius: 1 }}
             >
-              View Registered Users
+              Check In Users
             </Button>
 
             <Button
@@ -506,11 +508,22 @@ const EventList = () => {
   };
 
   // Event status update functions
-  const handleStartEventClick = (event: Event) => {
+  const handleStartEventClick = async (event: Event) => {
     setSelectedEventForStarting(event);
-    setNumTables(10); // Default values
+    setNumTables(10);
     setNumRounds(10);
-    setIsTableConfigOpen(true); // Open the table/round config dialog first
+    try {
+      const response = await eventsApi.getEventAttendees(event.id.toString());
+      setCheckedInAttendeeCount(response.data.filter(attendee => attendee.status === 'Checked In').length);
+      setCheckedInConfirmationOpen(true);
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Failed to load checked-in attendees');
+    }
+  };
+
+  const handleCheckedInConfirmation = () => {
+    setCheckedInConfirmationOpen(false);
+    setIsTableConfigOpen(true);
   };
 
   const handleTableConfigSubmit = () => {
@@ -868,13 +881,11 @@ const EventList = () => {
       <ConfirmDialog
         open={signUpDialogOpen}
         title="Sign Up for Event"
-        confirmLabel="Sign Up"
+        confirmLabel="Continue to Checkout"
         onCancel={() => setSignUpDialogOpen(false)}
         onConfirm={handleSignUpConfirm}
       >
-        {parseFloat(filteredEvents.find(event => event.id.toString() === signUpEventId)?.price_per_person || '0') > 0
-          ? 'Are you sure you want to sign up for this paid event? You will be sent to Stripe Checkout. Sign ups are non-refundable through app.'
-          : 'Are you sure you want to sign up for this event?'}
+        Are you sure you want to sign up for this event?
       </ConfirmDialog>
 
       <ConfirmDialog
@@ -886,9 +897,7 @@ const EventList = () => {
         onCancel={() => setCancelDialogOpen(false)}
         onConfirm={handleCancelConfirm}
       >
-        {parseFloat(filteredEvents.find(event => event.id.toString() === cancelEventId)?.price_per_person || '0') > 0
-          ? 'Are you sure you want to cancel your registration for this paid event? There are no refunds through app. Contact event organizer for refund questions.'
-          : 'Are you sure you want to cancel your registration for this event?'}
+        Are you sure you want to cancel your registration? Contact your event organizer for refund questions.
       </ConfirmDialog>
 
       <ViewRegisteredUsers
@@ -898,6 +907,25 @@ const EventList = () => {
       />
 
       {/* Generate Schedules Dialog */}
+      <ConfirmDialog
+        open={checkedInConfirmationOpen}
+        title="Generate Schedules"
+        confirmLabel="Next"
+        cancelLabel="No"
+        onCancel={() => setCheckedInConfirmationOpen(false)}
+        onConfirm={handleCheckedInConfirmation}
+      >
+        <Typography variant="body1" sx={{ mt: 1, fontWeight: 'bold' }}>
+          {checkedInAttendeeCount} people are currently checked in
+        </Typography>
+        <Typography variant="body1" sx={{ mt: 1 }}>
+          Please ask the Attendees to check if their phones say they are checked-in
+        </Typography>
+        <Typography variant="body1">
+          Only checked-in attendees will be included in the schedule generation
+        </Typography>
+      </ConfirmDialog>
+
       <Dialog
         open={isTableConfigOpen}
         onClose={() => setIsTableConfigOpen(false)}
@@ -932,10 +960,6 @@ const EventList = () => {
               inputProps={{ min: 1 }}
             />
           </Box>
-          <DialogContentText sx={{ fontSize: '0.8rem' }}>
-              Note: The Algorithm will try to use the inputted values, but it may bump these numbers down
-              (e.g. 10 tables are inputted but there are only 9 males).
-          </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setIsTableConfigOpen(false)}>Cancel</Button>
