@@ -510,11 +510,15 @@ const EventList = () => {
   // Event status update functions
   const handleStartEventClick = async (event: Event) => {
     setSelectedEventForStarting(event);
-    setNumTables(10);
     setNumRounds(10);
     try {
       const response = await eventsApi.getEventAttendees(event.id.toString());
-      setCheckedInAttendeeCount(response.data.filter(attendee => attendee.status === 'Checked In').length);
+      const checkedInAttendees = response.data.filter(attendee => attendee.status === 'Checked In');
+      const maleCount = checkedInAttendees.filter(attendee => attendee.gender === 'Male').length;
+      const femaleCount = checkedInAttendees.filter(attendee => attendee.gender === 'Female').length;
+
+      setNumTables(Math.max(1, Math.min(maleCount, femaleCount)));
+      setCheckedInAttendeeCount(checkedInAttendees.length);
       setCheckedInConfirmationOpen(true);
     } catch (error: any) {
       setErrorMessage(error.message || 'Failed to load checked-in attendees');
