@@ -119,9 +119,9 @@ const Navigation = () => {
                         minWidth: isMobile ? 'auto' : undefined,
                         letterSpacing: '0.08em',
                       }}
-                    >
-                      <Typography
-                        component="span"
+                >
+                  <Typography
+                    component="span"
                         sx={{
                           color: 'inherit',
                           fontSize: '1rem',
@@ -139,7 +139,7 @@ const Navigation = () => {
             )}
           </Box>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, position: 'relative' }}>
             {user ? (
               <Box sx={{ display: 'flex', alignItems: 'center'}}>
                 <Button
@@ -172,38 +172,77 @@ const Navigation = () => {
                 </Button>
               </Box>
             ) : (
-              <Button
-                component={RouterLink}
-                to="/login"
-                sx={{
-                  fontWeight: 700,
-                  color: theme.palette.primary.main,
-                  letterSpacing: '0.08em',
-                  fontSize: '1rem',
-                  background: 'none',
-                  boxShadow: 'none',
-                  textTransform: 'none',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                    color: theme.palette.primary.dark,
-                  },
-                  padding: isMobile ? '6px 8px' : '8px 16px',
-                  minWidth: isMobile ? 'auto' : undefined,
-                }}
-              >
-                <Typography
-                  component="span"
+              <>
+                <Button
+                  component={RouterLink}
+                  to="/login"
                   sx={{
-                    color: 'inherit',
-                    fontSize: '1rem',
-                    lineHeight: 1.5,
-                    fontWeight: 'bold',
+                    fontWeight: 700,
+                    color: theme.palette.primary.main,
                     letterSpacing: '0.08em',
+                    fontSize: '1rem',
+                    background: 'none',
+                    boxShadow: 'none',
+                    textTransform: 'none',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                      color: theme.palette.primary.dark,
+                    },
+                    padding: isMobile ? '6px 8px' : '8px 16px',
+                    minWidth: isMobile ? 'auto' : undefined,
                   }}
                 >
-                  SIGN IN
-                </Typography>
-              </Button>
+                  <Typography
+                    component="span"
+                    sx={{
+                      color: 'inherit',
+                      fontSize: '1rem',
+                      lineHeight: 1.5,
+                      fontWeight: 'bold',
+                      letterSpacing: '0.08em',
+                    }}
+                  >
+                    LOGIN
+                  </Typography>
+                </Button>
+                {location.pathname === '/' && (
+                  <Box
+                    role="status"
+                    sx={{
+                      position: 'absolute',
+                      top: 'calc(100% + 10px)',
+                      right: 0,
+                      width: 'max-content',
+                      maxWidth: 'calc(100vw - 32px)',
+                      px: 1.5,
+                      py: 1,
+                      borderRadius: 1.5,
+                      color: 'text.primary',
+                      bgcolor: 'background.paper',
+                      border: '1px solid rgba(166, 192, 254, 0.35)',
+                      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
+                      fontSize: '0.85rem',
+                      lineHeight: 1.35,
+                      textAlign: 'left',
+                      zIndex: theme.zIndex.tooltip,
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        top: -8,
+                        right: { xs: 18, sm: 24 },
+                        width: 14,
+                        height: 14,
+                        bgcolor: 'background.paper',
+                        borderLeft: '1px solid rgba(166, 192, 254, 0.35)',
+                        borderTop: '1px solid rgba(166, 192, 254, 0.35)',
+                        transform: 'rotate(45deg)',
+                      },
+                    }}
+                  >
+                    Login to attend or organize events
+                  </Box>
+                )}
+              </>
             )}
           </Box>
         </Toolbar>

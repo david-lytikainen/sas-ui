@@ -58,11 +58,6 @@ const PrivacyPolicy = () => {
             </li>
             <li>
               <Typography variant="body1">
-                <strong>Church and denomination details:</strong> Provided at sign-up or in your profile. Used for profile display and event participation context.
-              </Typography>
-            </li>
-            <li>
-              <Typography variant="body1">
                 <strong>Event and registration data:</strong> We store the events you create or join, your registration status, check-in status, schedule participation, and your speed-dating selections and matches for completed events.
               </Typography>
             </li>
@@ -238,7 +233,7 @@ const PrivacyPolicy = () => {
         <Box sx={{ my: 2, borderBottom: 1, borderColor: 'divider' }} />
 
         <Typography variant="body2" color="text.secondary" sx={{ mt: 2, textAlign: 'center' }}>
-          By clicking Sign Up or continuing to use Saved & Single, you consent to the collection, use, and sharing of your information as described above.
+          By clicking Register or continuing to use Saved & Single, you consent to the collection, use, and sharing of your information as described above.
         </Typography>
       </Paper>
     </Container>

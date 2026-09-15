@@ -23,7 +23,6 @@ interface AuthContextType {
     phone?: string;
     birthday: string;
     gender: string;
-    current_church?: string;
   }) => Promise<void>;
   refreshUser: () => Promise<void>;
   logout: () => void;
@@ -96,8 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.removeItem('token');
           setUser(null);
         }
-      } catch (err) {
-        console.error('Token validation failed:', err);
+      } catch {
         localStorage.removeItem('token');
         setUser(null);
       } finally {
@@ -132,7 +130,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     phone?: string;
     birthday: string;
     gender: string;
-    current_church?: string;
   }) => {
     setError(null);
     try {

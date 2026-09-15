@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import { Alert, Autocomplete, Box, Button, Container, FormControl, IconButton, InputAdornment, InputLabel, Link, MenuItem, Paper, Select, SelectChangeEvent, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Container, FormControl, IconButton, InputAdornment, InputLabel, Link, MenuItem, Paper, Select, SelectChangeEvent, TextField, Typography } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useAuth } from '../../context/AuthContext';
@@ -34,20 +34,10 @@ const Register = () => {
     birthday: '',
     gender: '',
     phone: '',
-    current_church: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [churchOptions, setChurchOptions] = useState<string[]>([]);
-
-  useEffect(() => {
-    const loadChurches = async () => {
-      const churches = await authApi.getChurches();
-      setChurchOptions(Array.from(new Set([...churches, 'Other'])));
-    };
-    loadChurches();
-  }, []);
 
   const formattedPhone = useMemo(() => {
     const digits = formData.phone.replace(/\D/g, '').slice(0, 10);
@@ -71,7 +61,7 @@ const Register = () => {
   };
 
   const validateForm = () => {
-    if (!formData.first_name || !formData.last_name || !formData.email || !formData.password || !formData.confirmPassword || !formData.birthday || !formData.gender || !formData.phone || !formData.current_church) {
+    if (!formData.first_name || !formData.last_name || !formData.email || !formData.password || !formData.confirmPassword || !formData.birthday || !formData.gender || !formData.phone) {
       return 'All fields are required';
     }
     if (formData.password !== formData.confirmPassword) {
@@ -95,7 +85,7 @@ const Register = () => {
       age--;
     }
     if (age < 18) {
-      return 'You must be 18+ to Sign Up';
+      return 'You must be 18+ to Register';
     }
     return null;
   };
@@ -120,7 +110,6 @@ const Register = () => {
         birthday: formData.birthday,
         gender: formData.gender,
         phone: formData.phone,
-        current_church: formData.current_church || 'Other',
       });
       setShowLoginSplash(true);
       navigate('/events', { replace: true });
@@ -132,14 +121,14 @@ const Register = () => {
   };
 
   return (
-    <Container component="main" maxWidth="sm" sx={{ mt: 2, mb: 2 }}>
+    <Container component="main" maxWidth="sm" sx={{ mt: 4, mb: 2 }}>
       <Typography variant="h4" component="h1" sx={{ textAlign: 'center', mb: 3, fontWeight: 'bold', color: 'primary.main' }}>
         Saved & Single
       </Typography>
 
       <Paper elevation={1} sx={{ p: { xs: 2, sm: 2, md: 3 }, borderRadius: 2 }}>
         <Typography sx={{ textAlign: 'center', fontWeight: 'bold', fontSize: '1.2rem' }}>
-          Sign Up
+          Register
         </Typography>
         {error && (
           <Alert severity="error" sx={{ mb: 1, fontSize: '0.8rem', py: 0.5 }}>
@@ -178,7 +167,7 @@ const Register = () => {
                 required: true,
                 margin: 'dense',
                 size: 'small',
-                helperText: '18+ only. Use calendar icon to select date.',
+                helperText: '18+ only',
                 inputProps: { readOnly: true },
               }
             }}
@@ -190,13 +179,6 @@ const Register = () => {
               <MenuItem value="Female">Female</MenuItem>
             </Select>
           </FormControl>
-          <Autocomplete
-            freeSolo
-            options={churchOptions}
-            value={formData.current_church}
-            onInputChange={(_, value) => setFormData(prev => ({ ...prev, current_church: value }))}
-            renderInput={(params) => <TextField {...params} fullWidth label="Church" margin="dense" required size="small" />}
-          />
           <TextField
             fullWidth
             label="Password"
@@ -219,10 +201,10 @@ const Register = () => {
           />
           <TextField fullWidth label="Confirm Password" name="confirmPassword" type={showPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={handleTextChange} margin="dense" required size="small" />
           <Button type="submit" fullWidth variant="contained" size="medium" sx={{ mt: 1.5, mb: 1 }} disabled={loading}>
-            {loading ? 'Working...' : 'Sign Up'}
+            {loading ? 'Working...' : 'Register'}
           </Button>
           <Button fullWidth onClick={() => navigate('/login')} size="small" sx={{ mt: 0.5 }}>
-            Already have an account? Sign In
+            Already have an account? Login
           </Button>
           <Box sx={{ textAlign: 'center' }}>
             <Link component={RouterLink} to="/forgot-password" variant="subtitle1" sx={{ fontSize: '0.7rem' }}>

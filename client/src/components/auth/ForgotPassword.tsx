@@ -94,7 +94,7 @@ const ForgotPassword = () => {
         
         <Box sx={{ textAlign: 'center', mt: 2 }}>
           <Link component={RouterLink} to="/login" variant="body2" sx={{ fontSize: '0.8rem' }}>
-            {"Remembered your password? Sign In"}
+            {"Remembered your password? Login"}
           </Link>
         </Box>
       </Paper>

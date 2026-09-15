@@ -1,11 +1,11 @@
-import { Alert, Autocomplete, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material';
-import { Cancel as CancelEditIcon, Download as DownloadIcon, Edit as EditIcon, Save as SaveIcon } from '@mui/icons-material';
+import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material';
+import { Download as DownloadIcon } from '@mui/icons-material';
 import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { Event } from '../../types/event';
-import authApi from '../../services/api';
 import { eventsApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 export interface RegisteredUser {
   id: number;
@@ -20,7 +20,6 @@ export interface RegisteredUser {
   registration_date: string | null;
   check_in_date: string | null;
   status: string;
-  church?: string;
 }
 
 interface ViewRegisteredUsersProps {
@@ -38,14 +37,12 @@ const ViewRegisteredUsers = ({
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
   const [filteredRegisteredUsers, setFilteredRegisteredUsers] = useState<RegisteredUser[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [editingUserId, setEditingUserId] = useState<number | null>(null);
-  const [editFormData, setEditFormData] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [churchOptions, setChurchOptions] = useState<string[]>([]);
   const [checkingInUserId, setCheckingInUserId] = useState<number | null>(null);
+  const [userToCheckIn, setUserToCheckIn] = useState<RegisteredUser | null>(null);
 
   const canExport = isAdmin() || (isOrganizer() && !!event && Number(event.creator_id) === Number(user?.id));
-  const canEdit = isAdmin() || isOrganizer();
+  const canManage = isAdmin() || isOrganizer();
 
   const loadRegisteredUsers = async (currentEvent: Event) => {
     const response = await eventsApi.getEventAttendees(currentEvent.id.toString());
@@ -86,14 +83,25 @@ const ViewRegisteredUsers = ({
     }
   };
 
+  const formatTableDateTime = (utcDateString: string) => {
+    const date = new Date(utcDateString);
+    if (Number.isNaN(date.getTime())) return 'Invalid date';
+
+    return date.toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  };
+
   useEffect(() => {
     if (!open || !event) return;
 
     const fetchRegisteredUsers = async () => {
       try {
         setSearchTerm('');
-        setEditingUserId(null);
-        setEditFormData(null);
         setErrorMessage(null);
 
         await loadRegisteredUsers(event);
@@ -104,14 +112,6 @@ const ViewRegisteredUsers = ({
 
     fetchRegisteredUsers();
   }, [open, event]);
-
-  useEffect(() => {
-    const loadChurches = async () => {
-      const churches = await authApi.getChurches();
-      setChurchOptions(Array.from(new Set([...churches, 'Other'])));
-    };
-    loadChurches();
-  }, []);
 
   const handleSearchChange = (searchEvent: ChangeEvent<HTMLInputElement>) => {
     const value = searchEvent.target.value;
@@ -133,76 +133,6 @@ const ViewRegisteredUsers = ({
     setFilteredRegisteredUsers(filtered);
   };
 
-  const handleStartEditing = (user: RegisteredUser) => {
-    setEditingUserId(user.id);
-    setEditFormData({
-      first_name: user.first_name,
-      last_name: user.last_name,
-      email: user.email,
-      gender: user.gender,
-      church: user.church,
-    });
-  };
-
-  const handleCancelEditing = () => {
-    setEditingUserId(null);
-    setEditFormData(null);
-  };
-
-  const handleEditFormChange = (value: any, field: string) => {
-    setEditFormData({
-      ...editFormData,
-      [field]: value,
-    });
-  };
-
-  const handleSaveEdits = async (userId: number) => {
-    try {
-      if (!event) {
-        setErrorMessage('No event selected');
-        return;
-      }
-
-      const attendee = registeredUsers.find(user => user.id === userId);
-      if (!attendee) {
-        setErrorMessage('Attendee record not found');
-        return;
-      }
-
-      const response = await eventsApi.updateAttendeeDetails(
-        event.id.toString(),
-        attendee.id.toString(),
-        editFormData
-      );
-
-      const updateUserData = (users: RegisteredUser[]) =>
-        users.map(user => {
-          if (user.id !== userId) return user;
-
-          if (response.attendee) {
-            return {
-              ...user,
-              ...response.attendee,
-            };
-          }
-
-          return {
-            ...user,
-            ...editFormData,
-            name: `${editFormData.first_name} ${editFormData.last_name}`,
-          };
-        });
-
-      setRegisteredUsers(updateUserData);
-      setFilteredRegisteredUsers(updateUserData);
-      setEditingUserId(null);
-      setEditFormData(null);
-      setErrorMessage(null);
-    } catch (error: any) {
-      setErrorMessage(error.message || 'Failed to update user information');
-    }
-  };
-
   const handleManualCheckIn = async (userId: number) => {
     if (!event) {
       setErrorMessage('No event selected');
@@ -221,6 +151,12 @@ const ViewRegisteredUsers = ({
     }
   };
 
+  const handleCheckInConfirm = () => {
+    if (!userToCheckIn) return;
+    setUserToCheckIn(null);
+    handleManualCheckIn(userToCheckIn.id);
+  };
+
   const handleExport = () => {
     const usersToExport = searchTerm.trim() ? filteredRegisteredUsers : registeredUsers;
 
@@ -230,13 +166,13 @@ const ViewRegisteredUsers = ({
     }
 
     try {
-      let csvContent = 'Name,Email,Gender,Age,Birthday,Church,Registration Date,Check-in Time,Status\n';
+      let csvContent = 'Name,Email,Gender,Age,Birthday,Registration Date,Check-in Time,Status\n';
 
       usersToExport.forEach((user) => {
         const birthday = user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A';
         const registrationDate = user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A';
         const checkInDate = user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in';
-        csvContent += `"${user.name}","${user.email}",${user.gender || 'N/A'},${user.age || 'N/A'},${birthday},"${user.church || 'Other'}",${registrationDate},${checkInDate},${user.status}\n`;
+        csvContent += `"${user.name}","${user.email}",${user.gender || 'N/A'},${user.age || 'N/A'},${birthday},${registrationDate},${checkInDate},${user.status}\n`;
       });
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -291,99 +227,43 @@ const ViewRegisteredUsers = ({
                   <TableRow>
                     <TableCell sx={{ width: '15%', minWidth: 150 }}><strong>Name</strong></TableCell>
                     <TableCell sx={{ width: '20%', minWidth: 180 }}><strong>Email</strong></TableCell>
+                    {canManage && (
+                      <TableCell sx={{ width: 150, minWidth: 140, textAlign: 'center' }}><strong>Actions</strong></TableCell>
+                    )}
+                    <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Check-in Time</strong></TableCell>
+                    <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Registered</strong></TableCell>
                     <TableCell sx={{ width: 80, minWidth: 70 }}><strong>Gender</strong></TableCell>
                     <TableCell sx={{ width: 60, minWidth: 50, textAlign: 'center' }}><strong>Age</strong></TableCell>
                     <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Birthday</strong></TableCell>
-                    <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Church</strong></TableCell>
-                    <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Registered</strong></TableCell>
                     <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Status</strong></TableCell>
-                    <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Check-in Time</strong></TableCell>
-                    {canEdit && (
-                      <TableCell sx={{ width: 150, minWidth: 140, textAlign: 'center' }}><strong>Actions</strong></TableCell>
-                    )}
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {filteredRegisteredUsers.map((user) => (
                     <TableRow key={user.id}>
-                      {editingUserId === user.id ? (
-                        <>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                              <TextField size="small" label="First Name" value={editFormData.first_name} onChange={(e) => handleEditFormChange(e.target.value, 'first_name')} sx={{ width: 'calc(50% - 4px)' }} />
-                              <TextField size="small" label="Last Name" value={editFormData.last_name} onChange={(e) => handleEditFormChange(e.target.value, 'last_name')} sx={{ width: 'calc(50% - 4px)' }} />
-                            </Box>
-                          </TableCell>
-                          <TableCell><TextField size="small" label="Email" value={editFormData.email} onChange={(e) => handleEditFormChange(e.target.value, 'email')} fullWidth /></TableCell>
-                          <TableCell>
-                            <FormControl size="small" fullWidth>
-                              <InputLabel>Gender</InputLabel>
-                              <Select value={editFormData.gender || ''} label="Gender" onChange={(e) => handleEditFormChange(e.target.value, 'gender')}>
-                                <MenuItem value="Male">Male</MenuItem>
-                                <MenuItem value="Female">Female</MenuItem>
-                              </Select>
-                            </FormControl>
-                          </TableCell>
-                          <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
-                          <TableCell>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</TableCell>
-                          <TableCell>
-                            <Autocomplete
-                              fullWidth
-                              freeSolo
+                      <TableCell>{user.name}</TableCell>
+                      <TableCell sx={{ wordBreak: 'break-all' }}>{user.email}</TableCell>
+                      {canManage && (
+                        <TableCell sx={{ textAlign: 'center' }}>
+                          {user.status !== 'Checked In' && (
+                            <Button
                               size="small"
-                              options={churchOptions}
-                              value={editFormData.church || ''}
-                              onChange={(_event, newValue) => handleEditFormChange(newValue || '', 'church')}
-                              onInputChange={(_event, newInputValue) => handleEditFormChange(newInputValue, 'church')}
-                              ListboxProps={{ style: { maxHeight: '200px' } }}
-                              renderInput={(params) => <TextField {...params} label="Church" size="small" />}
-                            />
-                          </TableCell>
-                          <TableCell>{user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'}</TableCell>
-                          <TableCell><Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /></TableCell>
-                          <TableCell>{user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'}</TableCell>
-                          {canEdit && (
-                            <TableCell sx={{ textAlign: 'center' }}>
-                              <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
-                                <IconButton size="small" color="primary" onClick={() => handleSaveEdits(user.id)} title="Save"><SaveIcon fontSize="small" /></IconButton>
-                                <IconButton size="small" color="error" onClick={handleCancelEditing} title="Cancel"><CancelEditIcon fontSize="small" /></IconButton>
-                              </Box>
-                            </TableCell>
+                              variant="contained"
+                              onClick={() => setUserToCheckIn(user)}
+                              disabled={checkingInUserId === user.id}
+                              sx={{ whiteSpace: 'nowrap' }}
+                            >
+                              {checkingInUserId === user.id ? 'Checking In...' : 'Check In'}
+                            </Button>
                           )}
-                        </>
-                      ) : (
-                        <>
-                          <TableCell>{user.name}</TableCell>
-                          <TableCell sx={{ wordBreak: 'break-all' }}>{user.email}</TableCell>
-                          <TableCell>{user.gender}</TableCell>
-                          <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
-                          <TableCell>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</TableCell>
-                          <TableCell>{user.church || 'Other'}</TableCell>
-                          <TableCell>{user.registration_date ? formatUTCToLocal(user.registration_date, true) : 'N/A'}</TableCell>
-                          <TableCell><Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /></TableCell>
-                          <TableCell>{user.check_in_date ? formatUTCToLocal(user.check_in_date, true) : 'Not checked in'}</TableCell>
-                          {canEdit && (
-                            <TableCell sx={{ textAlign: 'center' }}>
-                              <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', flexWrap: 'wrap' }}>
-                                {user.status !== 'Checked In' && (
-                                  <Button
-                                    size="small"
-                                    variant="contained"
-                                    onClick={() => handleManualCheckIn(user.id)}
-                                    disabled={checkingInUserId === user.id}
-                                    sx={{ whiteSpace: 'nowrap' }}
-                                  >
-                                    {checkingInUserId === user.id ? 'Checking In...' : 'Check In'}
-                                  </Button>
-                                )}
-                                <IconButton size="small" color="primary" onClick={() => handleStartEditing(user)} title="Edit">
-                                  <EditIcon fontSize="small" />
-                                </IconButton>
-                              </Box>
-                            </TableCell>
-                          )}
-                        </>
+                        </TableCell>
                       )}
+                      <TableCell>{user.check_in_date ? formatTableDateTime(user.check_in_date) : 'Not checked in'}</TableCell>
+                      <TableCell>{user.registration_date ? formatTableDateTime(user.registration_date) : 'N/A'}</TableCell>
+                      <TableCell>{user.gender}</TableCell>
+                      <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
+                      <TableCell>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</TableCell>
+                      <TableCell><Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -396,6 +276,15 @@ const ViewRegisteredUsers = ({
           </Typography>
         )}
       </DialogContent>
+      <ConfirmDialog
+        open={!!userToCheckIn}
+        title={`Check In ${userToCheckIn?.name}?`}
+        confirmLabel="Yes"
+        cancelLabel="No"
+        onCancel={() => setUserToCheckIn(null)}
+        onConfirm={handleCheckInConfirm}
+      >
+      </ConfirmDialog>
       <DialogActions sx={{ display: 'flex', justifyContent: 'space-between', px: 2, py: 1.5 }}>
         <Box>
           {canExport && registeredUsers.length > 0 && (

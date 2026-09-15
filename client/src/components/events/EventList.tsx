@@ -6,7 +6,7 @@ import { Event as EventIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon,
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import authApi, { eventsApi } from '../../services/api';
-import { Event } from '../../types/event';
+import type { Event } from '../../types/event';
 import CreateEvent from './CreateEvent';
 import EventTimer from './EventTimer';
 import MySchedule from './MySchedule';
@@ -25,13 +25,15 @@ const toLocalDateTimeInputValue = (isoDateTime: string) => {
   return offsetDate.toISOString().slice(0, 16);
 };
 
+const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms));
+
 const EventList = () => {
-  const { refreshEvents, isRegisteredForEvent, filteredEvents } = useEvents();
+  const { refreshEvents, isRegisteredForEvent, filteredEvents, userRegisteredEvents } = useEvents();
   const { user, isAdmin, isOrganizer, refreshUser } = useAuth();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [activeView, setActiveView] = useState<EventView>('my');
+  const [activeView, setActiveView] = useState<EventView>('all');
   const handledOrganizerReturnRef = useRef<string | null>(null);
   const [pastEventsOpen, setPastEventsOpen] = useState(false);
   const [signUpDialogOpen, setSignUpDialogOpen] = useState(false);
@@ -53,6 +55,8 @@ const EventList = () => {
   const [numTables, setNumTables] = useState<number>(10);
   const [numRounds, setNumRounds] = useState<number>(10);
   const [isTableConfigOpen, setIsTableConfigOpen] = useState<boolean>(false);
+  const [checkedInConfirmationOpen, setCheckedInConfirmationOpen] = useState(false);
+  const [checkedInAttendeeCount, setCheckedInAttendeeCount] = useState(0);
 
   const [editEventDialogOpen, setEditEventDialogOpen] = useState<boolean>(false);
   const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
@@ -76,9 +80,10 @@ const EventList = () => {
   const [viewWaitlistDialogOpen, setViewWaitlistDialogOpen] = useState<boolean>(false);
   const [selectedEventForWaitlistUsers, setSelectedEventForWaitlistUsers] = useState<Event | null>(null);
   const [currentRounds, setCurrentRounds] = useState<Record<number, number>>({});
+  const handledCheckoutReturnRef = useRef<string | null>(null);
 
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
-  const hasStartedStripeSetup = !!user?.stripe_connected_account_id;
+  const hasStartedStripeSetup = !!user?.has_started_stripe_setup;
   const organizerSetupComplete = !!user?.stripe_connect_onboarding_complete;
   const canCreateEvents = !!user && (isAdmin() || (isOrganizer() && organizerSetupComplete));
 
@@ -113,6 +118,51 @@ const EventList = () => {
     syncOrganizerState();
   }, [activeView, user, isAdmin, refreshUser, searchParams, location.pathname, location.search]);
 
+  useEffect(() => {
+    let isActive = true;
+
+    const syncCheckoutReturn = async () => {
+      if (!user || searchParams.get('checkout') !== 'success') return;
+      if (handledCheckoutReturnRef.current === location.search) return;
+
+      handledCheckoutReturnRef.current = location.search;
+      const sessionId = searchParams.get('session_id');
+
+      if (sessionId?.startsWith('cs_')) {
+        try {
+          await eventsApi.completeRegistrationCheckout(sessionId);
+        } catch (error: any) {
+          setErrorMessage(
+            error.message ||
+            'Checkout completed, but registration could not be verified automatically yet.'
+          );
+        }
+      } else if (sessionId) {
+        setErrorMessage('Checkout completed, but the return link did not include a valid session ID.');
+      }
+
+      for (let attempt = 0; attempt < 6 && isActive; attempt += 1) {
+        await refreshEvents();
+        if (attempt < 5) {
+          await wait(1500);
+        }
+      }
+
+      if (!isActive) return;
+
+      const nextParams = new URLSearchParams(location.search);
+      nextParams.delete('checkout');
+      nextParams.delete('session_id');
+      const nextSearch = nextParams.toString();
+      window.history.replaceState({}, '', `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}`);
+    };
+
+    syncCheckoutReturn();
+    return () => {
+      isActive = false;
+    };
+  }, [location.pathname, location.search, refreshEvents, searchParams, user]);
+
   const formatUTCToLocal = (utcDateString: string, includeTime: boolean = true) => {
     try {
       const date = new Date(utcDateString);
@@ -128,8 +178,7 @@ const EventList = () => {
       };
 
       return date.toLocaleString(undefined, options);
-    } catch (error) {
-      console.error('Error formatting date:', error);
+    } catch {
       return 'Invalid date';
     }
   };
@@ -180,14 +229,12 @@ const EventList = () => {
         try {
           await refreshEvents();
         } catch (refreshError: any) {
-          console.error(`Registration for event ${successfullyRegisteredEventId} was successful, but failed to refresh the events list:`, refreshError);
           const backendMsg = refreshError.response?.data?.message || refreshError.response?.data?.error; // Renamed to avoid conflict
           setErrorMessage(
             `You've been registered for the event, but we couldn't update the list automatically. Error: ${backendMsg || refreshError.message}. Please try refreshing the page.`
           );
         }
       } catch (registrationError: any) {
-        console.error('Failed to register for event:', registrationError);
         const backendError = registrationError.response?.data?.error;
         const backendMsg = registrationError.response?.data?.message;
         const waitlistAvailable = registrationError.response?.data?.waitlist_available === true;
@@ -221,7 +268,6 @@ const EventList = () => {
         alert(`Successfully joined the waitlist for "${eventForWaitlist.name}"! If a spot opens up, we will email you so you can come back and sign up.`);
         await refreshEvents(); // Refresh events to show waitlist status if applicable
       } catch (waitlistError: any) {
-        console.error('Failed to join waitlist:', waitlistError);
         const backendError = waitlistError.response?.data?.error;
         const backendMessage = waitlistError.response?.data?.message;
         setErrorMessage(backendError || backendMessage || waitlistError.message || 'An error occurred while trying to join the waitlist.');
@@ -256,20 +302,8 @@ const EventList = () => {
 
 
   const sortedEvents = [...filteredEvents].sort((a, b) => {
-    const statusOrder: Record<EventStatus, number> = {
-      'In Progress': 1,
-      'Registration Open': 2,
-      'Completed': 3,
-      'Cancelled': 4
-    };
-
-    const statusCompare = statusOrder[a.status] - statusOrder[b.status];
-    if (statusCompare !== 0) return statusCompare;
-
-    if (a.starts_at < b.starts_at) return 1;
-    if (a.starts_at > b.starts_at) return -1;
-
-    return a.id - b.id;
+    const startTimeDifference = new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+    return startTimeDifference || a.id - b.id;
   });
 
   const isPastEvent = (event: Event) => {
@@ -282,6 +316,8 @@ const EventList = () => {
     if (!user) return false;
     return isRegisteredForEvent(event.id) || Number(event.creator_id) === Number(user.id);
   };
+
+  const userHasAnyRegistrations = userRegisteredEvents.length > 0;
 
   const baseEvents = activeView === 'my' ? sortedEvents.filter(isMyEvent) : sortedEvents;
   const visibleEvents = baseEvents.filter(event => !isPastEvent(event));
@@ -388,7 +424,7 @@ const EventList = () => {
               color="primary"
               sx={{ borderRadius: 1 }}
             >
-              View Registered Users
+              Check In Users
             </Button>
 
             <Button
@@ -472,11 +508,22 @@ const EventList = () => {
   };
 
   // Event status update functions
-  const handleStartEventClick = (event: Event) => {
+  const handleStartEventClick = async (event: Event) => {
     setSelectedEventForStarting(event);
-    setNumTables(10); // Default values
+    setNumTables(10);
     setNumRounds(10);
-    setIsTableConfigOpen(true); // Open the table/round config dialog first
+    try {
+      const response = await eventsApi.getEventAttendees(event.id.toString());
+      setCheckedInAttendeeCount(response.data.filter(attendee => attendee.status === 'Checked In').length);
+      setCheckedInConfirmationOpen(true);
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Failed to load checked-in attendees');
+    }
+  };
+
+  const handleCheckedInConfirmation = () => {
+    setCheckedInConfirmationOpen(false);
+    setIsTableConfigOpen(true);
   };
 
   const handleTableConfigSubmit = () => {
@@ -808,7 +855,7 @@ const EventList = () => {
               </Box>
             )}
 
-            {(activeView !== 'my' || pastEvents.length > 0) && (
+            {(activeView !== 'my' || pastEvents.length > 0 || userHasAnyRegistrations) && (
               <Box sx={{ mt: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 1, overflow: 'hidden' }}>
                 <Box
                   sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
@@ -834,13 +881,11 @@ const EventList = () => {
       <ConfirmDialog
         open={signUpDialogOpen}
         title="Sign Up for Event"
-        confirmLabel="Sign Up"
+        confirmLabel="Continue to Checkout"
         onCancel={() => setSignUpDialogOpen(false)}
         onConfirm={handleSignUpConfirm}
       >
-        {parseFloat(filteredEvents.find(event => event.id.toString() === signUpEventId)?.price_per_person || '0') > 0
-          ? 'Are you sure you want to sign up for this paid event? You will be sent to Stripe Checkout. Sign ups are non-refundable through app.'
-          : 'Are you sure you want to sign up for this event?'}
+        Are you sure you want to sign up for this event?
       </ConfirmDialog>
 
       <ConfirmDialog
@@ -852,9 +897,7 @@ const EventList = () => {
         onCancel={() => setCancelDialogOpen(false)}
         onConfirm={handleCancelConfirm}
       >
-        {parseFloat(filteredEvents.find(event => event.id.toString() === cancelEventId)?.price_per_person || '0') > 0
-          ? 'Are you sure you want to cancel your registration for this paid event? There are no refunds through app. Contact event organizer for refund questions.'
-          : 'Are you sure you want to cancel your registration for this event?'}
+        Are you sure you want to cancel your registration? Contact your event organizer for refund questions.
       </ConfirmDialog>
 
       <ViewRegisteredUsers
@@ -864,6 +907,25 @@ const EventList = () => {
       />
 
       {/* Generate Schedules Dialog */}
+      <ConfirmDialog
+        open={checkedInConfirmationOpen}
+        title="Generate Schedules"
+        confirmLabel="Next"
+        cancelLabel="No"
+        onCancel={() => setCheckedInConfirmationOpen(false)}
+        onConfirm={handleCheckedInConfirmation}
+      >
+        <Typography variant="body1" sx={{ mt: 1, fontWeight: 'bold' }}>
+          {checkedInAttendeeCount} people are currently checked in
+        </Typography>
+        <Typography variant="body1" sx={{ mt: 1 }}>
+          Please ask the Attendees to check if their phones say they are checked-in
+        </Typography>
+        <Typography variant="body1">
+          Only checked-in attendees will be included in the schedule generation
+        </Typography>
+      </ConfirmDialog>
+
       <Dialog
         open={isTableConfigOpen}
         onClose={() => setIsTableConfigOpen(false)}
@@ -898,10 +960,6 @@ const EventList = () => {
               inputProps={{ min: 1 }}
             />
           </Box>
-          <DialogContentText sx={{ fontSize: '0.8rem' }}>
-              Note: The Algorithm will try to use the inputted values, but it may bump these numbers down
-              (e.g. 10 tables are inputted but there are only 9 males).
-          </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setIsTableConfigOpen(false)}>Cancel</Button>
@@ -1059,7 +1117,7 @@ const EventList = () => {
       >
         {waitlistReason}. Would you like to be added to the waitlist?
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          If a spot opens up, you may be automatically registered.
+          If a spot opens, we will email you so you can return and sign up yourself.
         </Typography>
       </ConfirmDialog>
 

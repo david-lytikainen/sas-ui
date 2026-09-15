@@ -110,12 +110,11 @@ const ViewWaitlistedUsers = ({
     }
 
     try {
-      let csvContent = 'Name,Email,Gender,Age,Birthday,Church,Waitlisted At\n';
+      let csvContent = 'Name,Email,Gender,Age,Birthday,Waitlisted At\n';
       usersToExport.forEach(user => {
         const birthday = user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A';
         const waitlistedAt = user.waitlisted_at ? formatUTCToLocal(user.waitlisted_at, true) : 'N/A';
-        const church = user.church || 'Other';
-        csvContent += `"${user.name}","${user.email}",${user.gender || 'N/A'},${user.age || 'N/A'},${birthday},${church},${waitlistedAt}\n`;
+        csvContent += `"${user.name}","${user.email}",${user.gender || 'N/A'},${user.age || 'N/A'},${birthday},${waitlistedAt}\n`;
       });
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -176,7 +175,6 @@ const ViewWaitlistedUsers = ({
                     <TableCell sx={{ width: 80, minWidth: 70 }}><strong>Gender</strong></TableCell>
                     <TableCell sx={{ width: 60, minWidth: 50, textAlign: 'center' }}><strong>Age</strong></TableCell>
                     <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Birthday</strong></TableCell>
-                    <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Church</strong></TableCell>
                     <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Waitlisted At</strong></TableCell>
                   </TableRow>
                 </TableHead>
@@ -188,7 +186,6 @@ const ViewWaitlistedUsers = ({
                       <TableCell>{user.gender}</TableCell>
                       <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
                       <TableCell>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</TableCell>
-                      <TableCell>{user.church || 'Other'}</TableCell>
                       <TableCell>{user.waitlisted_at ? formatUTCToLocal(user.waitlisted_at, true) : 'N/A'}</TableCell>
                     </TableRow>
                   ))}

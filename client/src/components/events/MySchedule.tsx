@@ -123,8 +123,8 @@ const MySchedule = ({ event, currentRound }: MyScheduleProps) => {
   const handleCopyEmail = async (email: string) => {
     try {
       await navigator.clipboard.writeText(email);
-    } catch (err) {
-      console.error('Failed to copy email:', err);
+    } catch {
+      setAttendeeSelectionError('Failed to copy email.');
     }
   };
 
