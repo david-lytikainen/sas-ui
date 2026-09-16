@@ -334,7 +334,7 @@ const AppLayout = () => {
 };
 
 function App() {
-  const [mode, setMode] = useState<'dark' | 'light'>('dark');
+  const [mode, setMode] = useState<'dark' | 'light'>('light');
 
   useEffect(() => {
     let themeColorMeta = document.querySelector('meta[name="theme-color"]');

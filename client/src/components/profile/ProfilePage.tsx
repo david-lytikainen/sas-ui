@@ -1,15 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Box, Button, Card, CardContent, Container, Divider, IconButton, TextField, Typography, useMediaQuery } from '@mui/material';
+import { useContext, useEffect, useMemo, useState } from 'react';
+import { Alert, Box, Button, Card, CardContent, Container, Divider, IconButton, TextField, Tooltip, Typography, useMediaQuery } from '@mui/material';
 import { Theme } from '@mui/material/styles';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import authApi from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { ColorModeContext } from '../../context/ColorModeContext';
 
 const ProfilePage = () => {
   const { user, refreshUser, logout } = useAuth();
+  const { mode, toggleColorMode } = useContext(ColorModeContext);
   const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
   const [dashboard, setDashboard] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -420,6 +424,22 @@ const ProfilePage = () => {
             Profile
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Tooltip title={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}>
+              <IconButton
+                aria-label={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}
+                onClick={toggleColorMode}
+                size={isMobile ? 'small' : 'medium'}
+                sx={{
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 2.5,
+                  px: 1.1,
+                  py: 0.75,
+                }}
+              >
+                {mode === 'light' ? <Brightness4Icon fontSize={isMobile ? 'small' : 'medium'} /> : <Brightness7Icon fontSize={isMobile ? 'small' : 'medium'} />}
+              </IconButton>
+            </Tooltip>
             {isEditing ? (
               <>
                 <IconButton

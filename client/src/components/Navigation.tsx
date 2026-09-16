@@ -1,10 +1,8 @@
-import { useContext, useState } from 'react';
+import { useState } from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
-import { AppBar, Toolbar, Typography, Button, Box, Container, IconButton, Tooltip, useTheme, useMediaQuery } from '@mui/material';
-import { Brightness4, Brightness7 } from '@mui/icons-material';
+import { AppBar, Toolbar, Typography, Button, Box, Container, useTheme, useMediaQuery } from '@mui/material';
 import { animated, useSpring, useTrail } from '@react-spring/web';
 import { useAuth } from '../context/AuthContext';
-import { ColorModeContext } from '../context/ColorModeContext';
 
 const AnimatedBox = animated(Box);
 
@@ -13,7 +11,6 @@ const Navigation = () => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { mode, toggleColorMode } = useContext(ColorModeContext);
 
   const [logoHovered, setLogoHovered] = useState(false);
 
@@ -143,16 +140,6 @@ const Navigation = () => {
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, position: 'relative' }}>
-            <Tooltip title={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`}>
-              <IconButton
-                aria-label={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`}
-                color="inherit"
-                onClick={toggleColorMode}
-                size="small"
-              >
-                {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
-              </IconButton>
-            </Tooltip>
             {user ? (
               <Box sx={{ display: 'flex', alignItems: 'center'}}>
                 <Button
