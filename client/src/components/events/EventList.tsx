@@ -517,6 +517,11 @@ const EventList = () => {
       const maleCount = checkedInAttendees.filter(attendee => attendee.gender === 'Male').length;
       const femaleCount = checkedInAttendees.filter(attendee => attendee.gender === 'Female').length;
 
+      if (maleCount === 0 || femaleCount === 0) {
+        setErrorMessage('Schedule generation requires at least one checked-in male and one checked-in female.');
+        return;
+      }
+
       setNumTables(Math.max(1, Math.min(maleCount, femaleCount)));
       setCheckedInAttendeeCount(checkedInAttendees.length);
       setCheckedInConfirmationOpen(true);
