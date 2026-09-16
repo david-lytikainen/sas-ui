@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, useTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -26,24 +26,24 @@ import { SplashProvider, useSplash } from './context/SplashContext';
 import ForgotPassword from "./components/auth/ForgotPassword";
 import ResetPassword from "./components/auth/ResetPassword";
 
-const ACTUAL_DARK_MODE_PAGE_BACKGROUND = '#222222';
+const DARK_PAGE_BACKGROUND = '#222222';
 
-const getDesignTokens = () => ({
+const getDesignTokens = (mode: 'dark' | 'light') => ({
   palette: {
-    mode: 'dark' as const,
+    mode,
     primary: {
-      main: '#A6C0FE',
+      main: mode === 'dark' ? '#A6C0FE' : '#3459A8',
     },
     secondary: {
       main: '#707070',
     },
     background: {
-      default: ACTUAL_DARK_MODE_PAGE_BACKGROUND,
-      paper: '#333333',
+      default: mode === 'dark' ? DARK_PAGE_BACKGROUND : '#F7F7F8',
+      paper: mode === 'dark' ? '#333333' : '#FFFFFF',
     },
     text: {
-      primary: '#E0E0E0',
-      secondary: '#B0B0B0',
+      primary: mode === 'dark' ? '#E0E0E0' : '#1D1D20',
+      secondary: mode === 'dark' ? '#B0B0B0' : '#5D5D66',
     },
   },
   typography: {
@@ -89,7 +89,7 @@ const getDesignTokens = () => ({
         root: {
           backgroundImage: 'none',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          backgroundColor: '#333333',
+          backgroundColor: mode === 'dark' ? '#333333' : '#FFFFFF',
           '&:hover': {
             transform: 'translateY(-2px)',
             boxShadow: '0 6px 20px rgba(0, 0, 0, 0.4)',
@@ -100,9 +100,10 @@ const getDesignTokens = () => ({
     MuiAppBar: {
       styleOverrides: {
         root: {
-          backgroundColor: 'rgba(19, 19, 19, 0.85)',
+          backgroundColor: mode === 'dark' ? 'rgba(19, 19, 19, 0.85)' : 'rgba(255, 255, 255, 0.9)',
+          color: mode === 'dark' ? '#E0E0E0' : '#1D1D20',
           backdropFilter: 'blur(20px)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          borderBottom: mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
         },
       },
     },
@@ -333,6 +334,8 @@ const AppLayout = () => {
 };
 
 function App() {
+  const [mode, setMode] = useState<'dark' | 'light'>('dark');
+
   useEffect(() => {
     let themeColorMeta = document.querySelector('meta[name="theme-color"]');
     if (!themeColorMeta) {
@@ -340,18 +343,18 @@ function App() {
       themeColorMeta.setAttribute('name', 'theme-color');
       document.head.appendChild(themeColorMeta);
     }
-    themeColorMeta.setAttribute('content', ACTUAL_DARK_MODE_PAGE_BACKGROUND);
-  }, []);
+    themeColorMeta.setAttribute('content', mode === 'dark' ? DARK_PAGE_BACKGROUND : '#F7F7F8');
+  }, [mode]);
 
   const colorMode = useMemo(
     () => ({
-      toggleColorMode: () => {},
-      mode: 'dark' as const,
+      toggleColorMode: () => setMode(previousMode => previousMode === 'dark' ? 'light' : 'dark'),
+      mode,
     }),
-    []
+    [mode]
   );
 
-  const theme = useMemo(() => createTheme(getDesignTokens()), []);
+  const theme = useMemo(() => createTheme(getDesignTokens(mode)), [mode]);
 
   return (
     <SplashProvider>

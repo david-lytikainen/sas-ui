@@ -12,7 +12,7 @@ const Footer: React.FC = () => {
         py: 1,
         px: 2,
         mt: 'auto',
-        backgroundColor: (theme) => theme.palette.grey[800],
+        backgroundColor: (theme) => theme.palette.background.paper,
         borderTop: (theme) => `1px solid ${theme.palette.divider}`
       }}
     >

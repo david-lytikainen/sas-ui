@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
-import { AppBar, Toolbar, Typography, Button, Box, Container, useTheme, useMediaQuery } from '@mui/material';
+import { AppBar, Toolbar, Typography, Button, Box, Container, IconButton, Tooltip, useTheme, useMediaQuery } from '@mui/material';
+import { Brightness4, Brightness7 } from '@mui/icons-material';
 import { animated, useSpring, useTrail } from '@react-spring/web';
 import { useAuth } from '../context/AuthContext';
+import { ColorModeContext } from '../context/ColorModeContext';
 
 const AnimatedBox = animated(Box);
 
@@ -11,6 +13,7 @@ const Navigation = () => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { mode, toggleColorMode } = useContext(ColorModeContext);
 
   const [logoHovered, setLogoHovered] = useState(false);
 
@@ -109,7 +112,7 @@ const Navigation = () => {
                           ? theme.palette.primary.main 
                           : 'inherit',
                         '&:hover': {
-                          backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                          backgroundColor: theme.palette.action.hover,
                           color: theme.palette.primary.main,
                         },
                         display: 'flex',
@@ -140,6 +143,16 @@ const Navigation = () => {
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, position: 'relative' }}>
+            <Tooltip title={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`}>
+              <IconButton
+                aria-label={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`}
+                color="inherit"
+                onClick={toggleColorMode}
+                size="small"
+              >
+                {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
+              </IconButton>
+            </Tooltip>
             {user ? (
               <Box sx={{ display: 'flex', alignItems: 'center'}}>
                 <Button
@@ -154,7 +167,7 @@ const Navigation = () => {
                     minWidth: 'auto',
                     px: 1,
                     '&:hover': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                      backgroundColor: theme.palette.action.hover,
                     },
                   }}
                 >
@@ -185,7 +198,7 @@ const Navigation = () => {
                     boxShadow: 'none',
                     textTransform: 'none',
                     '&:hover': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                      backgroundColor: theme.palette.action.hover,
                       color: theme.palette.primary.dark,
                     },
                     padding: isMobile ? '6px 8px' : '8px 16px',

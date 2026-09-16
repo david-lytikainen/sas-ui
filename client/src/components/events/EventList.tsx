@@ -651,10 +651,10 @@ const EventList = () => {
     fontSize: isMobile ? '0.8rem' : '0.875rem',
     fontWeight: 700,
     lineHeight: 1.2,
-    bgcolor: activeView === view ? theme.palette.primary.main : '#303030',
-    color: activeView === view ? '#000000' : theme.palette.common.white,
+    bgcolor: activeView === view ? theme.palette.primary.main : theme.palette.background.paper,
+    color: activeView === view ? theme.palette.primary.contrastText : theme.palette.text.primary,
     '&:hover': {
-      bgcolor: activeView === view ? theme.palette.primary.main : '#383838'
+      bgcolor: activeView === view ? theme.palette.primary.main : theme.palette.action.hover
     }
   });
 
@@ -688,8 +688,8 @@ const EventList = () => {
                 sx={{
                   fontWeight: 600,
                   fontSize: isMobile ? '0.75rem' : '0.875rem',
-                  bgcolor: '#2b2b2b',
-                  color: '#f5f5f5'
+                  bgcolor: theme.palette.action.selected,
+                  color: theme.palette.text.primary
                 }}
               />
             </Box>
