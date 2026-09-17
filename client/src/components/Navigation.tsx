@@ -8,11 +8,11 @@ const Navigation = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navItems = user ? [
-    { label: 'S&S', to: '/', brand: true },
+    { label: 'S&S', to: '/' },
     { label: 'Events', to: '/events' },
     { label: `Hi, ${user.first_name}`, to: '/profile' },
   ] : [];
-  const navPillSx = (active: boolean, brand = false) => ({ minHeight: 44, minWidth: 44, maxWidth: brand ? 76 : { xs: 112, sm: 180 }, px: brand ? 1.5 : { xs: 1.25, sm: 1.75 }, borderRadius: 999, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: active ? theme.palette.primary.contrastText : theme.palette.text.primary, bgcolor: active ? theme.palette.primary.main : 'transparent', fontSize: brand ? '1.1rem' : '0.9rem', fontWeight: brand ? 800 : 700, letterSpacing: 0, boxShadow: active ? theme.shadows[1] : 'none', '&:focus-visible': { outline: `2px solid ${theme.palette.primary.main}`, outlineOffset: 2 }, '&:active': { bgcolor: active ? theme.palette.primary.dark : theme.palette.action.selected }, '@media (hover: hover) and (pointer: fine)': { '&:hover': { bgcolor: active ? theme.palette.primary.main : theme.palette.action.hover } } });
+  const navPillSx = (active: boolean) => ({ minWidth: 'auto', borderRadius: 999, px: 1.75, py: 0.8, fontSize: isMobile ? '0.8rem' : '1rem', fontWeight: 700, lineHeight: 1.2, bgcolor: active ? theme.palette.primary.main : theme.palette.background.paper, color: active ? theme.palette.primary.contrastText : theme.palette.text.primary, boxShadow: 'none', '&:hover': { bgcolor: active ? theme.palette.primary.main : theme.palette.action.hover, boxShadow: 'none' }, '&:active, &:focus-visible': { boxShadow: 'none' }, '@media (hover: none), (pointer: coarse)': { '&:hover': { bgcolor: active ? theme.palette.primary.main : theme.palette.background.paper, boxShadow: 'none' } } });
 
   return (
     <AppBar 
@@ -27,7 +27,7 @@ const Navigation = () => {
             <Box component="nav" aria-label="Main navigation" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
               {navItems.map((item) => {
                 const active = location.pathname === item.to;
-                return <Button key={item.to} component={RouterLink} to={item.to} aria-current={active ? 'page' : undefined} sx={navPillSx(active, item.brand)}>{item.label}</Button>;
+                return <Button key={item.to} component={RouterLink} to={item.to} aria-current={active ? 'page' : undefined} sx={navPillSx(active)}>{item.label}</Button>;
               })}
             </Box>
           ) : (
@@ -68,43 +68,6 @@ const Navigation = () => {
                     LOGIN
                   </Typography>
                 </Button>
-                {location.pathname === '/' && (
-                  <Box
-                    role="status"
-                    sx={{
-                      position: 'absolute',
-                      top: 'calc(100% + 10px)',
-                      right: 0,
-                      width: 'max-content',
-                      maxWidth: 'calc(100vw - 32px)',
-                      px: 1.5,
-                      py: 1,
-                      borderRadius: 1.5,
-                      color: 'text.primary',
-                      bgcolor: 'background.paper',
-                      border: '1px solid rgba(166, 192, 254, 0.35)',
-                      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
-                      fontSize: '0.85rem',
-                      lineHeight: 1.35,
-                      textAlign: 'left',
-                      zIndex: theme.zIndex.tooltip,
-                      '&::before': {
-                        content: '""',
-                        position: 'absolute',
-                        top: -8,
-                        right: { xs: 18, sm: 24 },
-                        width: 14,
-                        height: 14,
-                        bgcolor: 'background.paper',
-                        borderLeft: '1px solid rgba(166, 192, 254, 0.35)',
-                        borderTop: '1px solid rgba(166, 192, 254, 0.35)',
-                        transform: 'rotate(45deg)',
-                      },
-                    }}
-                  >
-                    Login to attend or organize events
-                  </Box>
-                )}
               </>
           </Box>}
         </Toolbar>
