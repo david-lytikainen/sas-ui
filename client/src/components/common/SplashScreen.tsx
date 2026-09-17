@@ -11,9 +11,9 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ type }) => {
   
   const message = type === 'login' 
     ? 'Saved & Single'
-    : 'Goodbye :)';
+    : 'Goodbye 🙂';
 
-  const chars = useMemo(() => message.split(''), [message]);
+  const chars = useMemo(() => Array.from(message), [message]);
   const trail = useTrail(chars.length, {
     from: { opacity: 0, transform: 'translateY(0px)' },
     to: { opacity: 1, transform: 'translateY(0px)' },
@@ -72,4 +72,4 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ type }) => {
   );
 };
 
-export default SplashScreen; 
+export default SplashScreen;

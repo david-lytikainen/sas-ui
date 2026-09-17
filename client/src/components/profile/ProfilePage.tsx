@@ -5,6 +5,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import authApi from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { ColorModeContext } from '../../context/ColorModeContext';
@@ -16,6 +17,7 @@ const ProfilePage = () => {
   const [dashboard, setDashboard] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [stripeDashboardLoading, setStripeDashboardLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -182,19 +184,26 @@ const ProfilePage = () => {
     await logout();
   };
 
+  const handleOpenStripeDashboard = async () => {
+    try {
+      setStripeDashboardLoading(true);
+      setError(null);
+      const { url } = await authApi.createConnectDashboardLink();
+      window.location.href = url;
+    } catch (stripeError: any) {
+      setError(stripeError.message || 'Failed to open Stripe dashboard.');
+      setStripeDashboardLoading(false);
+    }
+  };
+
   const ownBilling = dashboard?.billing?.own_summary;
-  const organizerOverview = dashboard?.billing?.organizer_overview || [];
   const latestRuns = dashboard?.admin_tools?.latest_runs || [];
   const recentFailures = dashboard?.admin_tools?.recent_failures || [];
 
   const billingHighlights = ownBilling
     ? [
         { label: 'Gross', value: `$${ownBilling.gross_amount}` },
-        { label: 'Refunded', value: `$${ownBilling.refunded_amount}` },
-        { label: 'Net', value: `$${ownBilling.net_amount}` },
         { label: 'Registrations', value: String(ownBilling.successful_registrations ?? 0) },
-        { label: 'Refund Issues', value: String(ownBilling.refund_failures ?? 0) },
-        { label: 'Mismatches', value: String(ownBilling.payment_mismatches ?? 0) },
       ]
     : [];
 
@@ -306,16 +315,21 @@ const ProfilePage = () => {
       {(user?.role_id === 2 || user?.role_id === 3) && (
         <Card sx={{ borderRadius: 2, mb: 2 }}>
           <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <Typography variant={isMobile ? 'h6' : 'h5'} sx={{ fontWeight: 700 }}>
-              Billing
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+              <Typography variant={isMobile ? 'h6' : 'h5'} sx={{ fontWeight: 700 }}>Billing</Typography>
+              {user?.role_id === 3 ? (
+                <Button component="a" href="https://dashboard.stripe.com" target="_blank" rel="noopener noreferrer" size="small" endIcon={<OpenInNewIcon fontSize="small" />}>Open Stripe</Button>
+              ) : (
+                <Button size="small" onClick={handleOpenStripeDashboard} disabled={stripeDashboardLoading} endIcon={<OpenInNewIcon fontSize="small" />}>{stripeDashboardLoading ? 'Opening...' : 'Open Stripe'}</Button>
+              )}
+            </Box>
             {dashboardLoading ? (
               <Typography variant="body2" color="text.secondary">
                 Loading billing summary...
               </Typography>
             ) : (
               <>
-                <Box sx={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))', gap: 1.25 }}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1.25 }}>
                   {billingHighlights.map((item) => (
                     <Box
                       key={item.label}
@@ -335,22 +349,6 @@ const ProfilePage = () => {
                       </Typography>
                     </Box>
                   ))}
-                </Box>
-                <Box
-                  sx={{
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderRadius: 2,
-                    px: 2,
-                    py: 1.5,
-                  }}
-                >
-                  <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', textTransform: 'uppercase', mb: 0.4 }}>
-                    Stripe Account
-                  </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                    {dashboard?.billing?.stripe_connect_onboarding_complete ? 'Connected' : 'Not Connected'}
-                  </Typography>
                 </Box>
                 {ownBilling?.recent_activity?.length > 0 && (
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -376,35 +374,6 @@ const ProfilePage = () => {
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           Payment {activity.payment_status} | Registration {activity.registration_status}{activity.refund_status ? ` | Refund ${activity.refund_status}` : ''}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Box>
-                )}
-                {user?.role_id === 3 && organizerOverview.length > 0 && (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                      Organizer Overview
-                    </Typography>
-                    {organizerOverview.map((organizer: any) => (
-                      <Box
-                        key={organizer.organizer_id}
-                        sx={{
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          borderRadius: 2,
-                          px: 2,
-                          py: 1.5,
-                        }}
-                      >
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {organizer.organizer_name}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {organizer.organizer_email}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Gross ${organizer.gross_amount} | Net ${organizer.net_amount} | {organizer.onboarding_complete ? 'Connected' : 'Not Connected'}
                         </Typography>
                       </Box>
                     ))}

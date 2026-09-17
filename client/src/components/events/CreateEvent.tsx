@@ -227,7 +227,7 @@ const CreateEvent = ({ createdEventCount, onCreated, onError }: CreateEventProps
               label="Enforce 60/40 gender balance"
             />
             <Typography variant="body2" color="text.secondary" sx={{ ml: 4.5, mt: -0.5 }}>
-              Keeps registrations more balanced by pausing one gender once it reaches about 60% of the event.
+              E.g. if Max Capacity is 100, the 61st female (or male) will be waitlisted.
             </Typography>
           </Grid>
         </Grid>
