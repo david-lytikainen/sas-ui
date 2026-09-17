@@ -1,9 +1,7 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { Alert, Box, Button, Card, CardContent, Container, Divider, IconButton, TextField, Tooltip, Typography, useMediaQuery } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Container, Divider, IconButton, Switch, TextField, Typography, useMediaQuery } from '@mui/material';
 import { Theme } from '@mui/material/styles';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import Brightness4Icon from '@mui/icons-material/Brightness4';
-import Brightness7Icon from '@mui/icons-material/Brightness7';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
@@ -424,22 +422,6 @@ const ProfilePage = () => {
             Profile
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Tooltip title={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}>
-              <IconButton
-                aria-label={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}
-                onClick={toggleColorMode}
-                size={isMobile ? 'small' : 'medium'}
-                sx={{
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 2.5,
-                  px: 1.1,
-                  py: 0.75,
-                }}
-              >
-                {mode === 'light' ? <Brightness4Icon fontSize={isMobile ? 'small' : 'medium'} /> : <Brightness7Icon fontSize={isMobile ? 'small' : 'medium'} />}
-              </IconButton>
-            </Tooltip>
             {isEditing ? (
               <>
                 <IconButton
@@ -591,6 +573,13 @@ const ProfilePage = () => {
               ))}
             </Box>
           )}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, minHeight: 56, px: 2, py: 1, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+            <Box>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>Dark Mode</Typography>
+              <Typography variant="body2" color="text.secondary">Use the darker app appearance</Typography>
+            </Box>
+            <Switch checked={mode === 'dark'} onChange={toggleColorMode} inputProps={{ 'aria-label': 'Dark Mode' }} />
+          </Box>
           <Divider sx={{ mt: isEditing ? 0 : 1 }} />
           <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
             <Button

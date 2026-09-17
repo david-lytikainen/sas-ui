@@ -1,51 +1,18 @@
-import { useState } from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Button, Box, Container, useTheme, useMediaQuery } from '@mui/material';
-import { animated, useSpring, useTrail } from '@react-spring/web';
 import { useAuth } from '../context/AuthContext';
-
-const AnimatedBox = animated(Box);
 
 const Navigation = () => {
   const { user } = useAuth();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-
-  const [logoHovered, setLogoHovered] = useState(false);
-
-  const logoStyle = useSpring({
-    scale: logoHovered ? 1.05 : 1,
-    y: logoHovered ? -2 : 0,
-    config: {
-      tension: 300,
-      friction: 15,
-      mass: 1
-    }
-  });
-
-  const isActive = (path: string) => {
-    return location.pathname === path;
-  };
-
-  const getNavItems = () => {
-    if (!user) return [];
-    return [
-      {
-        label: 'EVENTS',
-        to: '/events',
-        show: true,
-      },
-    ];
-  };
-
-  const navItems = getNavItems();
-
-  const trail = useTrail(navItems.length, {
-    from: { opacity: 0, y: 5 },
-    to: { opacity: 1, y: 0 },
-    config: { tension: 280, friction: 20 },
-  });
+  const navItems = user ? [
+    { label: 'S&S', to: '/', brand: true },
+    { label: 'Events', to: '/events' },
+    { label: `Hi, ${user.first_name}`, to: '/profile' },
+  ] : [];
+  const navPillSx = (active: boolean, brand = false) => ({ minHeight: 44, minWidth: 44, maxWidth: brand ? 76 : { xs: 112, sm: 180 }, px: brand ? 1.5 : { xs: 1.25, sm: 1.75 }, borderRadius: 999, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: active ? theme.palette.primary.contrastText : theme.palette.text.primary, bgcolor: active ? theme.palette.primary.main : 'transparent', fontSize: brand ? '1.1rem' : '0.9rem', fontWeight: brand ? 800 : 700, letterSpacing: 0, boxShadow: active ? theme.shadows[1] : 'none', '&:focus-visible': { outline: `2px solid ${theme.palette.primary.main}`, outlineOffset: 2 }, '&:active': { bgcolor: active ? theme.palette.primary.dark : theme.palette.action.selected }, '@media (hover: hover) and (pointer: fine)': { '&:hover': { bgcolor: active ? theme.palette.primary.main : theme.palette.action.hover } } });
 
   return (
     <AppBar 
@@ -54,124 +21,22 @@ const Navigation = () => {
         zIndex: theme.zIndex.drawer + 1,
       }}
     >
-      <Container maxWidth={false}>
-        <Toolbar disableGutters>
-          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1, marginTop: '4px'}}>
-            <AnimatedBox
-              onMouseEnter={() => setLogoHovered(true)}
-              onMouseLeave={() => setLogoHovered(false)}
-              style={{
-                transform: logoStyle.scale.to(s => `scale(${s})`).to(s => `translate3d(0,${logoStyle.y.get()}px,0) scale(${s})`),
-              }}
-              sx={{ mr: 4 }}
-            >
-              <Typography
-                variant="h6"
-                noWrap
-                component={RouterLink}
-                to="/"
-                sx={{
-                  fontWeight: 1100,
-                  fontSize: '1.5rem',
-                  color: theme.palette.primary.main,
-                  textDecoration: 'none',
-                  letterSpacing: '.05rem',
-                  display: 'inline-block',
-                  transition: 'color 0.2s ease-in-out',
-                  '&:hover': {
-                    color: theme.palette.primary.dark,
-                    transform: 'scale(1.05)',
-                    transition: 'color 0.2s ease-in-out, transform 0.2s ease-in-out',
-                  },
-                }}
-              >
-                S&S
-              </Typography>
-            </AnimatedBox>
+      <Container maxWidth={false} sx={{ px: { xs: 1.25, sm: 2.5 } }}>
+        <Toolbar disableGutters sx={{ minHeight: '64px !important', gap: 1, overflow: 'hidden' }}>
+          {user ? (
+            <Box component="nav" aria-label="Main navigation" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+              {navItems.map((item) => {
+                const active = location.pathname === item.to;
+                return <Button key={item.to} component={RouterLink} to={item.to} aria-current={active ? 'page' : undefined} sx={navPillSx(active, item.brand)}>{item.label}</Button>;
+              })}
+            </Box>
+          ) : (
+            <Typography variant="h6" component={RouterLink} to="/" sx={{ minHeight: 44, display: 'inline-flex', alignItems: 'center', color: 'primary.main', fontSize: '1.2rem', fontWeight: 800, textDecoration: 'none', letterSpacing: 0 }}>
+              S&S
+            </Typography>
+          )}
 
-            {user && (
-              <Box sx={{ display: 'flex', gap: isMobile ? 1 : 2, alignItems: 'center' }}>
-                {trail.map(({ y, opacity }, index) => (
-                  <animated.div 
-                    key={navItems[index].to} 
-                    style={{ 
-                      opacity,
-                      transform: y.to(value => `translate3d(0,${value}px,0)`),
-                    }}
-                  >
-                    <Button
-                      component={RouterLink}
-                      to={navItems[index].to}
-                      color={isActive(navItems[index].to) ? "primary" : "inherit"}
-                      sx={{
-                        fontWeight: isActive(navItems[index].to) ? 700 : 600,
-                        color: isActive(navItems[index].to) 
-                          ? theme.palette.primary.main 
-                          : 'inherit',
-                        '&:hover': {
-                          backgroundColor: theme.palette.action.hover,
-                          color: theme.palette.primary.main,
-                        },
-                        display: 'flex',
-                        alignItems: 'center',
-                        height: '100%',
-                        padding: isMobile ? '6px 8px' : '8px 16px',
-                        minWidth: isMobile ? 'auto' : undefined,
-                        letterSpacing: '0.08em',
-                      }}
-                >
-                  <Typography
-                    component="span"
-                        sx={{
-                          color: 'inherit',
-                          fontSize: '1rem',
-                          lineHeight: 1.5,
-                          fontWeight: 'bold',
-                          letterSpacing: '0.08em',
-                        }}
-                      >
-                        {navItems[index].label}
-                      </Typography>
-                    </Button>
-                  </animated.div>
-                ))}
-              </Box>
-            )}
-          </Box>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, position: 'relative' }}>
-            {user ? (
-              <Box sx={{ display: 'flex', alignItems: 'center'}}>
-                <Button
-                  component={RouterLink}
-                  to="/profile"
-                  color="inherit"
-                  sx={{
-                    fontWeight: 500,
-                    fontSize: '0.95rem',
-                    mr: 0,
-                    textTransform: 'none',
-                    minWidth: 'auto',
-                    px: 1,
-                    '&:hover': {
-                      backgroundColor: theme.palette.action.hover,
-                    },
-                  }}
-                >
-                  <Typography
-                    variant="body1"
-                    sx={{
-                      fontWeight: 500,
-                      color: 'inherit',
-                      fontSize: '0.95rem',
-                    }}
-                    noWrap
-                  >
-                    Hi, {user.first_name}
-                  </Typography>
-                </Button>
-              </Box>
-            ) : (
+          {!user && <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto', position: 'relative' }}>
               <>
                 <Button
                   component={RouterLink}
@@ -184,12 +49,10 @@ const Navigation = () => {
                     background: 'none',
                     boxShadow: 'none',
                     textTransform: 'none',
-                    '&:hover': {
-                      backgroundColor: theme.palette.action.hover,
-                      color: theme.palette.primary.dark,
-                    },
-                    padding: isMobile ? '6px 8px' : '8px 16px',
-                    minWidth: isMobile ? 'auto' : undefined,
+                    minHeight: 44,
+                    px: isMobile ? 1.25 : 1.75,
+                    borderRadius: 999,
+                    '@media (hover: hover) and (pointer: fine)': { '&:hover': { backgroundColor: theme.palette.action.hover, color: theme.palette.primary.dark } },
                   }}
                 >
                   <Typography
@@ -243,8 +106,7 @@ const Navigation = () => {
                   </Box>
                 )}
               </>
-            )}
-          </Box>
+          </Box>}
         </Toolbar>
       </Container>
     </AppBar>

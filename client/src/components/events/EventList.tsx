@@ -663,11 +663,7 @@ const EventList = () => {
       <Card sx={{
         borderRadius: 2,
         boxShadow: theme.shadows[2],
-        transition: 'transform 0.2s, box-shadow 0.2s',
-        '&:hover': {
-          transform: 'translateY(-2px)',
-          boxShadow: theme.shadows[4],
-        }
+        transition: 'box-shadow 0.15s ease',
       }}>
         <CardContent sx={{ p: { xs: 1.5, sm: 3 } }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 1, sm: 2 }, flexWrap: 'wrap', gap: 1}}>

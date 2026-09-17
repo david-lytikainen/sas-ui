@@ -72,13 +72,12 @@ const getDesignTokens = (mode: 'dark' | 'light') => ({
           textTransform: 'none',
           fontWeight: 600,
           padding: '10px 20px',
-          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            '&:hover': {
-              transform: 'scale(1.02) translateY(-1px)',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
-            },
+          transition: 'background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease',
+          '@media (hover: hover) and (pointer: fine)': {
+            '&:hover': { boxShadow: '0 2px 8px rgba(0, 0, 0, 0.22)' },
+          },
           '&:active': {
-            transform: 'scale(0.98)',
+            backgroundColor: 'rgba(0, 0, 0, 0.08)',
           },
           variants: [],
         },
@@ -88,12 +87,8 @@ const getDesignTokens = (mode: 'dark' | 'light') => ({
       styleOverrides: {
         root: {
           backgroundImage: 'none',
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           backgroundColor: mode === 'dark' ? '#333333' : '#FFFFFF',
-          '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow: '0 6px 20px rgba(0, 0, 0, 0.4)',
-          },
+          transition: 'background-color 0.15s ease, box-shadow 0.15s ease',
         },
       },
     },
@@ -112,12 +107,6 @@ const getDesignTokens = (mode: 'dark' | 'light') => ({
 
 // Global style definitions (remains an object)
 const globalStyleObject = (theme: any) => ({
-  '*': {
-    transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
-    '@media (min-width: 600px)': {
-      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-    },
-  },
   html: {
     backgroundColor: theme.palette.background.default,
     height: '100%',
@@ -140,15 +129,6 @@ const globalStyleObject = (theme: any) => ({
     transition: 'opacity 300ms, transform 300ms cubic-bezier(0.4, 0, 0.2, 1)',
     '@media (min-width: 600px)': {
       transition: 'opacity 400ms, transform 400ms cubic-bezier(0.4, 0, 0.2, 1)',
-    },
-  },
-  '.hover-scale': {
-    transition: 'transform 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
-    '@media (min-width: 600px)': {
-      transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-    },
-    '&:hover': {
-      transform: 'scale(1.02)',
     },
   },
   '.slide-in': {
@@ -334,9 +314,14 @@ const AppLayout = () => {
 };
 
 function App() {
-  const [mode, setMode] = useState<'dark' | 'light'>('light');
+  const [mode, setMode] = useState<'dark' | 'light'>(() => {
+    const savedMode = window.localStorage.getItem('color-mode');
+    if (savedMode === 'dark' || savedMode === 'light') return savedMode;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
 
   useEffect(() => {
+    window.localStorage.setItem('color-mode', mode);
     let themeColorMeta = document.querySelector('meta[name="theme-color"]');
     if (!themeColorMeta) {
       themeColorMeta = document.createElement('meta');
