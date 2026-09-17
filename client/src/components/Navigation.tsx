@@ -12,7 +12,7 @@ const Navigation = () => {
     { label: 'Events', to: '/events' },
     { label: `Hi, ${user.first_name}`, to: '/profile' },
   ] : [];
-  const navPillSx = (active: boolean) => ({ minWidth: 'auto', borderRadius: 999, px: 1.75, py: 0.8, fontSize: isMobile ? '0.8rem' : '1rem', fontWeight: 700, lineHeight: 1.2, bgcolor: active ? theme.palette.primary.main : theme.palette.background.paper, color: active ? theme.palette.primary.contrastText : theme.palette.text.primary, boxShadow: 'none', '&:hover': { bgcolor: active ? theme.palette.primary.main : theme.palette.action.hover, boxShadow: 'none' }, '&:active, &:focus-visible': { boxShadow: 'none' }, '@media (hover: none), (pointer: coarse)': { '&:hover': { bgcolor: active ? theme.palette.primary.main : theme.palette.background.paper, boxShadow: 'none' } } });
+  const navPillSx = (active: boolean) => ({ minWidth: 'auto', borderRadius: 999, px: 1.75, py: 0.8, fontSize: '1rem', fontWeight: 700, lineHeight: 1.2, bgcolor: active ? theme.palette.primary.main : theme.palette.background.paper, color: active ? theme.palette.primary.contrastText : theme.palette.text.primary, boxShadow: 'none', '&:hover': { bgcolor: active ? theme.palette.primary.main : theme.palette.action.hover, boxShadow: 'none' }, '&:active, &:focus-visible': { boxShadow: 'none' }, '@media (hover: none), (pointer: coarse)': { '&:hover': { bgcolor: active ? theme.palette.primary.main : theme.palette.background.paper, boxShadow: 'none' } } });
 
   return (
     <AppBar 
