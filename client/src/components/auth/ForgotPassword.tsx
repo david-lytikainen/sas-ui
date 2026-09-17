@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import { Container, Box, TextField, Button, Typography, Link, Alert, Paper, Fade } from '@mui/material';
+import { Container, Box, TextField, Button, Typography, Alert, Paper, Fade } from '@mui/material';
 import { default as realAuthApi } from '../../services/api';
 
 const ForgotPassword = () => {
@@ -32,39 +32,29 @@ const ForgotPassword = () => {
   };
 
   return (
-    <Container component="main" maxWidth="xs" sx={{ mt: 15, mb: 15 }}>
+    <Container component="main" maxWidth="sm" sx={{ mt: 4, mb: 2 }}>
+      <Typography variant="h4" component="h1" sx={{ textAlign: 'center', mb: 3, fontWeight: 'bold', color: 'primary.main' }}>
+        Saved & Single
+      </Typography>
       <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
-        <Typography 
-          variant="h4" 
-          component="h1" 
-          gutterBottom 
-          sx={{ 
-            textAlign: 'center', 
-            mb: 1, 
-            fontWeight: 'bold',
-            color: 'primary.main'
-          }}
-        >
-          Saved & Single
-        </Typography>
-        <Typography variant="subtitle1" component="h2" sx={{ textAlign: 'center', mb: 1.5, fontWeight: 'bold', fontSize: '1.2rem' }}>
-          Reset Password
+        <Typography component="h2" sx={{ textAlign: 'center', fontWeight: 'bold', fontSize: '1.2rem' }}>
+          Forgot Password
         </Typography>
 
         {success ? (
           <Fade in={!!success}>
-            <Alert severity="success" sx={{ width: '100%', mb: 1 }}>
+            <Alert severity="success" sx={{ width: '100%', mt: 1, mb: 1, fontSize: '0.8rem', py: 0.5 }}>
               {success}
             </Alert>
           </Fade>
         ) : (
           <>
-            <Fade in={!!error}>
-              <Alert severity="error" sx={{ width: '100%', mb: 1 }}>
+            {error && <Fade in={!!error}>
+              <Alert severity="error" sx={{ width: '100%', mb: 1, fontSize: '0.8rem', py: 0.5 }}>
                 {error}
               </Alert>
-            </Fade>
-            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 , alignItems: 'center'}}>
+            </Fade>}
+            <Box component="form" onSubmit={handleSubmit}>
               <TextField
                 margin="dense"
                 required
@@ -92,11 +82,7 @@ const ForgotPassword = () => {
           </>
         )}
         
-        <Box sx={{ textAlign: 'center', mt: 2 }}>
-          <Link component={RouterLink} to="/login" variant="body2" sx={{ fontSize: '0.8rem' }}>
-            {"Remembered your password? Login"}
-          </Link>
-        </Box>
+        <Button component={RouterLink} to="/login" fullWidth size="small" sx={{ mt: 0.5 }}>Remembered your password? Login</Button>
       </Paper>
     </Container>
   );

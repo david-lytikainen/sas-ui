@@ -634,24 +634,15 @@ const EventList = () => {
     }
   };
 
-  const handleCompleteStripeSetup = async () => {
-    try {
-      await authApi.refreshOrganizerStatus();
-      await refreshUser();
-    } catch (error: any) {
-      setErrorMessage(error.message || 'Failed to refresh Stripe setup.');
-    }
-  };
-
   const pillSx = (view: EventView) => ({
     minWidth: 'auto',
     borderRadius: 999,
-    px: 1.75,
-    py: 0.45,
+    px: 2,
+    py: 0.8,
     fontSize: isMobile ? '0.8rem' : '0.875rem',
     fontWeight: 700,
     lineHeight: 1.2,
-    bgcolor: activeView === view ? theme.palette.primary.main : theme.palette.background.paper,
+    bgcolor: activeView === view ? theme.palette.primary.main : theme.palette.mode === 'dark' ? theme.palette.grey[900] : theme.palette.grey[200],
     color: activeView === view ? theme.palette.primary.contrastText : theme.palette.text.primary,
     '&:hover': {
       bgcolor: activeView === view ? theme.palette.primary.main : theme.palette.action.hover
@@ -792,22 +783,22 @@ const EventList = () => {
         <Card sx={{ borderRadius: 2, boxShadow: theme.shadows[2], mb: 3 }}>
           <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
             <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-              Set Up Stripe To Organize Events
+              Setup Stripe
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Attendees pay listed ticket price. Platform fee comes out of your payout.
+              Attendees will pay through Stripe, so you need an account to collect payments.
             </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-              <Button variant="outlined" onClick={handleConnectOnboarding}>
-                {hasStartedStripeSetup ? 'Finish Stripe Setup' : 'Continue to Stripe'}
-              </Button>
-              <Button variant="contained" onClick={handleCompleteStripeSetup} disabled={!hasStartedStripeSetup}>
-                Check Setup
-              </Button>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Setup will require:
+            </Typography>
+            <Box component="ol" sx={{ p: 0, m: 0, pl: 3, mb: 2 }}>
+              <li>Phone number verification</li>
+              <li>Personal information</li>
+              <li>Bank account information</li>
             </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              If Stripe still needs more info, come back here and continue setup again.
-            </Typography>
+            <Button variant="outlined" onClick={handleConnectOnboarding} fullWidth>
+              {hasStartedStripeSetup ? 'Finish Stripe Setup' : 'Continue to Stripe'}
+            </Button>
           </CardContent>
         </Card>
       );
@@ -1061,7 +1052,7 @@ const EventList = () => {
                 label="Enforce 60/40 gender balance"
               />
               <Typography variant="body2" color="text.secondary" sx={{ ml: 4.5, mt: -0.5 }}>
-                Keeps registrations more balanced by pausing one gender once it reaches about 60% of the event.
+                E.g. if Max Capacity is 100, the 61st female (or male) will be waitlisted.
               </Typography>
             </Grid>
             <Grid item xs={6} sm={6}>

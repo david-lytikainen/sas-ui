@@ -189,6 +189,15 @@ const realAuthApi = {
     }
   },
 
+  createConnectDashboardLink: async (): Promise<{ url: string }> => {
+    try {
+      const response = await axiosInstance.post('/user/connect/dashboard');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(getApiErrorMessage(error, 'Failed to open Stripe dashboard'));
+    }
+  },
+
   refreshOrganizerStatus: async (): Promise<AuthResponse['user']> => {
     try {
       const response = await axiosInstance.post('/user/organizer-status/refresh');
