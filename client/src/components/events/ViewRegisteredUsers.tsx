@@ -1,5 +1,5 @@
 import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material';
-import { Download as DownloadIcon } from '@mui/icons-material';
+import { Download as DownloadIcon, Email as EmailIcon } from '@mui/icons-material';
 import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { Event } from '../../types/event';
@@ -189,6 +189,22 @@ const ViewRegisteredUsers = ({
     }
   };
 
+  const handleEmailAttendees = () => {
+    if (!event || registeredUsers.length === 0) {
+      setErrorMessage('No registered users available to email.');
+      return;
+    }
+
+    const recipients = Array.from(new Set(registeredUsers.map(user => user.email).filter(Boolean)));
+    if (recipients.length === 0) {
+      setErrorMessage('No attendee email addresses are available.');
+      return;
+    }
+
+    const params = new URLSearchParams({ bcc: recipients.join(','), subject: `Saved & Single: ${event.name}` });
+    window.location.href = `mailto:?${params.toString()}`;
+  };
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle>{event?.name} - Registered Users</DialogTitle>
@@ -288,9 +304,14 @@ const ViewRegisteredUsers = ({
       <DialogActions sx={{ display: 'flex', justifyContent: 'space-between', px: 2, py: 1.5 }}>
         <Box>
           {canExport && registeredUsers.length > 0 && (
-            <Button variant="outlined" color="primary" onClick={handleExport} startIcon={<DownloadIcon />}>
-              Export CSV
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Button variant="outlined" color="primary" onClick={handleEmailAttendees} startIcon={<EmailIcon />}>
+                Email attendees
+              </Button>
+              <Button variant="outlined" color="primary" onClick={handleExport} startIcon={<DownloadIcon />}>
+                Export CSV
+              </Button>
+            </Box>
           )}
         </Box>
         <Button onClick={onClose}>Close</Button>
