@@ -6,6 +6,7 @@ import { Event } from '../../types/event';
 import { eventsApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { formatUTCToLocal } from '../../utils/date';
+import { downloadCsv } from '../../utils/download';
 
 interface ViewWaitlistedUsersProps {
   open: boolean;
@@ -91,15 +92,7 @@ const ViewWaitlistedUsers = ({
         csvContent += `"${user.name}","${user.email}",${user.gender || 'N/A'},${user.age || 'N/A'},${birthday},${waitlistedAt}\n`;
       });
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `${event.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${searchTerm.trim() ? 'filtered_waitlist' : 'waitlist'}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      downloadCsv(csvContent, `${event.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${searchTerm.trim() ? 'filtered_waitlist' : 'waitlist'}.csv`);
     } catch (error) {
       setErrorMessage('Failed to export waitlisted users.');
     }

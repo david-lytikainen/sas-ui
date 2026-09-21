@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import type { Event } from '../../types/event';
 import { eventsApi } from '../../services/api';
+import { downloadCsv } from '../../utils/download';
 import { useAuth } from '../../context/AuthContext';
 
 interface ViewAllSchedulesProps {
@@ -160,15 +161,7 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
         });
       });
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `${event.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_schedules.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      downloadCsv(csvContent, `${event.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_schedules.csv`);
     } catch (error) {
       setSelectionErrorMessage('Failed to export schedules');
     }
