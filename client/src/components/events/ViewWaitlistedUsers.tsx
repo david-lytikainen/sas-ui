@@ -5,6 +5,7 @@ import type { ChangeEvent } from 'react';
 import { Event } from '../../types/event';
 import { eventsApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { formatUTCToLocal } from '../../utils/date';
 
 interface ViewWaitlistedUsersProps {
   open: boolean;
@@ -24,33 +25,6 @@ const ViewWaitlistedUsers = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const canManageUsers = isAdmin() || (isOrganizer() && !!event && Number(event.creator_id) === Number(user?.id));
-
-  const formatUTCToLocal = (utcDateString: string, includeTime: boolean = true) => {
-    try {
-      if (!includeTime && /^\d{4}-\d{2}-\d{2}$/.test(utcDateString)) {
-        const [year, month, day] = utcDateString.split('-').map(Number);
-        return new Date(year, month - 1, day).toLocaleDateString(undefined, {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        });
-      }
-
-      const date = new Date(utcDateString);
-      if (isNaN(date.getTime())) return 'Invalid date';
-
-      return date.toLocaleString(undefined, {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: includeTime ? '2-digit' : undefined,
-        minute: includeTime ? '2-digit' : undefined,
-        timeZoneName: includeTime ? 'short' : undefined,
-      });
-    } catch (error) {
-      return 'Invalid date';
-    }
-  };
 
   useEffect(() => {
     if (!open || !event) return;

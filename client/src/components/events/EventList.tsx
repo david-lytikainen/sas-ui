@@ -6,6 +6,7 @@ import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import authApi, { eventsApi } from '../../services/api';
 import type { Event } from '../../types/event';
+import { formatUTCToLocal } from '../../utils/date';
 import CreateEvent from './CreateEvent';
 import EventTimer from './EventTimer';
 import MySchedule from './MySchedule';
@@ -168,30 +169,6 @@ const EventList = () => {
       isActive = false;
     };
   }, [location.pathname, location.search, refreshEvents, searchParams, user]);
-
-  const formatUTCToLocal = (utcDateString: string, includeTime: boolean = true) => {
-    try {
-      const date = new Date(utcDateString);
-      if (isNaN(date.getTime())) return 'Invalid date';
-
-      const options: Intl.DateTimeFormatOptions = {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: includeTime ? '2-digit' : undefined,
-        minute: includeTime ? '2-digit' : undefined,
-        timeZoneName: includeTime ? 'short' : undefined,
-      };
-
-      return date.toLocaleString(undefined, options);
-    } catch {
-      return 'Invalid date';
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return formatUTCToLocal(dateString, true);
-  };
 
   const handleSignUpClick = (eventId: number) => {
     const event = filteredEvents.find(e => e.id === eventId);
@@ -753,7 +730,7 @@ const EventList = () => {
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1, sm: 2 } }}>
           <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
             <EventIcon fontSize="small" />
-            {formatDate(event.starts_at)}
+            {formatUTCToLocal(event.starts_at)}
           </Typography>
           {typeof event.registered_attendee_count === 'number' && event.max_capacity && (
             <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>

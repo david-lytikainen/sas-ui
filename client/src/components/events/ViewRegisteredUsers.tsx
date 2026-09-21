@@ -5,6 +5,7 @@ import type { ChangeEvent } from 'react';
 import { Event } from '../../types/event';
 import { eventsApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { formatUTCToLocal } from '../../utils/date';
 import ConfirmDialog from '../common/ConfirmDialog';
 
 export interface RegisteredUser {
@@ -54,33 +55,6 @@ const ViewRegisteredUsers = ({
 
     setRegisteredUsers(sortedData);
     setFilteredRegisteredUsers(sortedData);
-  };
-
-  const formatUTCToLocal = (utcDateString: string, includeTime: boolean = true) => {
-    try {
-      if (!includeTime && /^\d{4}-\d{2}-\d{2}$/.test(utcDateString)) {
-        const [year, month, day] = utcDateString.split('-').map(Number);
-        return new Date(year, month - 1, day).toLocaleDateString(undefined, {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        });
-      }
-
-      const date = new Date(utcDateString);
-      if (isNaN(date.getTime())) return 'Invalid date';
-
-      return date.toLocaleString(undefined, {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: includeTime ? '2-digit' : undefined,
-        minute: includeTime ? '2-digit' : undefined,
-        timeZoneName: includeTime ? 'short' : undefined,
-      });
-    } catch (error) {
-      return 'Invalid date';
-    }
   };
 
   const formatTableDateTime = (utcDateString: string) => {
