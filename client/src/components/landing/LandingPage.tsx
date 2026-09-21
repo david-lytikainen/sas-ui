@@ -1,40 +1,11 @@
-import React, { createContext, useState, useMemo, useEffect, CSSProperties } from 'react';
-import { createTheme, ThemeProvider, useTheme } from '@mui/material/styles';
+import React, { useState, useEffect, CSSProperties } from 'react';
+import { useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
-import { Link as RouterLink } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-
-export const ColorModeContext = createContext({ toggleColorMode: () => {} });
-
-export const ColorModeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const colorMode = useMemo(() => ({ toggleColorMode: () => {} }), []);
-
-  const theme = useMemo(
-    () =>
-      createTheme({
-        palette: {
-          mode: 'dark',
-          primary: {
-            main: '#1976d2',
-          },
-        },
-      }),
-    [],
-  );
-
-  return (
-    <ColorModeContext.Provider value={colorMode}>
-      <ThemeProvider theme={theme}>{children}</ThemeProvider>
-    </ColorModeContext.Provider>
-  );
-};
 
 const LandingPage: React.FC = () => {
-  const { user } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
 

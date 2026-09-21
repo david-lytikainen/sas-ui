@@ -5,7 +5,6 @@ import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useAuth } from '../../context/AuthContext';
 import { useSplash } from '../../context/SplashContext';
-import authApi from '../../services/api';
 
 const parseDateOnly = (value: string) => {
   if (!value) return null;

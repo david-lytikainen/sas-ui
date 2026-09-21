@@ -223,7 +223,6 @@ const EventList = () => {
         await eventsApi.registerForEvent(signUpEventId, { join_waitlist: false });
 
         setSignUpDialogOpen(false);
-        const successfullyRegisteredEventId = signUpEventId;
         setSignUpEventId(null);
 
         try {
