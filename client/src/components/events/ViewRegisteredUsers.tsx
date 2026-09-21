@@ -9,7 +9,7 @@ import { formatUTCToLocal } from '../../utils/date';
 import { downloadCsv } from '../../utils/download';
 import ConfirmDialog from '../common/ConfirmDialog';
 
-export interface RegisteredUser {
+interface RegisteredUser {
   id: number;
   name: string;
   email: string;

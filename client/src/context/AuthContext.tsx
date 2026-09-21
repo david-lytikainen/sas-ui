@@ -3,7 +3,7 @@ import authApi from '../services/api';
 import { User, TokenValidationResponse } from '../types/user';
 import { useSplash } from './SplashContext';
 
-export const ROLES = {
+const ROLES = {
   ADMIN: { id: 3, name: 'admin' },
   ORGANIZER: { id: 2, name: 'organizer' },
   ATTENDEE: { id: 1, name: 'attendee' },
