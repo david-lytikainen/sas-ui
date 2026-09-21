@@ -7,11 +7,12 @@ interface ProfilePreferencesProps {
   editable?: boolean;
 }
 
-const questions: Array<{ field: keyof ProfilePreferenceValues; label: string; options: Array<{ label: string; value: number }>; note?: string }> = [
-  { field: 'faith_importance', label: 'How important is Faith?', options: [1, 2, 3, 4, 5].map(value => ({ label: String(value), value })) },
-  { field: 'traditional_roles_importance', label: 'How important are traditional marriage roles?', options: [1, 2, 3, 4, 5].map(value => ({ label: String(value), value })) },
-  { field: 'boundaries_importance', label: 'How important are boundaries?', options: [1, 2, 3, 4, 5].map(value => ({ label: String(value), value })) },
-  { field: 'looks_importance', label: 'How important are looks?', options: [1, 2, 3, 4, 5].map(value => ({ label: String(value), value })) },
+const importanceOptions = [1, 2, 3, 4, 5].map(value => ({ label: String(value), value }));
+const questions: Array<{ field: keyof ProfilePreferenceValues; label: string; options: Array<{ label: string; value: number }> }> = [
+  { field: 'faith_importance', label: 'How important is Faith?', options: importanceOptions },
+  { field: 'traditional_roles_importance', label: 'How important are traditional marriage roles?', options: importanceOptions },
+  { field: 'boundaries_importance', label: 'How important are boundaries?', options: importanceOptions },
+  { field: 'looks_importance', label: 'How important are looks?', options: importanceOptions },
   { field: 'wants_kids', label: 'Do you want kids?', options: [{ label: 'No', value: 1 }, { label: 'Unsure', value: 2 }, { label: 'Yes', value: 3 }] },
   { field: 'age_gap', label: 'What age gap are you comfortable with?', options: [3, 4, 5, 6, 7].map(value => ({ label: String(value), value })) },
 ];
