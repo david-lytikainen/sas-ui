@@ -802,7 +802,7 @@ const EventList = () => {
 
   return (
     <>
-      <Dialog open={showProfilePreferences} onClose={closeProfilePreferences} fullWidth maxWidth="sm">
+      <Dialog open={showProfilePreferences} onClose={(_, reason) => { if (reason !== 'backdropClick') closeProfilePreferences(); }} fullWidth maxWidth="sm">
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
           <Typography variant="h6" component="span" sx={{ fontWeight: 700 }}>Preferences</Typography>
           <Button onClick={closeProfilePreferences} color="inherit" size="small">Skip</Button>
