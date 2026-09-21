@@ -28,6 +28,12 @@ const toLocalDateTimeInputValue = (isoDateTime: string) => {
 };
 
 const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms));
+const removeQueryParams = (pathname: string, search: string, keys: string[]) => {
+  const params = new URLSearchParams(search);
+  keys.forEach(key => params.delete(key));
+  const nextSearch = params.toString();
+  window.history.replaceState({}, '', `${pathname}${nextSearch ? `?${nextSearch}` : ''}`);
+};
 
 const EventList = () => {
   const { refreshEvents, isRegisteredForEvent, filteredEvents, userRegisteredEvents } = useEvents();
@@ -110,13 +116,7 @@ const EventList = () => {
           handledOrganizerReturnRef.current = location.search;
           await authApi.refreshOrganizerStatus();
           await refreshUser();
-          const nextParams = new URLSearchParams(location.search);
-          nextParams.delete('checkout');
-          nextParams.delete('session_id');
-          nextParams.delete('stripe_connect');
-          nextParams.delete('organizer');
-          const nextSearch = nextParams.toString();
-          window.history.replaceState({}, '', `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}`);
+          removeQueryParams(location.pathname, location.search, ['checkout', 'session_id', 'stripe_connect', 'organizer']);
         } catch (error: any) {
           setErrorMessage(error.message || 'Failed to refresh organizer status');
         }
@@ -157,11 +157,7 @@ const EventList = () => {
 
       if (!isActive) return;
 
-      const nextParams = new URLSearchParams(location.search);
-      nextParams.delete('checkout');
-      nextParams.delete('session_id');
-      const nextSearch = nextParams.toString();
-      window.history.replaceState({}, '', `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}`);
+      removeQueryParams(location.pathname, location.search, ['checkout', 'session_id']);
     };
 
     syncCheckoutReturn();
