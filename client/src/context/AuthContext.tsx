@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import authApi from '../services/api';
-import { User, TokenValidationResponse } from '../types/user';
+import { AuthResponse, TokenValidationResponse, User } from '../types/user';
 import { useSplash } from './SplashContext';
 
 const ROLES = {
@@ -55,6 +55,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isAdmin = () => user?.role_id === ROLES.ADMIN.id;
   const isOrganizer = () => user?.role_id === ROLES.ORGANIZER.id;
   const hasRole = (roleId: number) => user?.role_id === roleId;
+  const saveAuth = ({ user, token }: AuthResponse) => {
+    if (user) setUser(user);
+    localStorage.setItem('token', token);
+  };
 
   const togglePersistLogin = () => {
     const newValue = !persistLogin;
@@ -106,13 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     setError(null);
     try {
-      const response = await authApi.login(email, password);
-      
-      if (response.user) {
-        setUser(response.user);
-      }
-      
-      localStorage.setItem('token', response.token);
+      saveAuth(await authApi.login(email, password));
     } catch (err: any) {
       setError(err.message || 'Failed to login');
       throw err;
@@ -130,13 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }) => {
     setError(null);
     try {
-      const response = await authApi.register(userData);
-      
-      if (response.user) {
-        setUser(response.user);
-      }
-      
-      localStorage.setItem('token', response.token);
+      saveAuth(await authApi.register(userData));
     } catch (err: any) {
       setError(err.message || 'Failed to register');
       throw err;
