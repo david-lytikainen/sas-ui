@@ -10,6 +10,7 @@ import authApi from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { ColorModeContext } from '../../context/ColorModeContext';
 import { formatDateOnly, parseDateOnly } from '../../utils/date';
+import { formatPhone, normalizePhone } from '../../utils/phone';
 import ProfilePreferences from './ProfilePreferences';
 
 const ProfilePage = () => {
@@ -94,17 +95,11 @@ const ProfilePage = () => {
     setFormData(getUserFormData(user));
   };
 
-  const formattedPhone = useMemo(() => {
-    const digits = formData.phone.replace(/\D/g, '').slice(0, 10);
-    if (!digits) return '';
-    if (digits.length < 4) return `(${digits}`;
-    if (digits.length < 7) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-    return `(${digits.slice(0, 3)})-${digits.slice(3, 6)}-${digits.slice(6)}`;
-  }, [formData.phone]);
+  const formattedPhone = formatPhone(formData.phone);
 
   const handleTextChange = (field: string, value: string) => {
     if (field === 'phone') {
-      setFormData(prev => ({ ...prev, phone: value.replace(/\D/g, '').slice(0, 10) }));
+      setFormData(prev => ({ ...prev, phone: normalizePhone(value) }));
       return;
     }
 

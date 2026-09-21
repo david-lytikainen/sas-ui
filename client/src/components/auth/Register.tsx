@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { Alert, Box, Button, Container, FormControl, IconButton, InputAdornment, InputLabel, Link, MenuItem, Paper, Select, SelectChangeEvent, TextField, Typography } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
@@ -6,6 +6,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useAuth } from '../../context/AuthContext';
 import { useSplash } from '../../context/SplashContext';
 import { formatDateOnly, parseDateOnly } from '../../utils/date';
+import { formatPhone, normalizePhone } from '../../utils/phone';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -25,18 +26,12 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const formattedPhone = useMemo(() => {
-    const digits = formData.phone.replace(/\D/g, '').slice(0, 10);
-    if (!digits) return '';
-    if (digits.length < 4) return `(${digits}`;
-    if (digits.length < 7) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-    return `(${digits.slice(0, 3)})-${digits.slice(3, 6)}-${digits.slice(6)}`;
-  }, [formData.phone]);
+  const formattedPhone = formatPhone(formData.phone);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     if (name === 'phone') {
-      setFormData(prev => ({ ...prev, phone: value.replace(/\D/g, '').slice(0, 10) }));
+      setFormData(prev => ({ ...prev, phone: normalizePhone(value) }));
       return;
     }
     setFormData(prev => ({ ...prev, [name]: name === 'email' ? value.toLowerCase() : value }));
