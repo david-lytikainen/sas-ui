@@ -9,6 +9,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import authApi from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { ColorModeContext } from '../../context/ColorModeContext';
+import { formatDateOnly, parseDateOnly } from '../../utils/date';
 import ProfilePreferences from './ProfilePreferences';
 
 const ProfilePage = () => {
@@ -36,20 +37,6 @@ const ProfilePage = () => {
     wants_kids: null as number | null,
     age_gap: null as number | null,
   });
-
-  const parseDateOnly = (value: string) => {
-    if (!value) return null;
-    const [year, month, day] = value.split('-').map(Number);
-    if (!year || !month || !day) return null;
-    return new Date(year, month - 1, day);
-  };
-
-  const formatDateOnly = (value: Date) => {
-    const year = value.getFullYear();
-    const month = `${value.getMonth() + 1}`.padStart(2, '0');
-    const day = `${value.getDate()}`.padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
 
   const getUserFormData = (currentUser: typeof user) => ({
     first_name: currentUser?.first_name || '',

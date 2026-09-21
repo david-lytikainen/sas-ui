@@ -12,3 +12,11 @@ export const formatUTCToLocal = (utcDateString: string, includeTime = true) => {
     return 'Invalid date';
   }
 };
+
+export const parseDateOnly = (value: string) => {
+  if (!value) return null;
+  const [year, month, day] = value.split('-').map(Number);
+  return year && month && day ? new Date(year, month - 1, day) : null;
+};
+
+export const formatDateOnly = (value: Date) => `${value.getFullYear()}-${`${value.getMonth() + 1}`.padStart(2, '0')}-${`${value.getDate()}`.padStart(2, '0')}`;

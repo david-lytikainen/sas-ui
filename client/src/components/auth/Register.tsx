@@ -5,20 +5,7 @@ import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useAuth } from '../../context/AuthContext';
 import { useSplash } from '../../context/SplashContext';
-
-const parseDateOnly = (value: string) => {
-  if (!value) return null;
-  const [year, month, day] = value.split('-').map(Number);
-  if (!year || !month || !day) return null;
-  return new Date(year, month - 1, day);
-};
-
-const formatDateOnly = (value: Date) => {
-  const year = value.getFullYear();
-  const month = `${value.getMonth() + 1}`.padStart(2, '0');
-  const day = `${value.getDate()}`.padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+import { formatDateOnly, parseDateOnly } from '../../utils/date';
 
 const Register = () => {
   const navigate = useNavigate();
