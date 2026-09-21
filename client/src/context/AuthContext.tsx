@@ -55,6 +55,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isAdmin = () => user?.role_id === ROLES.ADMIN.id;
   const isOrganizer = () => user?.role_id === ROLES.ORGANIZER.id;
   const hasRole = (roleId: number) => user?.role_id === roleId;
+  const clearSession = () => {
+    localStorage.removeItem('token');
+    setUser(null);
+  };
   const saveAuth = ({ user, token }: AuthResponse) => {
     if (user) setUser(user);
     localStorage.setItem('token', token);
@@ -66,8 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('persistLogin', newValue.toString());
     
     if (!newValue) {
-      localStorage.removeItem('token');
-      setUser(null);
+      clearSession();
     }
   };
 
@@ -81,8 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
       const token = localStorage.getItem('token');
       if (!token || token.split('.').length !== 3) {
-        localStorage.removeItem('token');
-        setUser(null);
+        clearSession();
         setLoading(false);
         return;
       }
@@ -93,12 +95,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (response && response.user) {
           setUser(response.user);
         } else {
-          localStorage.removeItem('token');
-          setUser(null);
+          clearSession();
         }
       } catch {
-        localStorage.removeItem('token');
-        setUser(null);
+        clearSession();
       } finally {
         setLoading(false);
       }
@@ -147,8 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     setShowLogoutSplash(true);
-    setUser(null);
-    localStorage.removeItem('token');
+    clearSession();
   };
 
   return (
