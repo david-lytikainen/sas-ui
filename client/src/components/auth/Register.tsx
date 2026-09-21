@@ -111,7 +111,7 @@ const Register = () => {
         phone: formData.phone,
       });
       setShowLoginSplash(true);
-      navigate('/events', { replace: true });
+      navigate('/events', { replace: true, state: { showProfilePreferences: true } });
     } catch (err: any) {
       setError(err.message || 'An error occurred during registration');
     } finally {

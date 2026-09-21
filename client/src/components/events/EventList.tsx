@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Container, Box, Typography, Button, Card, CardContent, CardActions, Grid, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Alert, useMediaQuery, useTheme, TextField, Collapse, DialogContentText, Divider } from '@mui/material';
 import { Checkbox, FormControlLabel } from '@mui/material';
 import { Event as EventIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon, AttachMoney as AttachMoneyIcon, CheckCircle as CheckInIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Settings as SettingsIcon, List as ListIcon, PlayArrow as StartIcon, Visibility as ViewIcon, Edit as EditIcon, Delete as DeleteIcon, People as PeopleIcon } from '@mui/icons-material';
@@ -14,6 +14,8 @@ import ViewAllSchedules from './ViewAllSchedules';
 import ViewRegisteredUsers from './ViewRegisteredUsers';
 import ViewWaitlistedUsers from './ViewWaitlistedUsers';
 import ConfirmDialog from '../common/ConfirmDialog';
+import ProfilePreferences from '../profile/ProfilePreferences';
+import type { ProfilePreferences as ProfilePreferenceValues } from '../../types/user';
 
 type EventView = 'all' | 'my' | 'create';
 
@@ -31,6 +33,11 @@ const EventList = () => {
   const { refreshEvents, isRegisteredForEvent, filteredEvents, userRegisteredEvents } = useEvents();
   const { user, isAdmin, isOrganizer, refreshUser } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+  const showProfilePreferences = Boolean((location.state as { showProfilePreferences?: boolean } | null)?.showProfilePreferences);
+  const [profilePreferences, setProfilePreferences] = useState<ProfilePreferenceValues>({ faith_importance: user?.faith_importance ?? null, traditional_roles_importance: user?.traditional_roles_importance ?? null, boundaries_importance: user?.boundaries_importance ?? null, looks_importance: user?.looks_importance ?? null, wants_kids: user?.wants_kids ?? null, age_gap: user?.age_gap ?? null });
+  const [preferencesSaving, setPreferencesSaving] = useState(false);
+  const [preferencesError, setPreferencesError] = useState<string | null>(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [activeView, setActiveView] = useState<EventView>('all');
@@ -633,6 +640,22 @@ const EventList = () => {
     }
   };
 
+  const closeProfilePreferences = () => navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+
+  const handleSaveProfilePreferences = async () => {
+    try {
+      setPreferencesSaving(true);
+      setPreferencesError(null);
+      await authApi.updatePreferences(profilePreferences);
+      await refreshUser();
+      closeProfilePreferences();
+    } catch (error: any) {
+      setPreferencesError(error.message || 'Failed to save profile preferences.');
+    } finally {
+      setPreferencesSaving(false);
+    }
+  };
+
   const pillSx = (view: EventView) => ({
     minWidth: 'auto',
     borderRadius: 999,
@@ -807,6 +830,18 @@ const EventList = () => {
 
   return (
     <>
+      <Dialog open={showProfilePreferences} onClose={closeProfilePreferences} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+          <Typography variant="h6" component="span" sx={{ fontWeight: 700 }}>Preferences</Typography>
+          <Button onClick={closeProfilePreferences} color="inherit" size="small">Skip</Button>
+        </DialogTitle>
+        <DialogContent dividers>
+          {preferencesError && <Alert severity="error" sx={{ mb: 2 }}>{preferencesError}</Alert>}
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Your answers will not determine how many dates you go on.</Typography>
+          <ProfilePreferences values={profilePreferences} editable onChange={(field, value) => setProfilePreferences(prev => ({ ...prev, [field]: value }))} />
+          <Button variant="contained" onClick={handleSaveProfilePreferences} disabled={preferencesSaving} fullWidth sx={{ mt: 4 }}>{preferencesSaving ? 'Saving...' : 'Done'}</Button>
+        </DialogContent>
+      </Dialog>
       <Container maxWidth="lg">
         {errorMessage && (
           <Alert severity="error" onClose={() => setErrorMessage(null)} sx={{ mb: 2 }}>

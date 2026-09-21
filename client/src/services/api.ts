@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { AuthResponse, TokenValidationResponse } from '../types/user';
+import { AuthResponse, TokenValidationResponse, ProfilePreferences } from '../types/user';
 import { Event, ScheduleItem, Timer } from '../types/event';
 
 const getApiBaseUrl = () => {
@@ -171,12 +171,21 @@ const realAuthApi = {
     phone: string;
     birthday: string;
     gender: string;
-  }): Promise<AuthResponse['user']> => {
+  } & ProfilePreferences): Promise<AuthResponse['user']> => {
     try {
       const response = await axiosInstance.patch('/user/profile', userData);
       return response.data.user;
     } catch (error: any) {
       throw new Error(getApiErrorMessage(error, 'Failed to update profile'));
+    }
+  },
+
+  updatePreferences: async (preferences: ProfilePreferences): Promise<AuthResponse['user']> => {
+    try {
+      const response = await axiosInstance.patch('/user/profile', preferences);
+      return response.data.user;
+    } catch (error: any) {
+      throw new Error(getApiErrorMessage(error, 'Failed to update profile preferences'));
     }
   },
 

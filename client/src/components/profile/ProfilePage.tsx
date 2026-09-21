@@ -9,6 +9,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import authApi from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { ColorModeContext } from '../../context/ColorModeContext';
+import ProfilePreferences from './ProfilePreferences';
 
 const ProfilePage = () => {
   const { user, refreshUser, logout } = useAuth();
@@ -28,6 +29,12 @@ const ProfilePage = () => {
     phone: '',
     birthday: '',
     gender: '',
+    faith_importance: null as number | null,
+    traditional_roles_importance: null as number | null,
+    boundaries_importance: null as number | null,
+    looks_importance: null as number | null,
+    wants_kids: null as number | null,
+    age_gap: null as number | null,
   });
 
   const parseDateOnly = (value: string) => {
@@ -51,6 +58,12 @@ const ProfilePage = () => {
     phone: currentUser?.phone || '',
     birthday: currentUser?.birthday || '',
     gender: currentUser?.gender || '',
+    faith_importance: currentUser?.faith_importance ?? null,
+    traditional_roles_importance: currentUser?.traditional_roles_importance ?? null,
+    boundaries_importance: currentUser?.boundaries_importance ?? null,
+    looks_importance: currentUser?.looks_importance ?? null,
+    wants_kids: currentUser?.wants_kids ?? null,
+    age_gap: currentUser?.age_gap ?? null,
   });
 
   useEffect(() => {
@@ -161,6 +174,12 @@ const ProfilePage = () => {
         phone: formData.phone,
         birthday: formData.birthday,
         gender: formData.gender,
+        faith_importance: formData.faith_importance,
+        traditional_roles_importance: formData.traditional_roles_importance,
+        boundaries_importance: formData.boundaries_importance,
+        looks_importance: formData.looks_importance,
+        wants_kids: formData.wants_kids,
+        age_gap: formData.age_gap,
       });
 
       await refreshUser();
@@ -231,7 +250,13 @@ const ProfilePage = () => {
       formData.last_name !== (user.last_name || '') ||
       formData.email !== (user.email || '') ||
       formData.phone !== (user.phone || '') ||
-      formData.birthday !== (user.birthday || '')
+      formData.birthday !== (user.birthday || '') ||
+      formData.faith_importance !== (user.faith_importance ?? null) ||
+      formData.traditional_roles_importance !== (user.traditional_roles_importance ?? null) ||
+      formData.boundaries_importance !== (user.boundaries_importance ?? null) ||
+      formData.looks_importance !== (user.looks_importance ?? null) ||
+      formData.wants_kids !== (user.wants_kids ?? null) ||
+      formData.age_gap !== (user.age_gap ?? null)
     );
   }, [formData, user]);
 
@@ -542,6 +567,13 @@ const ProfilePage = () => {
               ))}
             </Box>
           )}
+          <Divider />
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>Preferences</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Your answers will not determine how many dates you go on.</Typography>
+            <ProfilePreferences values={formData} editable={isEditing} onChange={(field, value) => setFormData(prev => ({ ...prev, [field]: value }))} />
+          </Box>
+          <Divider />
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, minHeight: 56, px: 2, py: 1, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
             <Box>
               <Typography variant="body1" sx={{ fontWeight: 600 }}>Dark Mode</Typography>
