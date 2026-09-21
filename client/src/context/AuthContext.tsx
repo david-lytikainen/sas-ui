@@ -48,7 +48,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [persistLogin, setPersistLogin] = useState<boolean>(() => {
-    // Default to true unless explicitly set to false
     return localStorage.getItem('persistLogin') !== 'false';
   });
   const { setShowLogoutSplash } = useSplash();
@@ -62,14 +61,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPersistLogin(newValue);
     localStorage.setItem('persistLogin', newValue.toString());
     
-    // If turning off persistence, clear token immediately
     if (!newValue) {
       localStorage.removeItem('token');
       setUser(null);
     }
   };
 
-  // Check for existing session using token
   useEffect(() => {
     const checkAuth = async () => {
       if (!persistLogin) {

@@ -8,16 +8,9 @@ interface AuthRedirectProps {
   children: React.ReactNode;
 }
 
-/**
- * AuthRedirect component handles automatic redirection based on authentication status:
- * - If user is authenticated: redirect to /events
- * - If user is not authenticated: show the wrapped component (typically LandingPage)
- * - If authentication is loading: show loading spinner
- */
 const AuthRedirect: React.FC<AuthRedirectProps> = ({ children }) => {
   const { user, loading } = useAuth();
 
-  // Show loading spinner while authentication state is being determined
   if (loading) {
     return (
       <Box
@@ -32,13 +25,11 @@ const AuthRedirect: React.FC<AuthRedirectProps> = ({ children }) => {
     );
   }
 
-  // If user is authenticated, redirect to events page
   if (user) {
     return <Navigate to="/events" replace />;
   }
 
-  // If user is not authenticated, show the wrapped component (LandingPage)
   return <>{children}</>;
 };
 
-export default AuthRedirect; 
+export default AuthRedirect;
