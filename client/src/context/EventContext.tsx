@@ -15,6 +15,13 @@ interface EventContextType {
 }
 
 const EventContext = createContext<EventContextType | undefined>(undefined);
+type Registration = { event_id: number; status: string; registration_date?: string; check_in_date?: string };
+type EventsResponse = { events?: Event[]; registrations?: Registration[] };
+
+const withRegistrations = (events: Event[], registrations?: Registration[], preserveExisting = false) => events.map(event => {
+  const registration = registrations?.find(item => item.event_id === event.id);
+  return { ...event, registration: registration ? { status: registration.status, registration_date: registration.registration_date, check_in_date: registration.check_in_date } : preserveExisting ? event.registration : undefined };
+});
 
 export const useEvents = () => {
   const context = useContext(EventContext);
@@ -43,24 +50,10 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setLoading(true);
       try {
         const response = await eventsApi.getAll();
-        const data = response as { 
-          events?: Event[]; 
-          registrations?: Array<{event_id: number, status: string, registration_date?: string, check_in_date?: string}>
-        };
+        const data = response as EventsResponse;
         
         if (data.events) {
-          const eventsWithRegistrationStatus = data.events.map(event => {
-            const registrationInfo = data.registrations?.find(reg => reg.event_id === event.id);
-            return {
-              ...event,
-              registration: registrationInfo ? {
-                status: registrationInfo.status,
-                registration_date: registrationInfo.registration_date,
-                check_in_date: registrationInfo.check_in_date
-              } : event.registration
-            };
-          });
-          setEvents(eventsWithRegistrationStatus);
+          setEvents(withRegistrations(data.events, data.registrations, true));
           
           if (data.registrations) {
             setUserRegisteredEvents(data.registrations.map(reg => reg.event_id));
@@ -101,24 +94,10 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setError(null);
     try {
       const response = await eventsApi.getAll();
-      const data = response as { 
-        events?: Event[]; 
-        registrations?: Array<{event_id: number, status: string, registration_date?: string, check_in_date?: string}>
-      };
+      const data = response as EventsResponse;
       
       if (data.events) {
-        const eventsWithRegistrationStatus = data.events.map(event => {
-          const registrationInfo = data.registrations?.find(reg => reg.event_id === event.id);
-          return {
-            ...event,
-            registration: registrationInfo ? {
-              status: registrationInfo.status,
-              registration_date: registrationInfo.registration_date,
-              check_in_date: registrationInfo.check_in_date
-            } : undefined
-          };
-        });
-        setEvents(eventsWithRegistrationStatus);
+        setEvents(withRegistrations(data.events, data.registrations));
         
         if (data.registrations) {
           setUserRegisteredEvents(data.registrations.map(reg => reg.event_id));
