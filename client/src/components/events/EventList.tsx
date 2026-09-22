@@ -777,13 +777,13 @@ const EventList = () => {
         <Card sx={{ borderRadius: 2, boxShadow: theme.shadows[2], mb: 3 }}>
           <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
             <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-              Setup Stripe
+              Creating an Event
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               Attendees will pay through Stripe, so you need an account to collect payments.
             </Typography>
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              Setup will require:
+              Stripe Setup will require:
             </Typography>
             <Box component="ol" sx={{ p: 0, m: 0, pl: 3, mb: 2 }}>
               <li>Phone number verification</li>
@@ -791,7 +791,7 @@ const EventList = () => {
               <li>Bank account information</li>
             </Box>
             <Button variant="outlined" onClick={handleConnectOnboarding} fullWidth>
-              {hasStartedStripeSetup ? 'Finish Stripe Setup' : 'Continue to Stripe'}
+              {hasStartedStripeSetup ? 'Finish Stripe Setup' : 'Continue to Stripe Setup'}
             </Button>
           </CardContent>
         </Card>

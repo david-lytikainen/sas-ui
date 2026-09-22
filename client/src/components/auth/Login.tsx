@@ -33,7 +33,7 @@ const Login = () => {
     setLoading(true);
     setError(null);
     try {
-      await login(formData.email.toLowerCase(), formData.password);
+      await login(formData.email.toLowerCase().trim(), formData.password);
       setShowLoginSplash(true);
       navigate('/events', { replace: true });
     } catch (err: any) {
@@ -86,6 +86,13 @@ const Login = () => {
         </Fade>)}
         
         <Box component="form" onSubmit={handleSubmit}>
+          <Button
+            fullWidth
+            onClick={() => navigate('/register')}
+            size="small"
+          >
+            Don't have an account? Register
+          </Button>
           <TextField
             margin="dense"
             required
@@ -136,14 +143,6 @@ const Login = () => {
             disabled={loading}
           >
             {loading ? 'Logging in...' : 'Login'}
-          </Button>
-          <Button
-            fullWidth
-            onClick={() => navigate('/register')}
-            size="small"
-            sx={{ mt: 0.5 }}
-          >
-            Don't have an account? Register
           </Button>
           <Box sx={{ textAlign: 'center'}}>
             <Link component={RouterLink} to="/forgot-password" variant="subtitle1" sx={{ fontSize: '0.7rem'}}>

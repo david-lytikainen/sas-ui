@@ -117,6 +117,9 @@ const Register = () => {
           </Alert>
         )}
         <Box component="form" onSubmit={handleSubmit}>
+          <Button fullWidth onClick={() => navigate('/login')} size="small">
+            Already have an account? Login
+          </Button>
           <TextField fullWidth label="First Name" name="first_name" value={formData.first_name} onChange={handleTextChange} margin="dense" required size="small" />
           <TextField fullWidth label="Last Name" name="last_name" value={formData.last_name} onChange={handleTextChange} margin="dense" required size="small" />
           <TextField fullWidth label="Email Address" name="email" type="email" value={formData.email} onChange={handleTextChange} margin="dense" required size="small" />
@@ -184,14 +187,6 @@ const Register = () => {
           <Button type="submit" fullWidth variant="contained" size="medium" sx={{ mt: 1.5, mb: 1 }} disabled={loading}>
             {loading ? 'Working...' : 'Register'}
           </Button>
-          <Button fullWidth onClick={() => navigate('/login')} size="small" sx={{ mt: 0.5 }}>
-            Already have an account? Login
-          </Button>
-          <Box sx={{ textAlign: 'center' }}>
-            <Link component={RouterLink} to="/forgot-password" variant="subtitle1" sx={{ fontSize: '0.7rem' }}>
-              Forgot Password?
-            </Link>
-          </Box>
         </Box>
       </Paper>
     </Container>
