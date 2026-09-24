@@ -23,7 +23,7 @@ const Navigation = () => {
         zIndex: theme.zIndex.drawer + 1,
       }}
     >
-      <Container maxWidth={false} sx={{ px: { xs: 1.25, sm: 2.5 } }}>
+      <Container maxWidth="md" sx={{ px: { xs: 1.25, sm: 2.5 } }}>
         <Toolbar disableGutters sx={{ minHeight: '64px !important', gap: 1, overflow: 'hidden' }}>
           <Box component="nav" aria-label="Main navigation" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
             {navItems.map((item) => {

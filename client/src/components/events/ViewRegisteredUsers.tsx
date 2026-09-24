@@ -168,13 +168,12 @@ const ViewRegisteredUsers = ({
       return;
     }
 
-    const params = new URLSearchParams({ bcc: recipients.join(','), subject: `Saved & Single: ${event.name}` });
-    window.location.href = `mailto:?${params.toString()}`;
+    window.location.href = `mailto:?bcc=${encodeURIComponent(recipients.join(','))}&subject=${encodeURIComponent(`Saved & Single: ${event.name}`)}`;
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <DialogTitle>{event?.name} - Registered Users</DialogTitle>
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth PaperProps={{ sx: { mt: { xs: 4, sm: 8 } } }} sx={{ '& .MuiDialog-container': { alignItems: 'flex-start' } }}>
+      <DialogTitle>Registered Users</DialogTitle>
       <DialogContent dividers sx={{ p: { xs: 0, sm: 1 } }}>
         {errorMessage && (
           <Alert severity="error" onClose={() => setErrorMessage(null)} sx={{ mb: 2 }}>
@@ -185,20 +184,12 @@ const ViewRegisteredUsers = ({
           <>
             <Box sx={{ mb: 2, px: { xs: 1, sm: 0 } }}>
               <TextField
-                label="Search Users"
-                placeholder="Search by name or email..."
+                placeholder="Search by name"
                 variant="outlined"
                 size="small"
                 fullWidth
                 value={searchTerm}
                 onChange={handleSearchChange}
-                InputProps={{
-                  startAdornment: (
-                    <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>
-                      🔍
-                    </Box>
-                  ),
-                }}
               />
             </Box>
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, px: { xs: 1, sm: 0 } }}>
@@ -208,11 +199,11 @@ const ViewRegisteredUsers = ({
               <Table stickyHeader size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell sx={{ width: '15%', minWidth: 150 }}><strong>Name</strong></TableCell>
-                    <TableCell sx={{ width: '20%', minWidth: 180 }}><strong>Email</strong></TableCell>
                     {canManage && (
                       <TableCell sx={{ width: 150, minWidth: 140, textAlign: 'center' }}><strong>Actions</strong></TableCell>
                     )}
+                    <TableCell sx={{ width: '15%', minWidth: 150 }}><strong>Name</strong></TableCell>
+                    <TableCell sx={{ width: '20%', minWidth: 180 }}><strong>Email</strong></TableCell>
                     <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Check-in Time</strong></TableCell>
                     <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Registered</strong></TableCell>
                     <TableCell sx={{ width: 80, minWidth: 70 }}><strong>Gender</strong></TableCell>
@@ -224,8 +215,6 @@ const ViewRegisteredUsers = ({
                 <TableBody>
                   {filteredRegisteredUsers.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell>{user.name}</TableCell>
-                      <TableCell sx={{ wordBreak: 'break-all' }}>{user.email}</TableCell>
                       {canManage && (
                         <TableCell sx={{ textAlign: 'center' }}>
                           {user.status !== 'Checked In' && (
@@ -241,6 +230,9 @@ const ViewRegisteredUsers = ({
                           )}
                         </TableCell>
                       )}
+                      <TableCell>{user.name}</TableCell>
+                      <TableCell sx={{ wordBreak: 'break-all' }}>{user.email}</TableCell>
+                      
                       <TableCell>{user.check_in_date ? formatTableDateTime(user.check_in_date) : 'Not checked in'}</TableCell>
                       <TableCell>{user.registration_date ? formatTableDateTime(user.registration_date) : 'N/A'}</TableCell>
                       <TableCell>{user.gender}</TableCell>

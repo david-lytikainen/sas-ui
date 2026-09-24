@@ -7,7 +7,7 @@ export const formatUTCToLocal = (utcDateString: string, includeTime = true) => {
 
     const date = new Date(utcDateString);
     if (Number.isNaN(date.getTime())) return 'Invalid date';
-    return date.toLocaleString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: includeTime ? '2-digit' : undefined, minute: includeTime ? '2-digit' : undefined, timeZoneName: includeTime ? 'short' : undefined });
+    return date.toLocaleString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: includeTime ? '2-digit' : undefined, minute: includeTime ? '2-digit' : undefined });
   } catch {
     return 'Invalid date';
   }

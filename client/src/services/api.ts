@@ -233,7 +233,6 @@ interface EventsApi {
   completeRegistrationCheckout: (sessionId: string) => Promise<{ message: string; status?: string }>;
   create: (eventData: Omit<Event, 'id' | 'creator_id' | 'created_at' | 'updated_at' | 'registration_deadline'>) => Promise<Event>;
   updateEvent: (eventId: string, eventData: Partial<Event>) => Promise<{ message: string, event: Event }>;
-  deleteEvent: (eventId: string) => Promise<{ message: string }>;
   registerForEvent: (eventId: string, body?: { join_waitlist: boolean }) => Promise<{ message: string, waitlist_available?: boolean }>;
   cancelRegistration: (eventId: string) => Promise<{ message: string }>;
   manualCheckInAttendee: (eventId: string, attendeeId: string) => Promise<{ message: string }>;
@@ -344,11 +343,6 @@ const realEventsApi: EventsApi = {
 
   updateEvent: async (eventId: string, eventData: Partial<Event>): Promise<{ message: string, event: Event }> => {
     const response = await axiosInstance.put(`/events/${eventId}`, eventData);
-    return response.data;
-  },
-
-  deleteEvent: async (eventId: string): Promise<{ message: string }> => {
-    const response = await axiosInstance.delete(`/events/${eventId}`);
     return response.data;
   },
 

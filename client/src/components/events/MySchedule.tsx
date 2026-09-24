@@ -266,7 +266,7 @@ const MySchedule = ({ event, currentRound }: MyScheduleProps) => {
               )}
             </>
           ) : (
-            <Typography variant="body2" color="text.secondary">Your schedule will be populated once event starts.</Typography>
+            <Typography variant="body2" color="text.secondary">Your schedule will be populated once the organizer generates it.</Typography>
           )}
         </Paper>
       </Collapse>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Container, Box, Typography, Button, Card, CardContent, CardActions, Grid, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Alert, useMediaQuery, useTheme, TextField, Collapse, DialogContentText, Divider, Checkbox, FormControlLabel } from '@mui/material';
-import { Event as EventIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon, AttachMoney as AttachMoneyIcon, CheckCircle as CheckInIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Settings as SettingsIcon, List as ListIcon, PlayArrow as StartIcon, Visibility as ViewIcon, Edit as EditIcon, Delete as DeleteIcon, People as PeopleIcon } from '@mui/icons-material';
+import { Event as EventIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon, AttachMoney as AttachMoneyIcon, CheckCircle as CheckInIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Settings as SettingsIcon, List as ListIcon, PlayArrow as StartIcon, Visibility as ViewIcon, Edit as EditIcon, People as PeopleIcon } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import authApi, { eventsApi } from '../../services/api';
@@ -46,7 +46,7 @@ const EventList = () => {
   const [preferencesError, setPreferencesError] = useState<string | null>(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [activeView, setActiveView] = useState<EventView>('all');
+  const [activeView, setActiveView] = useState<EventView>('my');
   const handledOrganizerReturnRef = useRef<string | null>(null);
   const [pastEventsOpen, setPastEventsOpen] = useState(false);
   const [signUpDialogOpen, setSignUpDialogOpen] = useState(false);
@@ -70,6 +70,7 @@ const EventList = () => {
   const [isTableConfigOpen, setIsTableConfigOpen] = useState<boolean>(false);
   const [checkedInConfirmationOpen, setCheckedInConfirmationOpen] = useState(false);
   const [checkedInAttendeeCount, setCheckedInAttendeeCount] = useState(0);
+  const [eventToRegenerate, setEventToRegenerate] = useState<Event | null>(null);
 
   const [editEventDialogOpen, setEditEventDialogOpen] = useState<boolean>(false);
   const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
@@ -82,9 +83,6 @@ const EventList = () => {
     price_per_person: '0',
     enforce_gender_balance: true,
   });
-
-  const [deleteEventConfirmOpen, setDeleteEventConfirmOpen] = useState<boolean>(false);
-  const [eventToDeleteId, setEventToDeleteId] = useState<number | null>(null);
 
   const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false);
   const [eventForWaitlist, setEventForWaitlist] = useState<Event | null>(null);
@@ -280,7 +278,7 @@ const EventList = () => {
 
 
   const sortedEvents = [...filteredEvents].sort((a, b) => {
-    const startTimeDifference = new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+    const startTimeDifference = -(new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
     return startTimeDifference || a.id - b.id;
   });
 
@@ -320,20 +318,8 @@ const EventList = () => {
 
     // If registered (and not waitlisted) and event is not completed or in progress
     if (isUserRegistered && registrationStatus !== 'Waitlisted' && event.status !== 'Completed' && event.status !== 'In Progress') {
-      return (
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: 1 }}>
-          {registrationStatus === 'Checked In' ? (
-            <Chip label="Checked In" color="success" icon={<CheckInIcon />} size="small" />
-          ) : (
-            <Chip label="Registered" color="primary" size="small" />
-          )}
-          {registrationStatus !== 'Checked In' && (
-            <Button size="small" variant="outlined" color="error" onClick={() => handleCancelClick(event.id)} startIcon={<CancelIcon />}>
-              Cancel Registration
-            </Button>
-          )}
-        </Box>
-      );
+      if (registrationStatus === 'Checked In') return null;
+      return <Button size="small" variant="outlined" color="error" onClick={() => handleCancelClick(event.id)} startIcon={<CancelIcon />}>Cancel Registration</Button>;
     }
 
     // Standard Sign Up / Join Waitlist button logic refined
@@ -442,43 +428,15 @@ const EventList = () => {
               size="small"
               color="primary"
               startIcon={<StartIcon />}
-              onClick={() => handleStartEventClick(event)}
+              onClick={() => event.status === 'In Progress' ? setEventToRegenerate(event) : handleStartEventClick(event)}
               fullWidth
-              disabled={event.status === 'In Progress' || event.status === 'Completed'}
+              disabled={event.status === 'Completed'}
               sx={{ borderRadius: 1 }}
             >
-              Generate Schedules
+              {event.status === 'In Progress' ? 'Re-generate Schedules' : 'Generate Schedules'}
             </Button>
 
-            <Grid container spacing={1} sx={{ mt: 0.5 }}>
-              <Grid item xs={6}>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  color="primary"
-                  startIcon={<EditIcon />}
-                  onClick={() => handleOpenEditEventDialog(event)}
-                  fullWidth
-                  sx={{ borderRadius: 1 }}
-                >
-                  Edit Event
-                </Button>
-              </Grid>
-              <Grid item xs={6}>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  color="primary"
-                  startIcon={<DeleteIcon />}
-                  onClick={() => handleOpenDeleteEventConfirm(event.id)}
-                  fullWidth
-                  sx={{ borderRadius: 1, whiteSpace: 'nowrap' }}
-                  disabled={event.status === 'In Progress' || event.status === 'Completed'}
-                >
-                  Delete Event
-                </Button>
-              </Grid>
-            </Grid>
+            <Button variant="outlined" size="small" color="primary" startIcon={<EditIcon />} onClick={() => handleOpenEditEventDialog(event)} fullWidth sx={{ borderRadius: 1, mt: 0.5 }}>Edit Event</Button>
           </Box>
         </Collapse>
       </>
@@ -511,6 +469,12 @@ const EventList = () => {
   const handleCheckedInConfirmation = () => {
     setCheckedInConfirmationOpen(false);
     setIsTableConfigOpen(true);
+  };
+
+  const handleRegenerateConfirm = () => {
+    const event = eventToRegenerate;
+    setEventToRegenerate(null);
+    if (event) handleStartEventClick(event);
   };
 
   const handleTableConfigSubmit = () => {
@@ -586,23 +550,6 @@ const EventList = () => {
     }
   };
 
-  const handleOpenDeleteEventConfirm = (eventId: number) => {
-    setEventToDeleteId(eventId);
-    setDeleteEventConfirmOpen(true);
-  };
-
-  const handleDeleteEvent = async () => {
-    if (!eventToDeleteId) return;
-    try {
-      await eventsApi.deleteEvent(eventToDeleteId.toString());
-      setDeleteEventConfirmOpen(false);
-      setEventToDeleteId(null);
-      refreshEvents();
-    } catch (error: any) {
-      setErrorMessage(error.response?.data?.error || error.message || 'Failed to delete event');
-    }
-  };
-
   const handleConnectOnboarding = async () => {
     try {
       const onboarding = await authApi.createConnectOnboarding();
@@ -643,15 +590,17 @@ const EventList = () => {
     }
   });
 
-  const renderEventCard = (event: Event) => (
+  const renderEventCard = (event: Event) => {
+    const actionButtons = renderActionButtons(event);
+    return (
     <Grid item xs={12} key={event.id}>
       <Card sx={{
         borderRadius: 2,
         boxShadow: theme.shadows[2],
         transition: 'box-shadow 0.15s ease',
       }}>
-        <CardContent sx={{ p: { xs: 1.5, sm: 3 } }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 1, sm: 2 }, flexWrap: 'wrap', gap: 1}}>
+        <CardContent sx={{ p: { xs: 1.5, sm: 3 }, '&:last-child': { pb: actionButtons ? 0 : { xs: 1.5, sm: 3 } } }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1, mb: { xs: 1, sm: 2 } }}>
             <Typography
               variant="h5"
               component="h2"
@@ -663,17 +612,7 @@ const EventList = () => {
             >
               {event.name}
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Chip
-                label={event.status}
-                sx={{
-                  fontWeight: 600,
-                  fontSize: isMobile ? '0.75rem' : '0.875rem',
-                  bgcolor: theme.palette.action.selected,
-                  color: theme.palette.text.primary
-                }}
-              />
-            </Box>
+            {isRegisteredForEvent(event.id) && event.registration?.status !== 'Waitlisted' && (event.registration?.status === 'Checked In' ? <Chip label="Checked In" color="success" icon={<CheckInIcon />} size="small" /> : <Chip label="Registered" color="primary" size="small" />)}
           </Box>
 
           {event.status !== 'In Progress' && (
@@ -723,24 +662,24 @@ const EventList = () => {
         )}
 
         {event.status !== 'In Progress' && (
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1, sm: 2 } }}>
-          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.75 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem' }}>
             <EventIcon fontSize="small" />
             {formatUTCToLocal(event.starts_at)}
           </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem' }}>
+            <LocationOnIcon fontSize="small" />
+            {event.address}
+          </Typography>
           {typeof event.registered_attendee_count === 'number' && event.max_capacity && (
-            <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
+            <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem' }}>
               <PeopleIcon fontSize="small" />
               {`${event.registered_attendee_count}/${event.max_capacity} spots filled`}
             </Typography>
           )}
-          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem' }}>
             <AttachMoneyIcon fontSize="small" />
             ${parseFloat(event.price_per_person).toFixed(2)} per person
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
-            <LocationOnIcon fontSize="small" />
-            {event.address}
           </Typography>
         </Box>
         )}
@@ -754,12 +693,11 @@ const EventList = () => {
           />
         )}
       </CardContent>
-      <CardActions sx={{ p: { xs: 1, sm: 2 }, pt: 1, display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 1, justifyContent: 'flex-start' }}>
-        {renderActionButtons(event)}
-      </CardActions>
+      {actionButtons && <CardActions sx={{ p: { xs: 1, sm: 2 }, pt: 1, display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 1, justifyContent: 'flex-start' }}>{actionButtons}</CardActions>}
     </Card>
   </Grid>
-  );
+    );
+  };
 
   const renderCreateTab = () => {
     if (isAdmin() || canCreateEvents) {
@@ -814,7 +752,7 @@ const EventList = () => {
           <Button variant="contained" onClick={handleSaveProfilePreferences} disabled={preferencesSaving} fullWidth sx={{ mt: 4 }}>{preferencesSaving ? 'Saving...' : 'Done'}</Button>
         </DialogContent>
       </Dialog>
-      <Container maxWidth="lg">
+      <Container maxWidth="md">
         {errorMessage && (
           <Alert severity="error" onClose={() => setErrorMessage(null)} sx={{ mb: 2 }}>
             {errorMessage}
@@ -909,22 +847,27 @@ const EventList = () => {
       />
 
       {/* Generate Schedules Dialog */}
+      <ConfirmDialog open={!!eventToRegenerate} title="Re-generate Schedules" confirmLabel="Continue" confirmColor="error" onCancel={() => setEventToRegenerate(null)} onConfirm={handleRegenerateConfirm}>
+        Are you sure you want to Re-generate Schedules?
+        <Typography variant="body1" sx={{ mt: 1 }}>This will lose <strong>all</strong> current progress and re-generate each attendee&apos;s schedule.</Typography>
+      </ConfirmDialog>
+
       <ConfirmDialog
         open={checkedInConfirmationOpen}
         title="Generate Schedules"
         confirmLabel="Next"
-        cancelLabel="No"
+        cancelLabel="Cancel"
         onCancel={() => setCheckedInConfirmationOpen(false)}
         onConfirm={handleCheckedInConfirmation}
       >
         <Typography variant="body1" sx={{ mt: 1, fontWeight: 'bold' }}>
-          {checkedInAttendeeCount} people are currently checked in
+          {checkedInAttendeeCount} people are currently Checked in
         </Typography>
         <Typography variant="body1" sx={{ mt: 1 }}>
-          Please ask the Attendees to check if their phones say they are checked-in
+          Please ask all Attendees to see if they are Checked in
         </Typography>
         <Typography variant="body1">
-          Only checked-in attendees will be included in the schedule generation
+          Only Checked in attendees will be included in the schedule generation
         </Typography>
       </ConfirmDialog>
 
@@ -980,7 +923,7 @@ const EventList = () => {
         onCancel={() => setStartEventDialogOpen(false)}
         onConfirm={handleStartEvent}
       >
-        Are you sure you want to generate schedules for "{selectedEventForStarting?.name}"?
+        Are you sure you want to generate schedules?
         <Typography variant="body1" sx={{ mt: 1, fontWeight: 'bold' }}>
           This will use {numTables} tables and {numRounds} rounds.
         </Typography>
@@ -1094,17 +1037,6 @@ const EventList = () => {
           <Button onClick={handleUpdateEvent} color="primary" variant="contained">Update Event</Button>
         </DialogActions>
       </Dialog>
-
-      <ConfirmDialog
-        open={deleteEventConfirmOpen}
-        title="Delete Event"
-        confirmLabel="Delete Event"
-        confirmColor="error"
-        onCancel={() => setDeleteEventConfirmOpen(false)}
-        onConfirm={handleDeleteEvent}
-      >
-        Are you sure you want to delete the event: <strong>{filteredEvents.find(e => e.id === eventToDeleteId)?.name}</strong>? This action cannot be undone.
-      </ConfirmDialog>
 
       <ConfirmDialog
         open={waitlistDialogOpen}
