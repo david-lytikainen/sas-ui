@@ -228,7 +228,6 @@ const realAuthApi = {
 
 interface EventsApi {
   getAll: () => Promise<Event[]>;
-  getById: (eventId: string) => Promise<Event>;
   createRegistrationCheckout: (eventId: string) => Promise<{ url: string }>;
   completeRegistrationCheckout: (sessionId: string) => Promise<{ message: string; status?: string }>;
   create: (eventData: Omit<Event, 'id' | 'creator_id' | 'created_at' | 'updated_at' | 'registration_deadline'>) => Promise<Event>;
@@ -236,7 +235,6 @@ interface EventsApi {
   registerForEvent: (eventId: string, body?: { join_waitlist: boolean }) => Promise<{ message: string, waitlist_available?: boolean }>;
   cancelRegistration: (eventId: string) => Promise<{ message: string }>;
   manualCheckInAttendee: (eventId: string, attendeeId: string) => Promise<{ message: string }>;
-  updateEventStatus: (eventId: string, status: string) => Promise<{ message: string }>;
   getEventAttendees: (eventId: string) => Promise<{ data: {
     id: number,
     name: string,
@@ -258,7 +256,6 @@ interface EventsApi {
     schedules: Record<number, Array<ScheduleItem>> 
   }>;
   startEvent: (eventId: string, numTables?: number, numRounds?: number) => Promise<{ message: string }>;
-  resumeEvent: (eventId: string) => Promise<{ message: string }>;
   submitSpeedDateSelections: (
     eventId: string, 
     selections: Array<{ event_speed_date_id: number; interested: boolean }>
@@ -303,14 +300,6 @@ const realEventsApi: EventsApi = {
     return response.data;
   },
 
-  getById: async (eventId: string) => {
-    try {
-      const response = await axiosInstance.get(`/events/${eventId}`);
-      return response.data;
-    } catch (error: any) {
-      throw new Error(getApiErrorMessage(error, 'Failed to fetch event details'));
-    }
-  },
 
   createRegistrationCheckout: async (eventId: string) => {
     try {
@@ -361,10 +350,6 @@ const realEventsApi: EventsApi = {
     return response.data;
   },
 
-  updateEventStatus: async (eventId: string, status: string) => {
-    const response = await axiosInstance.patch(`/events/${eventId}/status`, { status });
-    return response.data;
-  },
   
   getEventAttendees: async (eventId: string) => {
     const response = await axiosInstance.get(`/events/${eventId}/attendees`);
@@ -402,14 +387,6 @@ const realEventsApi: EventsApi = {
     }
   },
   
-  resumeEvent: async (eventId: string) => {
-    try {
-      const response = await axiosInstance.patch(`/events/${eventId}/status`, { status: 'In Progress' });
-      return response.data;
-    } catch (error: any) {
-      throw new Error(getApiErrorMessage(error, 'Failed to resume event'));
-    }
-  },
   
   submitSpeedDateSelections: async (
     eventId: string, 
