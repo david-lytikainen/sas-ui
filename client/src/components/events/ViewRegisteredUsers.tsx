@@ -1,5 +1,4 @@
-import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material';
-import { Download as DownloadIcon, Email as EmailIcon } from '@mui/icons-material';
+import Modal from '../common/Modal';
 import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { Event } from '../../types/event';
@@ -30,11 +29,7 @@ interface ViewRegisteredUsersProps {
   onClose: () => void;
 }
 
-const ViewRegisteredUsers = ({
-  open,
-  event,
-  onClose,
-}: ViewRegisteredUsersProps) => {
+const ViewRegisteredUsers = ({ open, event, onClose }: ViewRegisteredUsersProps) => {
   const { user, isAdmin, isOrganizer } = useAuth();
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
   const [filteredRegisteredUsers, setFilteredRegisteredUsers] = useState<RegisteredUser[]>([]);
@@ -97,12 +92,16 @@ const ViewRegisteredUsers = ({
       return;
     }
 
-    const searchWords = value.toLowerCase().trim().split(/\s+/).filter(word => word.length > 0);
-    const filtered = registeredUsers.filter(user => {
+    const searchWords = value
+      .toLowerCase()
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word.length > 0);
+    const filtered = registeredUsers.filter((user) => {
       const firstName = user.first_name.toLowerCase();
       const lastName = user.last_name.toLowerCase();
 
-      return searchWords.every(word => firstName.startsWith(word) || lastName.startsWith(word));
+      return searchWords.every((word) => firstName.startsWith(word) || lastName.startsWith(word));
     });
 
     setFilteredRegisteredUsers(filtered);
@@ -150,7 +149,10 @@ const ViewRegisteredUsers = ({
         csvContent += `"${user.name}","${user.email}",${user.gender || 'N/A'},${user.age || 'N/A'},${birthday},${registrationDate},${checkInDate},${user.status}\n`;
       });
 
-      downloadCsv(csvContent, `${event.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${searchTerm.trim() ? 'filtered_users' : 'registered_users'}.csv`);
+      downloadCsv(
+        csvContent,
+        `${event.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${searchTerm.trim() ? 'filtered_users' : 'registered_users'}.csv`
+      );
     } catch (error) {
       setErrorMessage('Failed to export registered users');
     }
@@ -162,7 +164,7 @@ const ViewRegisteredUsers = ({
       return;
     }
 
-    const recipients = Array.from(new Set(registeredUsers.map(user => user.email).filter(Boolean)));
+    const recipients = Array.from(new Set(registeredUsers.map((user) => user.email).filter(Boolean)));
     if (recipients.length === 0) {
       setErrorMessage('No attendee email addresses are available.');
       return;
@@ -172,110 +174,108 @@ const ViewRegisteredUsers = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth PaperProps={{ sx: { mt: { xs: 4, sm: 8 } } }} sx={{ '& .MuiDialog-container': { alignItems: 'flex-start' } }}>
-      <DialogTitle>Registered Users</DialogTitle>
-      <DialogContent dividers sx={{ p: { xs: 0, sm: 1 } }}>
+    <Modal onClose={onClose} size="xl" open={open}>
+      <div className="modal-header fw-semibold">Registered Users</div>
+      <div className="p-0 p-sm-2 modal-body">
         {errorMessage && (
-          <Alert severity="error" onClose={() => setErrorMessage(null)} sx={{ mb: 2 }}>
+          <div role="alert" className="mb-3 alert alert-danger alert-dismissible">
             {errorMessage}
-          </Alert>
+            <button type="button" className="btn-close" aria-label="Close" onClick={() => setErrorMessage(null)} />
+          </div>
         )}
         {registeredUsers.length > 0 ? (
           <>
-            <Box sx={{ mb: 2, px: { xs: 1, sm: 0 } }}>
-              <TextField
-                placeholder="Search by name"
-                variant="outlined"
-                size="small"
-                fullWidth
-                value={searchTerm}
-                onChange={handleSearchChange}
-              />
-            </Box>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, px: { xs: 1, sm: 0 } }}>
-              Showing {filteredRegisteredUsers.length} of {registeredUsers.length} users
-            </Typography>
-            <TableContainer component={Paper} sx={{ maxHeight: 500, overflowX: 'auto' }}>
-              <Table stickyHeader size="small">
-                <TableHead>
-                  <TableRow>
+            <div className="mb-3 px-2 px-sm-0">
+              <div className="my-2 w-100">
+                <label className="d-block">
+                  <span className="form-label d-block">{'Search by name'}</span>
+                  <input className="form-control" placeholder="Search by name" value={searchTerm} onChange={handleSearchChange} />
+                </label>
+              </div>
+            </div>
+            <p className="text-body-secondary mb-2 px-2 px-sm-0 small"> Showing {filteredRegisteredUsers.length} of {registeredUsers.length} users </p>
+            <div className="table-responsive">
+              <table className="table table-sm align-middle mb-0">
+                <thead>
+                  <tr>
                     {canManage && (
-                      <TableCell sx={{ width: 150, minWidth: 140, textAlign: 'center' }}><strong>Actions</strong></TableCell>
+                      <th className="text-center">
+                        <strong>Actions</strong>
+                      </th>
                     )}
-                    <TableCell sx={{ width: '15%', minWidth: 150 }}><strong>Name</strong></TableCell>
-                    <TableCell sx={{ width: '20%', minWidth: 180 }}><strong>Email</strong></TableCell>
-                    <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Check-in Time</strong></TableCell>
-                    <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Registered</strong></TableCell>
-                    <TableCell sx={{ width: 80, minWidth: 70 }}><strong>Gender</strong></TableCell>
-                    <TableCell sx={{ width: 60, minWidth: 50, textAlign: 'center' }}><strong>Age</strong></TableCell>
-                    <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Birthday</strong></TableCell>
-                    <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Status</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+                    <th>
+                      <strong>Name</strong>
+                    </th>
+                    <th>
+                      <strong>Email</strong>
+                    </th>
+                    <th>
+                      <strong>Check-in Time</strong>
+                    </th>
+                    <th>
+                      <strong>Registered</strong>
+                    </th>
+                    <th>
+                      <strong>Gender</strong>
+                    </th>
+                    <th className="text-center">
+                      <strong>Age</strong>
+                    </th>
+                    <th>
+                      <strong>Birthday</strong>
+                    </th>
+                    <th>
+                      <strong>Status</strong>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
                   {filteredRegisteredUsers.map((user) => (
-                    <TableRow key={user.id}>
+                    <tr key={user.id}>
                       {canManage && (
-                        <TableCell sx={{ textAlign: 'center' }}>
+                        <td className="text-center">
                           {user.status !== 'Checked In' && (
-                            <Button
-                              size="small"
-                              variant="contained"
-                              onClick={() => setUserToCheckIn(user)}
-                              disabled={checkingInUserId === user.id}
-                              sx={{ whiteSpace: 'nowrap' }}
-                            >
-                              {checkingInUserId === user.id ? 'Checking In...' : 'Check In'}
-                            </Button>
+                            <button type="button" onClick={() => setUserToCheckIn(user)} disabled={checkingInUserId === user.id} className="text-nowrap btn btn-primary btn-sm" > {checkingInUserId === user.id ? 'Checking In...' : 'Check In'} </button>
                           )}
-                        </TableCell>
+                        </td>
                       )}
-                      <TableCell>{user.name}</TableCell>
-                      <TableCell sx={{ wordBreak: 'break-all' }}>{user.email}</TableCell>
-                      
-                      <TableCell>{user.check_in_date ? formatTableDateTime(user.check_in_date) : 'Not checked in'}</TableCell>
-                      <TableCell>{user.registration_date ? formatTableDateTime(user.registration_date) : 'N/A'}</TableCell>
-                      <TableCell>{user.gender}</TableCell>
-                      <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
-                      <TableCell>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</TableCell>
-                      <TableCell><Chip label={user.status} color={user.status === 'Checked In' ? 'success' : 'primary'} size="small" /></TableCell>
-                    </TableRow>
+                      <td>{user.name}</td>
+                      <td className="text-break">{user.email}</td>
+                      <td>{user.check_in_date ? formatTableDateTime(user.check_in_date) : 'Not checked in'}</td>
+                      <td>{user.registration_date ? formatTableDateTime(user.registration_date) : 'N/A'}</td>
+                      <td>{user.gender}</td>
+                      <td className="text-center">{user.age}</td>
+                      <td>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</td>
+                      <td>
+                        <span className={ 'badge rounded-pill text-bg-' + (user.status === 'Checked In' ? 'success' : 'primary').replace('error', 'danger') } > {user.status} </span>
+                      </td>
+                    </tr>
                   ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                </tbody>
+              </table>
+            </div>
           </>
         ) : (
-          <Typography variant="body1" sx={{ p: 2, textAlign: 'center' }}>
-            No registered users found for this event.
-          </Typography>
+          <p className="p-3 text-center mb-0">No registered users found for this event.</p>
         )}
-      </DialogContent>
-      <ConfirmDialog
-        open={!!userToCheckIn}
-        title={`Check In ${userToCheckIn?.name}?`}
-        confirmLabel="Yes"
-        cancelLabel="No"
-        onCancel={() => setUserToCheckIn(null)}
-        onConfirm={handleCheckInConfirm}
-      >
-      </ConfirmDialog>
-      <DialogActions sx={{ display: 'flex', justifyContent: 'space-between', px: 2, py: 1.5 }}>
-        <Box>
+      </div>
+      <ConfirmDialog open={!!userToCheckIn} title={`Check In ${userToCheckIn?.name}?`} confirmLabel="Yes" cancelLabel="No" onCancel={() => setUserToCheckIn(null)} onConfirm={handleCheckInConfirm} ></ConfirmDialog>
+      <div className="d-flex justify-content-between px-3 py-3 modal-footer">
+        <div>
           {canExport && registeredUsers.length > 0 && (
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              <Button variant="outlined" color="primary" onClick={handleEmailAttendees} startIcon={<EmailIcon />}>
-                Email attendees
-              </Button>
-              <Button variant="outlined" color="primary" onClick={handleExport} startIcon={<DownloadIcon />}>
-                Export CSV
-              </Button>
-            </Box>
+            <div className="d-flex gap-2 flex-wrap">
+              <button type="button" onClick={handleEmailAttendees} className="btn btn-outline-primary">
+                <span className="me-2">{<i className="fa-solid fa-envelope" aria-hidden="true" />}</span>Email attendees
+              </button>
+              <button type="button" onClick={handleExport} className="btn btn-outline-primary">
+                <span className="me-2">{<i className="fa-solid fa-download" aria-hidden="true" />}</span>Export CSV
+              </button>
+            </div>
           )}
-        </Box>
-        <Button onClick={onClose}>Close</Button>
-      </DialogActions>
-    </Dialog>
+        </div>
+        <button type="button" onClick={onClose} className="btn btn-link"> Close </button>
+      </div>
+    </Modal>
   );
 };
 

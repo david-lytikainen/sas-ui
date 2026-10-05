@@ -1,8 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import CircularProgress from '@mui/material/CircularProgress';
-import Box from '@mui/material/Box';
 
 interface AuthRedirectProps {
   children: React.ReactNode;
@@ -13,15 +11,11 @@ const AuthRedirect: React.FC<AuthRedirectProps> = ({ children }) => {
 
   if (loading) {
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="100vh"
-        data-testid="auth-loading"
-      >
-        <CircularProgress />
-      </Box>
+      <div data-testid="auth-loading" className="d-flex justify-content-center align-items-center min-vh-100">
+        <div role="status" className="spinner-border spinner-border-sm">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
     );
   }
 

@@ -1,0 +1,41 @@
+:root, [data-bs-theme="light"] {
+  --bs-body-bg: #f7f7f8;
+  --bs-body-color: #1d1d20;
+  --bs-tertiary-bg: #ffffff;
+  --bs-secondary-color: #5d5d66;
+  --bs-primary: #3459a8;
+  --bs-primary-rgb: 52, 89, 168;
+  --bs-link-color: #3459a8;
+  --bs-link-color-rgb: 52, 89, 168;
+  --bs-body-font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --sas-primary-contrast: #ffffff;
+}
+[data-bs-theme="dark"] {
+  --bs-body-bg: #222222;
+  --bs-body-color: #e0e0e0;
+  --bs-tertiary-bg: #333333;
+  --bs-secondary-color: #b0b0b0;
+  --bs-primary: #a6c0fe;
+  --bs-primary-rgb: 166, 192, 254;
+  --bs-link-color: #a6c0fe;
+  --bs-link-color-rgb: 166, 192, 254;
+  --sas-primary-contrast: #182440;
+}
+.btn-primary, .btn-outline-primary { --bs-btn-border-color: var(--bs-primary); --bs-btn-hover-bg: var(--bs-primary); --bs-btn-hover-border-color: var(--bs-primary); --bs-btn-hover-color: var(--sas-primary-contrast); --bs-btn-active-bg: var(--bs-primary); --bs-btn-active-border-color: var(--bs-primary); --bs-btn-active-color: var(--sas-primary-contrast); --bs-btn-disabled-border-color: var(--bs-primary); }
+.btn-primary { --bs-btn-bg: var(--bs-primary); --bs-btn-color: var(--sas-primary-contrast); --bs-btn-disabled-bg: var(--bs-primary); --bs-btn-disabled-color: var(--sas-primary-contrast); }
+.btn-outline-primary { --bs-btn-color: var(--bs-primary); --bs-btn-disabled-color: var(--bs-primary); }
+.card, .modal-content { --bs-card-bg: var(--bs-tertiary-bg); --bs-modal-bg: var(--bs-tertiary-bg); }
+.content-narrow { max-width: 600px; }
+.content-medium { max-width: 900px; }
+.btn, .form-control, .form-select { min-height: 44px; }
+.form-check-input { width: 1.25em; height: 1.25em; }
+.form-check-input:checked { background-color: var(--bs-primary); border-color: var(--bs-primary); }
+.sas-modal { width: calc(100% - 1rem); max-width: 500px; max-height: calc(100dvh - 1rem); padding: 0; border: 0; background: transparent; color: inherit; }
+.sas-modal.modal-sm { max-width: 400px; }
+.sas-modal.modal-lg { max-width: 800px; }
+.sas-modal.modal-xl { max-width: 1140px; }
+.sas-modal::backdrop { background: rgb(0 0 0 / 50%); }
+.sas-modal .modal-content { max-height: calc(100dvh - 1rem); }
+.sas-modal .modal-body { overflow-y: auto; }
+.sas-modal .modal-header, .sas-modal .modal-footer { flex-shrink: 0; }
+.splash { padding-top: 40vh; }

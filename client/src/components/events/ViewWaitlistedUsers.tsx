@@ -1,5 +1,4 @@
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material';
-import { Download as DownloadIcon } from '@mui/icons-material';
+import Modal from '../common/Modal';
 import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { Event } from '../../types/event';
@@ -14,11 +13,7 @@ interface ViewWaitlistedUsersProps {
   onClose: () => void;
 }
 
-const ViewWaitlistedUsers = ({
-  open,
-  event,
-  onClose,
-}: ViewWaitlistedUsersProps) => {
+const ViewWaitlistedUsers = ({ open, event, onClose }: ViewWaitlistedUsersProps) => {
   const { user, isAdmin, isOrganizer } = useAuth();
   const [waitlistedUsers, setWaitlistedUsers] = useState<any[]>([]);
   const [filteredWaitlistedUsers, setFilteredWaitlistedUsers] = useState<any[]>([]);
@@ -61,17 +56,17 @@ const ViewWaitlistedUsers = ({
       return;
     }
 
-    const searchWords = value.toLowerCase().trim().split(/\s+/).filter(word => word.length > 0);
-    const filtered = waitlistedUsers.filter(user => {
+    const searchWords = value
+      .toLowerCase()
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word.length > 0);
+    const filtered = waitlistedUsers.filter((user) => {
       const firstName = (user.first_name || '').toLowerCase();
       const lastName = (user.last_name || '').toLowerCase();
       const email = (user.email || '').toLowerCase();
 
-      return searchWords.every(word => (
-        firstName.startsWith(word) ||
-        lastName.startsWith(word) ||
-        email.startsWith(word)
-      ));
+      return searchWords.every((word) => firstName.startsWith(word) || lastName.startsWith(word) || email.startsWith(word));
     });
 
     setFilteredWaitlistedUsers(filtered);
@@ -86,7 +81,7 @@ const ViewWaitlistedUsers = ({
 
     try {
       let csvContent = 'Name,Email,Gender,Age,Birthday,Waitlisted At\n';
-      usersToExport.forEach(user => {
+      usersToExport.forEach((user) => {
         const birthday = user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A';
         const waitlistedAt = user.waitlisted_at ? formatUTCToLocal(user.waitlisted_at, true) : 'N/A';
         csvContent += `"${user.name}","${user.email}",${user.gender || 'N/A'},${user.age || 'N/A'},${birthday},${waitlistedAt}\n`;
@@ -99,84 +94,84 @@ const ViewWaitlistedUsers = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <DialogTitle>{event?.name} - Waitlisted Users</DialogTitle>
-      <DialogContent dividers sx={{ p: { xs: 0, sm: 1 } }}>
+    <Modal onClose={onClose} size="xl" open={open}>
+      <div className="modal-header fw-semibold">{event?.name} - Waitlisted Users</div>
+      <div className="p-0 p-sm-2 modal-body">
         {errorMessage && (
-          <Alert severity="error" onClose={() => setErrorMessage(null)} sx={{ mb: 2 }}>
+          <div role="alert" className="mb-3 alert alert-danger alert-dismissible">
             {errorMessage}
-          </Alert>
+            <button type="button" className="btn-close" aria-label="Close" onClick={() => setErrorMessage(null)} />
+          </div>
         )}
         {waitlistedUsers.length > 0 ? (
           <>
-            <Box sx={{ mb: 2, px: { xs: 1, sm: 0 } }}>
-              <TextField
-                label="Search Waitlist"
-                placeholder="Search by name or email..."
-                variant="outlined"
-                size="small"
-                fullWidth
-                value={searchTerm}
-                onChange={handleSearchChange}
-                InputProps={{
-                  startAdornment: (
-                    <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>
-                      🔍
-                    </Box>
-                  ),
-                }}
-              />
-            </Box>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, px: { xs: 1, sm: 0 } }}>
-              Showing {filteredWaitlistedUsers.length} of {waitlistedUsers.length} users on waitlist
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, px: { xs: 1, sm: 0 } }}>
-              Waitlisted users stay on the waitlist until they return and sign up themselves after a spot opens.
-            </Typography>
-            <TableContainer component={Paper} sx={{ maxHeight: 500, overflowX: 'auto' }}>
-              <Table stickyHeader size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ width: '15%', minWidth: 150 }}><strong>Name</strong></TableCell>
-                    <TableCell sx={{ width: '20%', minWidth: 180 }}><strong>Email</strong></TableCell>
-                    <TableCell sx={{ width: 80, minWidth: 70 }}><strong>Gender</strong></TableCell>
-                    <TableCell sx={{ width: 60, minWidth: 50, textAlign: 'center' }}><strong>Age</strong></TableCell>
-                    <TableCell sx={{ width: 110, minWidth: 100 }}><strong>Birthday</strong></TableCell>
-                    <TableCell sx={{ width: 160, minWidth: 150 }}><strong>Waitlisted At</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+            <div className="mb-3 px-2 px-sm-0">
+              <div className="my-2 w-100">
+                <label className="d-block">
+                  <span className="form-label d-block">{'Search Waitlist'}</span>
+                  <span className="input-group">
+                    {<span className="text-body-secondary me-2">🔍</span>}
+                    <input className="form-control" placeholder={'Search by name or email...'} value={searchTerm} onChange={handleSearchChange} />
+                  </span>
+                </label>
+              </div>
+            </div>
+            <p className="text-body-secondary mb-2 px-2 px-sm-0 small"> Showing {filteredWaitlistedUsers.length} of {waitlistedUsers.length} users on waitlist </p>
+            <p className="text-body-secondary mb-3 px-2 px-sm-0 small"> Waitlisted users stay on the waitlist until they return and sign up themselves after a spot opens. </p>
+            <div className="table-responsive">
+              <table className="table table-sm align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>
+                      <strong>Name</strong>
+                    </th>
+                    <th>
+                      <strong>Email</strong>
+                    </th>
+                    <th>
+                      <strong>Gender</strong>
+                    </th>
+                    <th className="text-center">
+                      <strong>Age</strong>
+                    </th>
+                    <th>
+                      <strong>Birthday</strong>
+                    </th>
+                    <th>
+                      <strong>Waitlisted At</strong>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
                   {filteredWaitlistedUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>{user.name}</TableCell>
-                      <TableCell sx={{ wordBreak: 'break-all' }}>{user.email}</TableCell>
-                      <TableCell>{user.gender}</TableCell>
-                      <TableCell sx={{ textAlign: 'center' }}>{user.age}</TableCell>
-                      <TableCell>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</TableCell>
-                      <TableCell>{user.waitlisted_at ? formatUTCToLocal(user.waitlisted_at, true) : 'N/A'}</TableCell>
-                    </TableRow>
+                    <tr key={user.id}>
+                      <td>{user.name}</td>
+                      <td className="text-break">{user.email}</td>
+                      <td>{user.gender}</td>
+                      <td className="text-center">{user.age}</td>
+                      <td>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</td>
+                      <td>{user.waitlisted_at ? formatUTCToLocal(user.waitlisted_at, true) : 'N/A'}</td>
+                    </tr>
                   ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                </tbody>
+              </table>
+            </div>
           </>
         ) : (
-          <Typography variant="body1" sx={{ p: 2, textAlign: 'center' }}>
-            No users currently on the waitlist for this event.
-          </Typography>
+          <p className="p-3 text-center mb-0">No users currently on the waitlist for this event.</p>
         )}
-      </DialogContent>
-      <DialogActions sx={{ display: 'flex', justifyContent: 'space-between', px: 2, py: 1.5 }}>
-        <Box>
+      </div>
+      <div className="d-flex justify-content-between px-3 py-3 modal-footer">
+        <div>
           {canManageUsers && waitlistedUsers.length > 0 && (
-            <Button variant="outlined" color="primary" onClick={handleExport} startIcon={<DownloadIcon />}>
-              Export CSV
-            </Button>
+            <button type="button" onClick={handleExport} className="btn btn-outline-primary">
+              <span className="me-2">{<i className="fa-solid fa-download" aria-hidden="true" />}</span>Export CSV
+            </button>
           )}
-        </Box>
-        <Button onClick={onClose}>Close</Button>
-      </DialogActions>
-    </Dialog>
+        </div>
+        <button type="button" onClick={onClose} className="btn btn-link"> Close </button>
+      </div>
+    </Modal>
   );
 };
 

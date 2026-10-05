@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Paper, Slider, Tooltip, Typography, useTheme } from '@mui/material';
-import { Pause, PlayArrow, Settings, SkipNext, SkipPrevious, Timer as TimerIcon } from '@mui/icons-material';
+import Modal from '../common/Modal';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { eventsApi } from '../../services/api';
 import { ScheduleItem, Timer } from '../../types/event';
 
@@ -78,7 +77,6 @@ const getElapsedSeconds = (timer: Timer | null): number => {
 };
 
 const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In Progress', onRoundChange }: EventTimerProps): JSX.Element | null => {
-  const theme = useTheme();
   const isEventActive = eventStatus === 'In Progress' || eventStatus === 'Paused';
   const eventIdString = eventId.toString();
   const [timer, setTimer] = useState<Timer | null>(null);
@@ -95,7 +93,7 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
   const currentRound = timer?.current_round ?? 0;
   const roundDuration = timer?.round_duration ?? DEFAULT_ROUND_DURATION;
   const breakDuration = timer?.break_duration ?? DEFAULT_BREAK_DURATION;
-  const currentRoundSchedule = userSchedule?.find(item => item.round === currentRound);
+  const currentRoundSchedule = userSchedule?.find((item) => item.round === currentRound);
 
   const isActive = timerStatus === 'active';
   const isPaused = timerStatus === 'paused';
@@ -153,7 +151,7 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
     if (timeRemaining <= 0) return;
 
     const tickId = window.setInterval(() => {
-      setTimeRemaining(previousSeconds => Math.max(0, previousSeconds - 1));
+      setTimeRemaining((previousSeconds) => Math.max(0, previousSeconds - 1));
     }, 1000);
 
     return () => window.clearInterval(tickId);
@@ -265,178 +263,104 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
     setIsSettingsOpen(true);
   };
 
-  const panelColors = useMemo(() => {
-    if (isAlmostDone) return { background: theme.palette.error.light + '22', border: theme.palette.error.light, icon: theme.palette.error.main };
-    if (isActive) return { background: theme.palette.primary.light + '22', border: theme.palette.primary.light, icon: theme.palette.primary.main };
-    if (isPaused) return { background: theme.palette.warning.light + '22', border: theme.palette.warning.light, icon: theme.palette.warning.main };
-    if (isBreakTime) return { background: theme.palette.info.light + '22', border: theme.palette.info.light, icon: theme.palette.info.main };
-    return { background: theme.palette.background.default, border: theme.palette.divider, icon: theme.palette.text.secondary };
-  }, [isActive, isAlmostDone, isBreakTime, isPaused, theme]);
-
-  const progressPercentage = useMemo(() => {
-    if (!isActive || roundDuration <= 0) return 0;
-    return (timeRemaining / roundDuration) * 100;
-  }, [isActive, roundDuration, timeRemaining]);
+  const tone = isAlmostDone ? 'danger' : isActive ? 'primary' : isPaused ? 'warning' : isBreakTime ? 'info' : 'secondary';
+  const progressPercentage = !isActive || roundDuration <= 0 ? 0 : Math.max(0, Math.min(100, (timeRemaining / roundDuration) * 100));
   const renderLoading = () => (
-    <Box display="flex" justifyContent="center" p={{ xs: 0.25, sm: 0.5 }}>
-      <CircularProgress size={16} />
-    </Box>
+    <div className="text-center">
+      <div className="spinner-border spinner-border-sm" role="status">
+        <span className="visually-hidden">Loading...</span>
+      </div>
+    </div>
   );
 
-  const renderAttendeeView = () => {
-    if (isLoading) return renderLoading();
+  const renderAttendeeView = () =>
+    isLoading ? (
+      renderLoading()
+    ) : (
+      <div className={`d-flex align-items-center gap-2 p-2 my-2 border rounded border-${tone}`}>
+        <i className={`fa-solid fa-stopwatch text-${tone}`} aria-hidden="true" />
+        <div className="flex-grow-1">
+          <p className="fw-semibold mb-0">{adminTitle}</p>
+          <p className="small text-body-secondary mb-0">{attendeeMessage}</p>
+        </div>
+        {(isActive || isBreakTime || isPaused) && <div className="text-primary fw-bold">{mainTime}</div>}
+      </div>
+    );
 
-    return (
-      <Box sx={{ display: 'flex', alignItems: 'center', minHeight: { xs: '40px', sm: '48px' }, p: { xs: 1.2, sm: 1.5 }, my: 1, borderRadius: '4px', bgcolor: theme.palette.background.paper, border: `1px solid ${panelColors.border}`, boxShadow: '0px 1px 2px rgba(0,0,0,0.1)' }}>
-        <TimerIcon sx={{ mr: 1, color: panelColors.icon, fontSize: { xs: '1.1rem', sm: '1.3rem' }, flexShrink: 0 }} />
-        <Box sx={{ flexGrow: 1 }}>
-          <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2, fontSize: { xs: '0.9rem', sm: '1rem' } }}>
-            {adminTitle}
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2, fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
-            {attendeeMessage}
-          </Typography>
-        </Box>
-        {(isActive || isBreakTime || isPaused) && (
-          <Typography color="primary" variant="body2" sx={{ fontWeight: 700, ml: 1 }}>
-            {mainTime}
-          </Typography>
+  const renderAdminControls = () =>
+    isEnded ? (
+      <p className="text-center text-body-secondary mb-0">Event Finished</p>
+    ) : (
+      <div className="d-flex justify-content-center align-items-center gap-3">
+        <button type="button" className="btn btn-outline-secondary" onClick={handleBackRound} disabled={isInactive && currentRound <= 1} aria-label={isBreakTime ? 'Restart this round' : 'Restart round or go to previous round'} title={isBreakTime ? 'Restart this round' : 'Restart round or go to previous round'} >
+          <i className="fa-solid fa-backward-step" aria-hidden="true" />
+        </button>
+        <button type="button" className={`btn btn-lg ${isActive ? 'btn-warning' : 'btn-primary'}`} onClick={handlePrimaryControl} aria-label={isActive ? 'Pause round' : isPaused ? 'Resume round' : startLabel} title={isActive ? 'Pause round' : isPaused ? 'Resume round' : startLabel} >
+          <i className={`fa-solid ${isActive ? 'fa-pause' : 'fa-play'}`} aria-hidden="true" />
+        </button>
+        <button type="button" className="btn btn-outline-secondary" onClick={handleForwardControl} disabled={!isActive} aria-label="Skip to break" title="Skip to break" >
+          <i className="fa-solid fa-forward-step" aria-hidden="true" />
+        </button>
+      </div>
+    );
+
+  const renderAdminView = () =>
+    isLoading ? (
+      renderLoading()
+    ) : (
+      <div className="my-2 w-100">
+        {errorMessage && (
+          <div className="alert alert-danger" role="alert"> {errorMessage} </div>
         )}
-      </Box>
-    );
-  };
-
-  const renderAdminControls = () => {
-    if (isEnded) {
-      return (
-        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', width: '100%' }}>
-          Event Finished
-        </Typography>
-      );
-    }
-
-    return (
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.25 }}>
-        <Tooltip title={isBreakTime ? 'Restart this round' : 'Restart round or go to previous round'}>
-          <span>
-            <IconButton
-              onClick={handleBackRound}
-              disabled={isInactive && currentRound <= 1}
-              sx={{
-                border: `1px solid ${theme.palette.divider}`,
-                bgcolor: 'background.paper',
-                width: 42,
-                height: 42,
-              }}
-            >
-              <SkipPrevious />
-            </IconButton>
-          </span>
-        </Tooltip>
-        <Tooltip title={isActive ? 'Pause round' : isPaused ? 'Resume round' : startLabel}>
-          <IconButton
-            onClick={handlePrimaryControl}
-            sx={{
-              bgcolor: isActive ? theme.palette.warning.main : theme.palette.primary.main,
-              color: isActive ? theme.palette.warning.contrastText : theme.palette.primary.contrastText,
-              width: 54,
-              height: 54,
-              '&:hover': {
-                bgcolor: isActive ? theme.palette.warning.dark : theme.palette.primary.dark,
-              },
-            }}
-          >
-            {isActive ? <Pause /> : <PlayArrow />}
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Skip to break">
-          <span>
-            <IconButton
-              onClick={handleForwardControl}
-              disabled={!isActive}
-              sx={{
-                border: `1px solid ${theme.palette.divider}`,
-                bgcolor: 'background.paper',
-                width: 42,
-                height: 42,
-              }}
-            >
-              <SkipNext />
-            </IconButton>
-          </span>
-        </Tooltip>
-      </Box>
-    );
-  };
-
-  const renderAdminView = () => {
-    if (isLoading) return renderLoading();
-
-    return (
-      <Box sx={{ width: '100%', my: { xs: 0.5, sm: 1 } }}>
-        {errorMessage && <Alert severity="error" sx={{ mb: 1 }}>{errorMessage}</Alert>}
-        <Paper elevation={1} sx={{ display: 'flex', width: '100%', py: { xs: 2, sm: 2.5 }, borderRadius: '6px', bgcolor: panelColors.background, border: `1px solid ${panelColors.border}`, position: 'relative', overflow: 'hidden', px: { xs: 1, sm: 1.5 }, alignItems: 'center', justifyContent: 'center' }}>
-          {isActive && <Box sx={{ position: 'absolute', inset: 0, width: `${progressPercentage}%`, bgcolor: theme.palette.primary.light + '33', transition: 'width 1s linear', zIndex: 1 }} />}
-          <Box sx={{ display: 'flex', alignItems: 'center', zIndex: 2, position: 'absolute', left: { xs: 1, sm: 1.5 } }}>
-            <TimerIcon sx={{ mr: 1, color: panelColors.icon, fontSize: { xs: '1.2rem', sm: '1.4rem' } }} />
-            <Typography variant="h6" sx={{ fontWeight: 500, lineHeight: 1.2, fontSize: { xs: '0.9rem', sm: '1.1rem' } }}>
+        <div className={`border rounded p-2 bg-${tone}-subtle border-${tone}`}>
+          <div className="row align-items-center g-1">
+            <div className="col-4 small">
+              <i className={`fa-solid fa-stopwatch me-1 text-${tone}`} aria-hidden="true" />
               {adminTitle}
-            </Typography>
-          </Box>
-          <Typography variant="h3" component="div" color={panelColors.icon} sx={{ fontWeight: 600, fontSize: { xs: '2rem', sm: '2.1rem' }, zIndex: 2, textAlign: 'center' }}>
-            {mainTime}
-          </Typography>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', zIndex: 2, position: 'absolute', right: { xs: 1, sm: 1.5 } }}>
-            {!isActive && !isPaused && (
-              <Tooltip title="Settings">
-                <IconButton size="small" onClick={openSettingsDialog}>
-                  <Settings />
-                </IconButton>
-              </Tooltip>
-            )}
-          </Box>
-        </Paper>
-        <Paper elevation={1} sx={{ mt: 0.5, p: 1.1, width: '100%', borderRadius: '6px' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            {renderAdminControls()}
-          </Box>
-        </Paper>
-      </Box>
+            </div>
+            <div className={`col-4 fs-2 text-center fw-semibold text-${tone}`}>{mainTime}</div>
+            <div className="col-4 text-end">
+              {!isActive && !isPaused && (
+                <button type="button" className="btn btn-outline-secondary" onClick={openSettingsDialog} aria-label="Timer settings" title="Settings">
+                  <i className="fa-solid fa-gear" aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          </div>
+          {isActive && (
+            <div className="progress mt-2" role="progressbar" aria-label="Round time remaining" aria-valuenow={Math.round(progressPercentage)} aria-valuemin={0} aria-valuemax={100} >
+              <div className="progress-bar" style={{ width: `${progressPercentage}%` }} />
+            </div>
+          )}
+        </div>
+        <div className="border rounded p-2 mt-1">{renderAdminControls()}</div>
+      </div>
     );
-  };
-
-  const renderSettingsDialog = () => (
-    <Dialog open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} PaperProps={{ sx: { borderRadius: 2, maxWidth: '400px', width: '100%' } }}>
-      <DialogTitle sx={{ pb: 1 }}>
-        <Box display="flex" alignItems="center">
-          <Settings sx={{ mr: 1, color: theme.palette.primary.main }} />
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>Timer Settings</Typography>
-        </Box>
-      </DialogTitle>
-      <DialogContent sx={{ pt: 2, pb: 1 }}>
-        <Typography id="round-duration-slider" gutterBottom fontWeight={500}>
-          Round Duration: <span style={{ color: theme.palette.primary.main }}>{formatTime(newDuration)}</span>
-        </Typography>
-        <Slider value={newDuration} min={30} max={600} step={30} onChange={(_, value) => setNewDuration(value as number)} aria-labelledby="round-duration-slider" valueLabelDisplay="auto" valueLabelFormat={(value) => formatTime(value)} sx={{ mb: 2 }} />
-        <Typography id="break-duration-slider" gutterBottom fontWeight={500} sx={{ mt: 2 }}>
-          Break Duration: <span style={{ color: theme.palette.primary.main }}>{formatTime(newBreakDuration)}</span>
-        </Typography>
-        <Slider value={newBreakDuration} min={15} max={600} step={15} onChange={(_, value) => setNewBreakDuration(value as number)} aria-labelledby="break-duration-slider" valueLabelDisplay="auto" valueLabelFormat={(value) => formatTime(value)} />
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={() => setIsSettingsOpen(false)} sx={{ textTransform: 'none', fontWeight: 500 }}>Cancel</Button>
-        <Button onClick={handleUpdateDuration} color="primary" variant="contained" sx={{ textTransform: 'none', fontWeight: 600, px: 2, borderRadius: '8px' }}>Save Settings</Button>
-      </DialogActions>
-    </Dialog>
-  );
 
   if (!isEventActive && !isAdmin) return null;
-
   return (
-    <Box sx={{ my: 2 }}>
+    <div className="my-3">
       {isAdmin ? renderAdminView() : renderAttendeeView()}
-      {renderSettingsDialog()}
-    </Box>
+      <Modal open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} size="sm">
+        <div className="modal-header">
+          <h2 className="fs-5 mb-0"> <i className="fa-solid fa-gear me-2 text-primary" aria-hidden="true" /> Timer Settings </h2>
+        </div>
+        <div className="modal-body">
+          <label className="form-label" htmlFor="round-duration-slider">
+            Round Duration: <span className="text-primary">{formatTime(newDuration)}</span>
+          </label>
+          <input id="round-duration-slider" className="form-range" type="range" value={newDuration} min={30} max={600} step={30} onChange={(e) => setNewDuration(Number(e.target.value))} />
+          <label className="form-label mt-3" htmlFor="break-duration-slider">
+            Break Duration: <span className="text-primary">{formatTime(newBreakDuration)}</span>
+          </label>
+          <input id="break-duration-slider" className="form-range" type="range" value={newBreakDuration} min={15} max={600} step={15} onChange={(e) => setNewBreakDuration(Number(e.target.value))} />
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="btn btn-link" onClick={() => setIsSettingsOpen(false)}> Cancel </button>
+          <button type="button" className="btn btn-primary" onClick={handleUpdateDuration}> Save Settings </button>
+        </div>
+      </Modal>
+    </div>
   );
 };
 

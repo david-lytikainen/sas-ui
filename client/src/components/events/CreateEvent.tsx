@@ -1,4 +1,3 @@
-import { Box, Button, Card, CardActions, CardContent, Checkbox, FormControlLabel, Grid, InputAdornment, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { useEvents } from '../../context/EventContext';
@@ -30,18 +29,22 @@ const createInitialForm = () => ({
 
 const CreateEvent = ({ createdEventCount, onCreated, onError }: CreateEventProps) => {
   const { createEvent } = useEvents();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [createForm, setCreateForm] = useState(createInitialForm);
   const isIntroEvent = createdEventCount < 1;
   const fixedFee = isIntroEvent ? 1 : 1.5;
   const percentFee = isIntroEvent ? 5 : 8;
   const minimumPrice = Number((fixedFee / (1 - percentFee / 100)).toFixed(2));
   const attendeePrice = parseFloat(createForm.price_per_person || '0') || 0;
-  const platformFee = attendeePrice > 0 ? fixedFee + (attendeePrice * percentFee / 100) : 0;
+  const platformFee = attendeePrice > 0 ? fixedFee + (attendeePrice * percentFee) / 100 : 0;
   const organizerPayout = Math.max(0, attendeePrice - platformFee);
 
-  const isCreateDisabled = !createForm.name || !createForm.description || !createForm.starts_at || !createForm.address || !createForm.max_capacity || !createForm.price_per_person;
+  const isCreateDisabled =
+    !createForm.name ||
+    !createForm.description ||
+    !createForm.starts_at ||
+    !createForm.address ||
+    !createForm.max_capacity ||
+    !createForm.price_per_person;
 
   const handleCreateEvent = async () => {
     if (isCreateDisabled) {
@@ -70,12 +73,12 @@ const CreateEvent = ({ createdEventCount, onCreated, onError }: CreateEventProps
 
   const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = event.target;
-    setCreateForm(prevForm => ({ ...prevForm, [name]: value }));
+    setCreateForm((prevForm) => ({ ...prevForm, [name]: value }));
   };
 
   const handleCheckboxChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = event.target;
-    setCreateForm(prevForm => ({ ...prevForm, [name]: checked }));
+    setCreateForm((prevForm) => ({ ...prevForm, [name]: checked }));
   };
 
   const handleDateChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -89,163 +92,101 @@ const CreateEvent = ({ createdEventCount, onCreated, onError }: CreateEventProps
         const now = new Date();
         const offset = now.getTimezoneOffset() * 60000;
         const localDate = new Date(now.getTime() - offset);
-        setCreateForm(form => ({ ...form, starts_at: localDate.toISOString().slice(0, 16) }));
+        setCreateForm((form) => ({ ...form, starts_at: localDate.toISOString().slice(0, 16) }));
         return;
       }
     }
 
-    setCreateForm(form => ({ ...form, starts_at: value }));
+    setCreateForm((form) => ({ ...form, starts_at: value }));
   };
 
   const handlePriceChange = (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
-      setCreateForm(form => ({ ...form, price_per_person: value }));
+      setCreateForm((form) => ({ ...form, price_per_person: value }));
     }
   };
 
   const handlePriceBlur = () => {
     if (!createForm.price_per_person) return;
     if (attendeePrice < minimumPrice) {
-      setCreateForm(form => ({ ...form, price_per_person: minimumPrice.toFixed(2) }));
+      setCreateForm((form) => ({ ...form, price_per_person: minimumPrice.toFixed(2) }));
     }
   };
 
   return (
-    <Card sx={{ borderRadius: 2, boxShadow: theme.shadows[2], mb: 3, mt: isMobile ? 1 : 0 }}>
-      <CardContent sx={{ p: { xs: 1.5, sm: 3 } }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 1, sm: 2 }, flexWrap: 'wrap', gap: 1 }}>
-          <TextField
-            label="Event Name"
-            name="name"
-            value={createForm.name}
-            onChange={handleChange}
-            fullWidth
-            required
-            size={isMobile ? 'small' : 'medium'}
-            margin="dense"
-            sx={{
-              '& .MuiInputBase-input': {
-                fontWeight: 600,
-                fontSize: isMobile ? '1.05rem' : '1.2rem'
+    <div className="rounded mb-4 card">
+      <div className="p-3 p-sm-4 card-body">
+        <div className="d-flex justify-content-between align-items-center mb-2 mb-sm-3 flex-wrap gap-2">
+          <div className="my-2 w-100">
+            <label className="d-block">
+              <span className="form-label d-block">{'Event Name'}</span>
+              <input className="form-control" name="name" value={createForm.name} onChange={handleChange} required />
+            </label>
+          </div>
+        </div>
+        <div className="mb-3 mb-sm-3">
+          <div className="my-2 w-100">
+            <label className="d-block">
+              <span className="form-label d-block">{'Description'}</span>
+              <textarea className="form-control" name="description" value={createForm.description} onChange={handleChange} required placeholder="Description" rows={4} />
+            </label>
+          </div>
+        </div>
+        <div className="row g-3">
+          <div className="col-12">
+            <div className="my-2 w-100">
+              <label className="d-block">
+                <span className="form-label d-block">{'Start Date and Time'}</span>
+                <input className="form-control" name="starts_at" type="datetime-local" value={createForm.starts_at} onChange={handleDateChange} required />
+              </label>
+            </div>
+          </div>
+        </div>
+        <div className="mt-1 row g-3">
+          <div className="col-12 col-sm-6">
+            <div className="my-2 w-100">
+              <label className="d-block">
+                <span className="form-label d-block">{'Max Capacity'}</span>
+                <input className="form-control" name="max_capacity" type="number" value={createForm.max_capacity} onChange={handleChange} required min={1} />
+              </label>
+            </div>
+          </div>
+          <div className="col-12 col-sm-6">
+            <div className="my-2 w-100">
+              <label className="d-block">
+                <span className="form-label d-block">{'Price Per Person'}</span>
+                <span className="input-group">
+                  <input className="form-control" name="price_per_person" type="number" value={createForm.price_per_person} onChange={handlePriceChange} onBlur={handlePriceBlur} required min={minimumPrice} step={'0.01'} />
+                  {attendeePrice > 0 ? <span className="input-group-text">{`Payout to you: $${organizerPayout.toFixed(2)}`}</span> : undefined}
+                </span>
+              </label>
+              <div className="form-text"> {attendeePrice > 0 ? `Platform fee: $${platformFee.toFixed(2)} (${isIntroEvent ? '$1.00 + 5%' : '$1.50 + 8%'})` : `Platform fee: ${isIntroEvent ? '$1.00 + 5%' : '$1.50 + 8%'}.`} </div>
+            </div>
+          </div>
+          <div className="col-12">
+            <div className="my-2 w-100">
+              <label className="d-block">
+                <span className="form-label d-block">{'Address'}</span>
+                <input className="form-control" name="address" value={createForm.address} onChange={handleChange} required />
+              </label>
+            </div>
+          </div>
+          <div className="col-12">
+            <label className="form-check my-2">
+              {
+                <input type="checkbox" checked={createForm.enforce_gender_balance} onChange={handleCheckboxChange} name="enforce_gender_balance" className="form-check-input" />
               }
-            }}
-          />
-        </Box>
-
-        <Box sx={{ mb: { xs: 1.5, sm: 2 } }}>
-          <TextField
-            name="description"
-            value={createForm.description}
-            onChange={handleChange}
-            fullWidth
-            required
-            multiline
-            rows={isMobile ? 2 : 4}
-            placeholder="Description"
-            size={isMobile ? 'small' : 'medium'}
-            margin="dense"
-          />
-        </Box>
-
-        <Grid container spacing={isMobile ? 1 : 2}>
-          <Grid item xs={12}>
-            <TextField
-              label="Start Date and Time"
-              name="starts_at"
-              type="datetime-local"
-              value={createForm.starts_at}
-              onChange={handleDateChange}
-              fullWidth
-              required
-              InputLabelProps={{ shrink: true }}
-              size={isMobile ? 'small' : 'medium'}
-              margin="dense"
-            />
-          </Grid>
-        </Grid>
-
-        <Grid container spacing={isMobile ? 1 : 2} sx={{ mt: 0.5 }}>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Max Capacity"
-              name="max_capacity"
-              type="number"
-              value={createForm.max_capacity}
-              onChange={handleChange}
-              fullWidth
-              required
-              InputProps={{ inputProps: { min: 1 } }}
-              size={isMobile ? 'small' : 'medium'}
-              margin="dense"
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Price Per Person"
-              name="price_per_person"
-              type="number"
-              value={createForm.price_per_person}
-              onChange={handlePriceChange}
-              onBlur={handlePriceBlur}
-              fullWidth
-              required
-              InputProps={{
-                endAdornment: attendeePrice > 0 ? <InputAdornment position="end">{`Payout to you: $${organizerPayout.toFixed(2)}`}</InputAdornment> : undefined,
-                inputProps: { min: minimumPrice, step: '0.01' }
-              }}
-              helperText={
-                attendeePrice > 0
-                  ? `Platform fee: $${platformFee.toFixed(2)} (${isIntroEvent ? '$1.00 + 5%' : '$1.50 + 8%'})`
-                  : `Platform fee: ${isIntroEvent ? '$1.00 + 5%' : '$1.50 + 8%'}.`
-              }
-              size={isMobile ? 'small' : 'medium'}
-              margin="dense"
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              label="Address"
-              name="address"
-              value={createForm.address}
-              onChange={handleChange}
-              fullWidth
-              required
-              size={isMobile ? 'small' : 'medium'}
-              margin="dense"
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={createForm.enforce_gender_balance}
-                  onChange={handleCheckboxChange}
-                  name="enforce_gender_balance"
-                />
-              }
-              label="Enforce 60/40 gender balance"
-            />
-            <Typography variant="body2" color="text.secondary" sx={{ ml: 4.5, mt: -0.5 }}>
-              E.g. if Max Capacity is 100, the 61st female (or male) will be waitlisted.
-            </Typography>
-          </Grid>
-        </Grid>
-      </CardContent>
-      <CardActions sx={{ p: { xs: 1.5, sm: 2 }, pt: 1, display: 'block' }}>
-        <Button
-          onClick={handleCreateEvent}
-          variant="contained"
-          color="primary"
-          size={isMobile ? 'small' : 'medium'}
-          fullWidth
-          disabled={isCreateDisabled}
-          sx={{ py: 1.1 }}
-        >
-          Create Event
-        </Button>
-      </CardActions>
-    </Card>
+              <span className="form-check-label">{'Enforce 60/40 gender balance'}</span>
+            </label>
+            <p className="text-body-secondary ms-5 mb-0 small">E.g. if Max Capacity is 100, the 61st female (or male) will be waitlisted.</p>
+          </div>
+        </div>
+      </div>
+      <div className="p-3 p-sm-3 pt-2 d-block card-footer d-flex flex-wrap gap-2">
+        <button type="button" onClick={handleCreateEvent} disabled={isCreateDisabled} className="py-3 btn btn-primary w-100"> Create Event </button>
+      </div>
+    </div>
   );
 };
 

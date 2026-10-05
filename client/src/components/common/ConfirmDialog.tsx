@@ -1,10 +1,10 @@
-import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
+import Modal from './Modal';
 import { ReactNode } from 'react';
 
 interface ConfirmDialogProps {
   open: boolean;
   title: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
   confirmLabel: string;
   onCancel: () => void;
   onConfirm: () => void;
@@ -22,18 +22,16 @@ const ConfirmDialog = ({
   cancelLabel = 'Cancel',
   confirmColor = 'primary',
 }: ConfirmDialogProps) => (
-  <Dialog open={open} onClose={onCancel}>
-    <DialogTitle>{title}</DialogTitle>
-    <DialogContent>
-      <DialogContentText component="div">{children}</DialogContentText>
-    </DialogContent>
-    <DialogActions>
-      <Button onClick={onCancel}>{cancelLabel}</Button>
-      <Button onClick={onConfirm} color={confirmColor} variant="contained">
-        {confirmLabel}
-      </Button>
-    </DialogActions>
-  </Dialog>
+  <Modal onClose={onCancel} size="" open={open}>
+    <div className="modal-header fw-semibold">{title}</div>
+    <div className="modal-body">
+      <div>{children}</div>
+    </div>
+    <div className="modal-footer">
+      <button type="button" onClick={onCancel} className="btn btn-link"> {cancelLabel} </button>
+      <button type="button" onClick={onConfirm} className={`btn btn-${confirmColor === 'error' ? 'danger' : confirmColor}`}> {confirmLabel} </button>
+    </div>
+  </Modal>
 );
 
 export default ConfirmDialog;

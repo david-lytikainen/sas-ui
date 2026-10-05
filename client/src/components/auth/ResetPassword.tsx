@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
-import { Container, Box, TextField, Button, Typography, Link, Alert, Paper, Fade, InputAdornment, IconButton } from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
 import realAuthApi from '../../services/api';
 
 const ResetPassword = () => {
@@ -28,11 +26,11 @@ const ResetPassword = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match.");
+      setError('Passwords do not match.');
       return;
     }
     if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters long.");
+      setError('Password must be at least 6 characters long.');
       return;
     }
     setLoading(true);
@@ -40,126 +38,81 @@ const ResetPassword = () => {
     setSuccess(null);
     try {
       if (!token) {
-        setError("Reset token is missing.");
+        setError('Reset token is missing.');
         return;
       }
       await realAuthApi.resetPassword(token, formData.password);
-      setSuccess("Your password has been reset successfully! You can now log in.");
+      setSuccess('Your password has been reset successfully! You can now log in.');
       setTimeout(() => navigate('/login'), 3000);
     } catch (err: any) {
-      setError(err.message || "Failed to reset password. The link may be invalid or expired.");
+      setError(err.message || 'Failed to reset password. The link may be invalid or expired.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Container component="main" maxWidth="xs" sx={{ mt: 15, mb: 15 }}>
-      <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
-        <Typography 
-          variant="h4" 
-          component="h1" 
-          gutterBottom 
-          sx={{ 
-            textAlign: 'center', 
-            mb: 1, 
-            fontWeight: 'bold',
-            color: 'primary.main'
-          }}
-        >
-          Saved & Single
-        </Typography>
-        <Typography variant="subtitle1" component="h2" sx={{ textAlign: 'center', mb: 1.5, fontWeight: 'bold', fontSize: '1.2rem' }}>
-          Set New Password
-        </Typography>
-
+    <div className="mt-5 mb-5 container content-narrow">
+      <div className="p-3 p-sm-4 rounded border">
+        <h1 className="text-center mb-2 fw-bold text-primary">Saved & Single</h1>
+        <h2 className="text-center mb-3 fw-bold">Set New Password</h2>
         {success ? (
-          <Fade in={!!success}>
-            <Alert severity="success" sx={{ width: '100%', mb: 1 }}>
-              {success}
-            </Alert>
-          </Fade>
+          <div hidden={!success}>
+            <div role="alert" className="w-100 mb-2 alert alert-success"> {success} </div>
+          </div>
         ) : (
           <>
-            <Fade in={!!error}>
-              <Alert severity="error" sx={{ width: '100%', mb: 1 }}>
-                {error}
-              </Alert>
-            </Fade>
-            <Box component="form" onSubmit={handleSubmit}>
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                name="password"
-                label="New Password"
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                size="small"
-                value={formData.password}
-                onChange={handleChange}
-                error={!!error}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        onClick={() => setShowPassword(!showPassword)}
-                        edge="end"
-                      >
-                        {showPassword ? <VisibilityOff fontSize="small"/> : <Visibility fontSize="small" />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                name="confirmPassword"
-                label="Confirm New Password"
-                type={showConfirmPassword ? 'text' : 'password'}
-                id="confirmPassword"
-                size="small"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                error={!!error}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        edge="end"
-                      >
-                        {showConfirmPassword ? <VisibilityOff fontSize="small"/> : <Visibility fontSize="small" />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                size="medium"
-                sx={{ mt: 1.5, mb: 1 }}
-                disabled={loading}
-              >
-                {loading ? 'Resetting...' : 'Set New Password'}
-              </Button>
-            </Box>
+            <div hidden={!error}>
+              <div role="alert" className="w-100 mb-2 alert alert-danger"> {error} </div>
+            </div>
+            <form onSubmit={handleSubmit}>
+              <div className="my-2 w-100">
+                <label className="d-block">
+                  <span className="form-label d-block">{'New Password'}</span>
+                  <span className="input-group">
+                    <input className="form-control" required name="password" type={showPassword ? 'text' : 'password'} id="password" value={formData.password} onChange={handleChange} aria-invalid={!!error} />
+                    {
+                      <span className="input-group-text">
+                        <button type="button" aria-label="Show or hide password" onClick={() => setShowPassword(!showPassword)} className="btn btn-outline-secondary btn-sm" >
+                          {showPassword ? (
+                            <i className="fa-solid fa-eye-slash" aria-hidden="true" />
+                          ) : (
+                            <i className="fa-solid fa-eye" aria-hidden="true" />
+                          )}
+                        </button>
+                      </span>
+                    }
+                  </span>
+                </label>
+              </div>
+              <div className="my-2 w-100">
+                <label className="d-block">
+                  <span className="form-label d-block">{'Confirm New Password'}</span>
+                  <span className="input-group">
+                    <input className="form-control" required name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} id="confirmPassword" value={formData.confirmPassword} onChange={handleChange} aria-invalid={!!error} />
+                    {
+                      <span className="input-group-text">
+                        <button type="button" aria-label="Show or hide password" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="btn btn-outline-secondary btn-sm" >
+                          {showConfirmPassword ? (
+                            <i className="fa-solid fa-eye-slash" aria-hidden="true" />
+                          ) : (
+                            <i className="fa-solid fa-eye" aria-hidden="true" />
+                          )}
+                        </button>
+                      </span>
+                    }
+                  </span>
+                </label>
+              </div>
+              <button type="submit" disabled={loading} className="mt-3 mb-2 btn btn-primary w-100"> {loading ? 'Resetting...' : 'Set New Password'} </button>
+            </form>
           </>
         )}
-        
-        <Box sx={{ textAlign: 'center', mt: 2 }}>
-          <Link component={RouterLink} to="/login" variant="body2" sx={{ fontSize: '0.8rem' }}>
-            {"Back to Login"}
-          </Link>
-        </Box>
-      </Paper>
-    </Container>
+        <div className="text-center mt-3">
+          <RouterLink to="/login">{'Back to Login'}</RouterLink>
+        </div>
+      </div>
+    </div>
   );
 };
 

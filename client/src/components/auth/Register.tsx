@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Alert, Box, Button, Container, FormControl, IconButton, InputAdornment, InputLabel, MenuItem, Paper, Select, SelectChangeEvent, TextField, Typography } from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { useAuth } from '../../context/AuthContext';
 import { useSplash } from '../../context/SplashContext';
 import { formatDateOnly, parseDateOnly } from '../../utils/date';
@@ -31,18 +28,27 @@ const Register = () => {
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     if (name === 'phone') {
-      setFormData(prev => ({ ...prev, phone: normalizePhone(value) }));
+      setFormData((prev) => ({ ...prev, phone: normalizePhone(value) }));
       return;
     }
-    setFormData(prev => ({ ...prev, [name]: name === 'email' ? value.toLowerCase() : value }));
+    setFormData((prev) => ({ ...prev, [name]: name === 'email' ? value.toLowerCase() : value }));
   };
 
-  const handleSelectChange = (e: SelectChangeEvent) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const validateForm = () => {
-    if (!formData.first_name || !formData.last_name || !formData.email || !formData.password || !formData.confirmPassword || !formData.birthday || !formData.gender || !formData.phone) {
+    if (
+      !formData.first_name ||
+      !formData.last_name ||
+      !formData.email ||
+      !formData.password ||
+      !formData.confirmPassword ||
+      !formData.birthday ||
+      !formData.gender ||
+      !formData.phone
+    ) {
       return 'All fields are required';
     }
     if (formData.password !== formData.confirmPassword) {
@@ -102,94 +108,81 @@ const Register = () => {
   };
 
   return (
-    <Container component="main" maxWidth="sm" sx={{ mt: 4, mb: 2 }}>
-      <Typography variant="h4" component="h1" sx={{ textAlign: 'center', mb: 3, fontWeight: 'bold', color: 'primary.main' }}>
-        Saved & Single
-      </Typography>
-
-      <Paper elevation={1} sx={{ p: { xs: 2, sm: 2, md: 3 }, borderRadius: 2 }}>
-        <Typography sx={{ textAlign: 'center', fontWeight: 'bold', fontSize: '1.2rem' }}>
-          Register
-        </Typography>
+    <div className="mt-5 mb-3 container content-narrow">
+      <h1 className="text-center mb-4 fw-bold text-primary">Saved & Single</h1>
+      <div className="p-3 p-sm-3 p-md-4 rounded border">
+        <p className="text-center fw-bold mb-0">Register</p>
         {error && (
-          <Alert severity="error" sx={{ mb: 1, fontSize: '0.8rem', py: 0.5 }}>
-            {error}
-          </Alert>
+          <div role="alert" className="mb-2 py-1 alert alert-danger"> {error} </div>
         )}
-        <Box component="form" onSubmit={handleSubmit}>
-          <Button fullWidth onClick={() => navigate('/login')} size="small">
-            Already have an account? Login
-          </Button>
-          <TextField fullWidth label="First Name" name="first_name" value={formData.first_name} onChange={handleTextChange} margin="dense" required size="small" />
-          <TextField fullWidth label="Last Name" name="last_name" value={formData.last_name} onChange={handleTextChange} margin="dense" required size="small" />
-          <TextField fullWidth label="Email Address" name="email" type="email" value={formData.email} onChange={handleTextChange} margin="dense" required size="small" />
-          <TextField
-            fullWidth
-            label="Phone Number"
-            name="phone"
-            value={formattedPhone}
-            onChange={handleTextChange}
-            margin="dense"
-            required
-            type="tel"
-            size="small"
-            inputProps={{ inputMode: 'numeric', maxLength: 14, pattern: "\\(\\d{3}\\)-\\d{3}-\\d{4}" }}
-          />
-          <DatePicker
-            label="Birthday"
-            value={parseDateOnly(formData.birthday)}
-            onChange={(value) => setFormData(prev => ({ ...prev, birthday: !value || Number.isNaN(value.getTime()) ? '' : formatDateOnly(value) }))}
-            closeOnSelect
-            disableFuture
-            referenceDate={new Date(2000, 0, 1)}
-            views={['year', 'month', 'day']}
-            openTo="year"
-            slotProps={{
-              actionBar: { actions: [] },
-              textField: {
-                fullWidth: true,
-                required: true,
-                margin: 'dense',
-                size: 'small',
-                helperText: '18+ only',
-                inputProps: { readOnly: true },
-              }
-            }}
-          />
-          <FormControl fullWidth margin="dense" required size="small">
-            <InputLabel id="gender-select-label">Gender</InputLabel>
-            <Select labelId="gender-select-label" id="gender-select" name="gender" value={formData.gender} label="Gender" onChange={handleSelectChange}>
-              <MenuItem value="Male">Male</MenuItem>
-              <MenuItem value="Female">Female</MenuItem>
-            </Select>
-          </FormControl>
-          <TextField
-            fullWidth
-            label="Password"
-            name="password"
-            type={showPassword ? 'text' : 'password'}
-            value={formData.password}
-            onChange={handleTextChange}
-            margin="dense"
-            required
-            size="small"
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton size="small" onClick={() => setShowPassword(prev => !prev)} edge="end">
-                    {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
-          <TextField fullWidth label="Confirm Password" name="confirmPassword" type={showPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={handleTextChange} margin="dense" required size="small" />
-          <Button type="submit" fullWidth variant="contained" size="medium" sx={{ mt: 1.5, mb: 1 }} disabled={loading}>
-            {loading ? 'Working...' : 'Register'}
-          </Button>
-        </Box>
-      </Paper>
-    </Container>
+        <form onSubmit={handleSubmit}>
+          <button type="button" onClick={() => navigate('/login')} className="btn btn-link btn-sm w-100"> Already have an account? Login </button>
+          <div className="my-2 w-100">
+            <label className="d-block">
+              <span className="form-label d-block">{'First Name'}</span>
+              <input className="form-control" name="first_name" value={formData.first_name} onChange={handleTextChange} required />
+            </label>
+          </div>
+          <div className="my-2 w-100">
+            <label className="d-block">
+              <span className="form-label d-block">{'Last Name'}</span>
+              <input className="form-control" name="last_name" value={formData.last_name} onChange={handleTextChange} required />
+            </label>
+          </div>
+          <div className="my-2 w-100">
+            <label className="d-block">
+              <span className="form-label d-block">{'Email Address'}</span>
+              <input className="form-control" name="email" type="email" value={formData.email} onChange={handleTextChange} required />
+            </label>
+          </div>
+          <div className="my-2 w-100">
+            <label className="d-block">
+              <span className="form-label d-block">{'Phone Number'}</span>
+              <input className="form-control" name="phone" value={formattedPhone} onChange={handleTextChange} required type="tel" inputMode="numeric" maxLength={14} pattern={'\\(\\d{3}\\)-\\d{3}-\\d{4}'} />
+            </label>
+          </div>
+          <label className="d-block my-2">
+            <span className="form-label d-block">Birthday</span>
+            <input className="form-control" type="date" required max={formatDateOnly(new Date())} value={formData.birthday} onChange={(e) => setFormData((prev) => ({ ...prev, birthday: e.target.value }))} />
+            <small className="form-text">18+ only</small>
+          </label>
+          <div className="my-2 w-100">
+            <label htmlFor="gender-select" id="gender-select-label" className="form-label"> Gender </label>
+            <select required id="gender-select" name="gender" value={formData.gender} onChange={handleSelectChange} className="form-select">
+              <option value="" disabled> Select </option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+          <div className="my-2 w-100">
+            <label className="d-block">
+              <span className="form-label d-block">{'Password'}</span>
+              <span className="input-group">
+                <input className="form-control" name="password" type={showPassword ? 'text' : 'password'} value={formData.password} onChange={handleTextChange} required />
+                {
+                  <span className="input-group-text">
+                    <button type="button" aria-label="Show or hide password" onClick={() => setShowPassword((prev) => !prev)} className="btn btn-outline-secondary btn-sm" >
+                      {showPassword ? (
+                        <i className="fa-solid fa-eye-slash" aria-hidden="true" />
+                      ) : (
+                        <i className="fa-solid fa-eye" aria-hidden="true" />
+                      )}
+                    </button>
+                  </span>
+                }
+              </span>
+            </label>
+          </div>
+          <div className="my-2 w-100">
+            <label className="d-block">
+              <span className="form-label d-block">{'Confirm Password'}</span>
+              <input className="form-control" name="confirmPassword" type={showPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={handleTextChange} required />
+            </label>
+          </div>
+          <button type="submit" disabled={loading} className="mt-3 mb-2 btn btn-primary w-100"> {loading ? 'Working...' : 'Register'} </button>
+        </form>
+      </div>
+    </div>
   );
 };
 

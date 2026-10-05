@@ -1,7 +1,6 @@
+import Modal from '../common/Modal';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Container, Box, Typography, Button, Card, CardContent, CardActions, Grid, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Alert, useMediaQuery, useTheme, TextField, Collapse, DialogContentText, Divider, Checkbox, FormControlLabel } from '@mui/material';
-import { Event as EventIcon, Cancel as CancelIcon, LocationOn as LocationOnIcon, AttachMoney as AttachMoneyIcon, CheckCircle as CheckInIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Settings as SettingsIcon, List as ListIcon, PlayArrow as StartIcon, Visibility as ViewIcon, Edit as EditIcon, People as PeopleIcon } from '@mui/icons-material';
 import { useEvents } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
 import authApi, { eventsApi } from '../../services/api';
@@ -27,10 +26,10 @@ const toLocalDateTimeInputValue = (isoDateTime: string) => {
   return offsetDate.toISOString().slice(0, 16);
 };
 
-const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms));
+const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 const removeQueryParams = (pathname: string, search: string, keys: string[]) => {
   const params = new URLSearchParams(search);
-  keys.forEach(key => params.delete(key));
+  keys.forEach((key) => params.delete(key));
   const nextSearch = params.toString();
   window.history.replaceState({}, '', `${pathname}${nextSearch ? `?${nextSearch}` : ''}`);
 };
@@ -41,11 +40,16 @@ const EventList = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const showProfilePreferences = Boolean((location.state as { showProfilePreferences?: boolean } | null)?.showProfilePreferences);
-  const [profilePreferences, setProfilePreferences] = useState<ProfilePreferenceValues>({ faith_importance: user?.faith_importance ?? null, traditional_roles_importance: user?.traditional_roles_importance ?? null, boundaries_importance: user?.boundaries_importance ?? null, looks_importance: user?.looks_importance ?? null, wants_kids: user?.wants_kids ?? null, age_gap: user?.age_gap ?? null });
+  const [profilePreferences, setProfilePreferences] = useState<ProfilePreferenceValues>({
+    faith_importance: user?.faith_importance ?? null,
+    traditional_roles_importance: user?.traditional_roles_importance ?? null,
+    boundaries_importance: user?.boundaries_importance ?? null,
+    looks_importance: user?.looks_importance ?? null,
+    wants_kids: user?.wants_kids ?? null,
+    age_gap: user?.age_gap ?? null,
+  });
   const [preferencesSaving, setPreferencesSaving] = useState(false);
   const [preferencesError, setPreferencesError] = useState<string | null>(null);
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [activeView, setActiveView] = useState<EventView>('my');
   const handledOrganizerReturnRef = useRef<string | null>(null);
   const [pastEventsOpen, setPastEventsOpen] = useState(false);
@@ -60,7 +64,6 @@ const EventList = () => {
 
   const [startEventDialogOpen, setStartEventDialogOpen] = useState(false);
   const [selectedEventForStarting, setSelectedEventForStarting] = useState<Event | null>(null);
-
 
   const [viewAllSchedulesDialogOpen, setViewAllSchedulesDialogOpen] = useState(false);
   const [selectedEventForAllSchedules, setSelectedEventForAllSchedules] = useState<Event | null>(null);
@@ -137,10 +140,7 @@ const EventList = () => {
         try {
           await eventsApi.completeRegistrationCheckout(sessionId);
         } catch (error: any) {
-          setErrorMessage(
-            error.message ||
-            'Checkout completed, but registration could not be verified automatically yet.'
-          );
+          setErrorMessage(error.message || 'Checkout completed, but registration could not be verified automatically yet.');
         }
       } else if (sessionId) {
         setErrorMessage('Checkout completed, but the return link did not include a valid session ID.');
@@ -165,16 +165,16 @@ const EventList = () => {
   }, [location.pathname, location.search, refreshEvents, searchParams, user]);
 
   const handleSignUpClick = (eventId: number) => {
-    const event = filteredEvents.find(e => e.id === eventId);
+    const event = filteredEvents.find((e) => e.id === eventId);
     if (!event) return;
 
     if (event.status === 'In Progress') {
-      setErrorMessage("Registration is not available for In Progress events.");
+      setErrorMessage('Registration is not available for In Progress events.');
       return;
     }
 
     if (event.status === 'Completed') {
-      setErrorMessage("Registration is not available for Completed events.");
+      setErrorMessage('Registration is not available for Completed events.');
       return;
     }
 
@@ -185,7 +185,7 @@ const EventList = () => {
   const handleSignUpConfirm = async () => {
     if (signUpEventId) {
       try {
-        const event = filteredEvents.find(e => e.id.toString() === signUpEventId);
+        const event = filteredEvents.find((e) => e.id.toString() === signUpEventId);
         if (!event) {
           setErrorMessage('Event details could not be found.');
           return;
@@ -215,16 +215,14 @@ const EventList = () => {
         const backendMsg = registrationError.response?.data?.message;
         const waitlistAvailable = registrationError.response?.data?.waitlist_available === true;
 
-        if ((backendError === "Event is currently full"
-                || backendError === "Event is currently full for this gender")
-              && waitlistAvailable) {
-          const event = filteredEvents.find(e => e.id.toString() === signUpEventId);
+        if ((backendError === 'Event is currently full' || backendError === 'Event is currently full for this gender') && waitlistAvailable) {
+          const event = filteredEvents.find((e) => e.id.toString() === signUpEventId);
           if (event) {
             setEventForWaitlist(event);
             setWaitlistReason(backendError);
             setWaitlistDialogOpen(true);
           } else {
-            setErrorMessage("This event is currently full. Waitlist option available, but event details could not be found.");
+            setErrorMessage('This event is currently full. Waitlist option available, but event details could not be found.');
           }
         } else {
           setErrorMessage(backendError || backendMsg || registrationError.message || 'An error occurred while trying to register for the event.');
@@ -241,7 +239,9 @@ const EventList = () => {
         setWaitlistDialogOpen(false);
         setEventForWaitlist(null);
         setErrorMessage(null); // Clear previous error messages
-        alert(`Successfully joined the waitlist for "${eventForWaitlist.name}"! If a spot opens up, we will email you so you can come back and sign up.`);
+        alert(
+          `Successfully joined the waitlist for "${eventForWaitlist.name}"! If a spot opens up, we will email you so you can come back and sign up.`
+        );
         await refreshEvents(); // Refresh events to show waitlist status if applicable
       } catch (waitlistError: any) {
         const backendError = waitlistError.response?.data?.error;
@@ -253,9 +253,9 @@ const EventList = () => {
   };
 
   const handleCancelClick = (eventId: number) => {
-    const event = filteredEvents.find(e => e.id === eventId); // Use filteredEvents
+    const event = filteredEvents.find((e) => e.id === eventId); // Use filteredEvents
     if (event && event.status === 'Completed') {
-      setErrorMessage("Cannot cancel registration for completed events.");
+      setErrorMessage('Cannot cancel registration for completed events.');
       return;
     }
     setCancelEventId(eventId.toString());
@@ -276,7 +276,6 @@ const EventList = () => {
     }
   };
 
-
   const sortedEvents = [...filteredEvents].sort((a, b) => {
     const startTimeDifference = -(new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
     return startTimeDifference || a.id - b.id;
@@ -296,7 +295,7 @@ const EventList = () => {
   const userHasAnyRegistrations = userRegisteredEvents.length > 0;
 
   const baseEvents = activeView === 'my' ? sortedEvents.filter(isMyEvent) : sortedEvents;
-  const visibleEvents = baseEvents.filter(event => !isPastEvent(event));
+  const visibleEvents = baseEvents.filter((event) => !isPastEvent(event));
   const pastEvents = baseEvents.filter(isPastEvent);
 
   const renderActionButtons = (event: Event) => {
@@ -307,19 +306,23 @@ const EventList = () => {
     // Handle Waitlisted status first
     if (registrationStatus === 'Waitlisted') {
       return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-start', width: '100%' }}>
-          <Chip label="Waitlisted" color="warning" size="small" sx={{ alignSelf: 'flex-start' }} />
-          <Button size="small" variant="outlined" color="error" onClick={() => handleCancelClick(event.id)} startIcon={<CancelIcon />} sx={{ alignSelf: 'flex-start' }}>
-            Leave Waitlist
-          </Button>
-        </Box>
+        <div className="d-flex flex-column gap-2 align-items-start w-100">
+          <span className={'align-self-start badge rounded-pill text-bg-' + 'warning'.replace('error', 'danger')}>{'Waitlisted'}</span>
+          <button type="button" onClick={() => handleCancelClick(event.id)} className="align-self-start btn btn-outline-danger btn-sm">
+            <span className="me-2">{<i className="fa-solid fa-circle-xmark" aria-hidden="true" />}</span>Leave Waitlist
+          </button>
+        </div>
       );
     }
 
     // If registered (and not waitlisted) and event is not completed or in progress
     if (isUserRegistered && registrationStatus !== 'Waitlisted' && event.status !== 'Completed' && event.status !== 'In Progress') {
       if (registrationStatus === 'Checked In') return null;
-      return <Button size="small" variant="outlined" color="error" onClick={() => handleCancelClick(event.id)} startIcon={<CancelIcon />}>Cancel Registration</Button>;
+      return (
+        <button type="button" onClick={() => handleCancelClick(event.id)} className="btn btn-outline-danger btn-sm">
+          <span className="me-2">{<i className="fa-solid fa-circle-xmark" aria-hidden="true" />}</span>Cancel Registration
+        </button>
+      );
     }
 
     // Standard Sign Up / Join Waitlist button logic refined
@@ -327,14 +330,7 @@ const EventList = () => {
 
     if (event.status === 'Registration Open' && isUserNotRegisteredOrWaitlisted) {
       return (
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => handleSignUpClick(event.id)}
-          sx={{ width: { xs: '100%', sm: 'auto' }, alignSelf: {xs: 'stretch', sm: 'flex-start'} }}
-        >
-          Sign Up
-        </Button>
+        <button type="button" onClick={() => handleSignUpClick(event.id)} className="w-100 align-self-start btn btn-primary"> Sign Up </button>
       );
     }
 
@@ -353,92 +349,40 @@ const EventList = () => {
 
     return (
       <>
-        <Box
-          sx={{
-            mt: 1,
-            pt: 1,
-            borderTop: `1px dashed ${theme.palette.divider}`,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}
-          onClick={() => setExpandedEventControls(isExpanded ? null : event.id)}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <SettingsIcon fontSize="small" color="action" />
-            <Typography variant="subtitle2" color="text.secondary">
-              Event Controls
-            </Typography>
-          </Box>
-          {isExpanded ? <ExpandLessIcon color="action" /> : <ExpandMoreIcon color="action" />}
-        </Box>
+        <button type="button" aria-expanded={isExpanded} onClick={() => setExpandedEventControls(isExpanded ? null : event.id)} className="btn btn-link text-body text-decoration-none text-start w-100 mt-2 pt-2 d-flex align-items-center justify-content-between" >
+          <div className="d-flex align-items-center gap-2">
+            <i className="fa-solid fa-gear text-body-secondary" aria-hidden="true" />
+            <p className="text-body-secondary mb-0 small">Event Controls</p>
+          </div>
+          {isExpanded ? (
+            <i className="fa-solid fa-chevron-up text-body-secondary" aria-hidden="true" />
+          ) : (
+            <i className="fa-solid fa-chevron-down text-body-secondary" aria-hidden="true" />
+          )}
+        </button>
 
-        <Collapse in={isExpanded}>
-          <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<ListIcon />}
-              onClick={() => {
-                setSelectedEventForRegisteredUsers(event);
-                setViewRegisteredUsersDialogOpen(true);
-              }}
-              fullWidth
-              color="primary"
-              sx={{ borderRadius: 1 }}
-            >
-              Check In Users
-            </Button>
-
-            <Button
-              variant="outlined"
-              size="small"
-              color="primary"
-              startIcon={<ListIcon />}
-              onClick={() => {
-                setSelectedEventForWaitlistUsers(event);
-                setViewWaitlistDialogOpen(true);
-              }}
-              fullWidth
-              sx={{ borderRadius: 1 }}
-            >
-              View Waitlist
-            </Button>
-
+        <div hidden={!isExpanded}>
+          <div className="mt-2 d-flex flex-column gap-2">
+            <button type="button" onClick={() => { setSelectedEventForRegisteredUsers(event); setViewRegisteredUsersDialogOpen(true); }} className="rounded btn btn-outline-primary btn-sm w-100" >
+              <span className="me-2">{<i className="fa-solid fa-list" aria-hidden="true" />}</span>Check In Users
+            </button>
+            <button type="button" onClick={() => { setSelectedEventForWaitlistUsers(event); setViewWaitlistDialogOpen(true); }} className="rounded btn btn-outline-primary btn-sm w-100" >
+              <span className="me-2">{<i className="fa-solid fa-list" aria-hidden="true" />}</span>View Waitlist
+            </button>
             {(event.status === 'In Progress' || event.status === 'Completed') && (
-              <Button
-                variant="outlined"
-                size="small"
-                color="primary"
-                startIcon={<ViewIcon />}
-                onClick={() => {
-                  setSelectedEventForAllSchedules(event);
-                  setViewAllSchedulesDialogOpen(true);
-                }}
-                fullWidth
-                sx={{ borderRadius: 1 }}
-              >
-                View All Schedules
-              </Button>
+              <button type="button" onClick={() => { setSelectedEventForAllSchedules(event); setViewAllSchedulesDialogOpen(true); }} className="rounded btn btn-outline-primary btn-sm w-100" >
+                <span className="me-2">{<i className="fa-solid fa-eye" aria-hidden="true" />}</span>View All Schedules
+              </button>
             )}
-
-            <Button
-              variant="outlined"
-              size="small"
-              color="primary"
-              startIcon={<StartIcon />}
-              onClick={() => event.status === 'In Progress' ? setEventToRegenerate(event) : handleStartEventClick(event)}
-              fullWidth
-              disabled={event.status === 'Completed'}
-              sx={{ borderRadius: 1 }}
-            >
+            <button type="button" onClick={() => (event.status === 'In Progress' ? setEventToRegenerate(event) : handleStartEventClick(event))} disabled={event.status === 'Completed'} className="rounded btn btn-outline-primary btn-sm w-100" >
+              <span className="me-2">{<i className="fa-solid fa-play" aria-hidden="true" />}</span>
               {event.status === 'In Progress' ? 'Re-generate Schedules' : 'Generate Schedules'}
-            </Button>
-
-            <Button variant="outlined" size="small" color="primary" startIcon={<EditIcon />} onClick={() => handleOpenEditEventDialog(event)} fullWidth sx={{ borderRadius: 1, mt: 0.5 }}>Edit Event</Button>
-          </Box>
-        </Collapse>
+            </button>
+            <button type="button" onClick={() => handleOpenEditEventDialog(event)} className="rounded mt-1 btn btn-outline-primary btn-sm w-100" >
+              <span className="me-2">{<i className="fa-solid fa-pen" aria-hidden="true" />}</span>Edit Event
+            </button>
+          </div>
+        </div>
       </>
     );
   };
@@ -449,9 +393,9 @@ const EventList = () => {
     setNumRounds(10);
     try {
       const response = await eventsApi.getEventAttendees(event.id.toString());
-      const checkedInAttendees = response.data.filter(attendee => attendee.status === 'Checked In');
-      const maleCount = checkedInAttendees.filter(attendee => attendee.gender === 'Male').length;
-      const femaleCount = checkedInAttendees.filter(attendee => attendee.gender === 'Female').length;
+      const checkedInAttendees = response.data.filter((attendee) => attendee.status === 'Checked In');
+      const maleCount = checkedInAttendees.filter((attendee) => attendee.gender === 'Male').length;
+      const femaleCount = checkedInAttendees.filter((attendee) => attendee.gender === 'Female').length;
 
       if (maleCount === 0 || femaleCount === 0) {
         setErrorMessage('Schedule generation requires at least one checked-in male and one checked-in female.');
@@ -486,11 +430,7 @@ const EventList = () => {
     try {
       if (!selectedEventForStarting) return;
 
-      await eventsApi.startEvent(
-        selectedEventForStarting.id.toString(),
-        numTables,
-        numRounds
-      );
+      await eventsApi.startEvent(selectedEventForStarting.id.toString(), numTables, numRounds);
       setStartEventDialogOpen(false);
       setSelectedEventForStarting(null);
       await refreshEvents();
@@ -498,7 +438,6 @@ const EventList = () => {
       setErrorMessage(error.message || 'Failed to start event');
     }
   };
-
 
   const handleOpenEditEventDialog = (event: Event) => {
     setEventToEdit(event);
@@ -511,7 +450,7 @@ const EventList = () => {
       price_per_person: event.price_per_person.toString(),
       enforce_gender_balance: event.enforce_gender_balance ?? true,
       status: event.status,
-        });
+    });
     setEditEventDialogOpen(true);
   };
 
@@ -520,9 +459,9 @@ const EventList = () => {
     const name = target.name;
     const value = target.value;
 
-    setEditEventForm(prev => ({
+    setEditEventForm((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -537,7 +476,7 @@ const EventList = () => {
       if (dataToUpdate.price_per_person) {
         dataToUpdate.price_per_person = dataToUpdate.price_per_person.toString();
       }
-       if (dataToUpdate.starts_at) {
+      if (dataToUpdate.starts_at) {
         dataToUpdate.starts_at = new Date(dataToUpdate.starts_at).toISOString();
       }
 
@@ -575,164 +514,85 @@ const EventList = () => {
     }
   };
 
-  const pillSx = (view: EventView) => ({
-    minWidth: 'auto',
-    borderRadius: 999,
-    px: 2,
-    py: 0.8,
-    fontSize: isMobile ? '0.8rem' : '0.875rem',
-    fontWeight: 700,
-    lineHeight: 1.2,
-    bgcolor: activeView === view ? theme.palette.primary.main : theme.palette.mode === 'dark' ? theme.palette.grey[900] : theme.palette.grey[200],
-    color: activeView === view ? theme.palette.primary.contrastText : theme.palette.text.primary,
-    '&:hover': {
-      bgcolor: activeView === view ? theme.palette.primary.main : theme.palette.action.hover
-    }
-  });
-
   const renderEventCard = (event: Event) => {
     const actionButtons = renderActionButtons(event);
     return (
-    <Grid item xs={12} key={event.id}>
-      <Card sx={{
-        borderRadius: 2,
-        boxShadow: theme.shadows[2],
-        transition: 'box-shadow 0.15s ease',
-      }}>
-        <CardContent sx={{ p: { xs: 1.5, sm: 3 }, '&:last-child': { pb: actionButtons ? 0 : { xs: 1.5, sm: 3 } } }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1, mb: { xs: 1, sm: 2 } }}>
-            <Typography
-              variant="h5"
-              component="h2"
-              sx={{
-                fontWeight: 600,
-                fontSize: isMobile ? '1.1rem' : '1.5rem',
-                lineHeight: 1.2
-              }}
-            >
-              {event.name}
-            </Typography>
-            {isRegisteredForEvent(event.id) && event.registration?.status !== 'Waitlisted' && (event.registration?.status === 'Checked In' ? <Chip label="Checked In" color="success" icon={<CheckInIcon />} size="small" /> : <Chip label="Registered" color="primary" size="small" />)}
-          </Box>
-
-          {event.status !== 'In Progress' && (
-          <Box sx={{ mb: { xs: 1.5, sm: 2 } }}>
-            <Typography
-              variant="body1"
-              color="text.secondary"
-              sx={{
-                  mb: { xs: 1, sm: 2 },
-                  fontSize: isMobile ? '0.85rem' : '1rem'
-              }}
-            >
-            {event.description}
-          </Typography>
-          </Box>
-          )}
-
-        {(event.status === 'In Progress' && (canManageEvent(event) || event.registration)) && (
-          <Box sx={{ mb: { xs: 1, sm: 3 } }}>
-            <Divider sx={{ mb: { xs: 0.5, sm: 2 } }} />
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '0.875rem', sm: '1.25rem' }, mb: { xs: 0.5, sm: 2} }}>
-                Round Timer
-              </Typography>
-              {isAdmin() ? (
-                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, fontSize:  { xs: '0.675rem', sm: '1rem' }}}>
-                  Rounds: {event.num_rounds}, Tables: {event.num_tables}
-                </Typography>
-              ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, fontSize:  { xs: '0.675rem', sm: '1rem' }}}>
-                  Rounds: {event.num_rounds}
-                </Typography>
-              )}
-            </Box>
-            <EventTimer
-              eventId={event.id}
-              isAdmin={canManageEvent(event)}
-              isCheckedIn={isRegisteredForEvent(event.id) && event.registration?.status === 'Checked In'}
-              eventStatus={event.status}
-              onRoundChange={(round) => {
-                setCurrentRounds(prev => (
-                  prev[event.id] === round ? prev : { ...prev, [event.id]: round }
-                ));
-              }}
-            />
-          </Box>
-        )}
-
-        {event.status !== 'In Progress' && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.75 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem' }}>
-            <EventIcon fontSize="small" />
-            {formatUTCToLocal(event.starts_at)}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem' }}>
-            <LocationOnIcon fontSize="small" />
-            {event.address}
-          </Typography>
-          {typeof event.registered_attendee_count === 'number' && event.max_capacity && (
-            <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem' }}>
-              <PeopleIcon fontSize="small" />
-              {`${event.registered_attendee_count}/${event.max_capacity} spots filled`}
-            </Typography>
-          )}
-          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.875rem' }}>
-            <AttachMoneyIcon fontSize="small" />
-            ${parseFloat(event.price_per_person).toFixed(2)} per person
-          </Typography>
-        </Box>
-        )}
-
-        {renderEventControls(event)}
-
-        {isRegisteredForEvent(event.id) && event.registration?.status === 'Checked In' && (
-          <MySchedule
-            event={event}
-            currentRound={currentRounds[event.id]}
-          />
-        )}
-      </CardContent>
-      {actionButtons && <CardActions sx={{ p: { xs: 1, sm: 2 }, pt: 1, display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 1, justifyContent: 'flex-start' }}>{actionButtons}</CardActions>}
-    </Card>
-  </Grid>
+      <div key={event.id} className="col-12">
+        <div className="rounded card">
+          <div className="p-3 p-sm-4 card-body">
+            <div className="d-flex justify-content-between align-items-start gap-2 mb-2 mb-sm-3">
+              <h2 className="h4 fw-semibold text-break mb-0">{event.name}</h2>
+              {isRegisteredForEvent(event.id) &&
+                event.registration?.status !== 'Waitlisted' &&
+                (event.registration?.status === 'Checked In' ? (
+                  <span className={'badge rounded-pill text-bg-' + 'success'.replace('error', 'danger')}>
+                    {<i className="fa-solid fa-circle-check" aria-hidden="true" />}
+                    {'Checked In'}
+                  </span>
+                ) : (
+                  <span className={'badge rounded-pill text-bg-' + 'primary'.replace('error', 'danger')}>{'Registered'}</span>
+                ))}
+            </div>
+            {event.status !== 'In Progress' && (
+              <div className="mb-3 mb-sm-3">
+                <p className="text-body-secondary mb-2 mb-sm-3">{event.description}</p>
+              </div>
+            )}
+            {event.status === 'In Progress' && (canManageEvent(event) || event.registration) && (
+              <div className="mb-2 mb-sm-4">
+                <hr className="mb-1 mb-sm-3" />
+                <div className="d-flex align-items-center justify-content-between">
+                  <h6 className="mb-1 mb-sm-3 mb-2">Round Timer</h6>
+                  {isAdmin() ? (
+                    <p className="text-body-secondary fw-medium mb-0 small"> Rounds: {event.num_rounds}, Tables: {event.num_tables} </p>
+                  ) : (
+                    <p className="text-body-secondary fw-medium mb-0 small">Rounds: {event.num_rounds}</p>
+                  )}
+                </div>
+                <EventTimer eventId={event.id} isAdmin={canManageEvent(event)} isCheckedIn={isRegisteredForEvent(event.id) && event.registration?.status === 'Checked In'} eventStatus={event.status} onRoundChange={(round) => { setCurrentRounds((prev) => (prev[event.id] === round ? prev : { ...prev, [event.id]: round })); }} />
+              </div>
+            )}
+            {event.status !== 'In Progress' && (
+              <div className="d-flex flex-column align-items-start gap-2">
+                <p className="text-body-secondary d-flex align-items-center gap-1 mb-0 small"> <i className="fa-solid fa-calendar-days" aria-hidden="true" /> {formatUTCToLocal(event.starts_at)} </p>
+                <p className="text-body-secondary d-flex align-items-center gap-1 mb-0 small"> <i className="fa-solid fa-location-dot" aria-hidden="true" /> {event.address} </p>
+                {typeof event.registered_attendee_count === 'number' && event.max_capacity && (
+                  <p className="text-body-secondary d-flex align-items-center gap-1 mb-0 small"> <i className="fa-solid fa-users" aria-hidden="true" /> {`${event.registered_attendee_count}/${event.max_capacity} spots filled`} </p>
+                )}
+                <p className="text-body-secondary d-flex align-items-center gap-1 mb-0 small"> <i className="fa-solid fa-dollar-sign" aria-hidden="true" />${parseFloat(event.price_per_person).toFixed(2)} per person </p>
+              </div>
+            )}
+            {renderEventControls(event)}
+            {isRegisteredForEvent(event.id) && event.registration?.status === 'Checked In' && (
+              <MySchedule event={event} currentRound={currentRounds[event.id]} />
+            )}
+          </div>
+          {actionButtons && <div className="p-2 p-sm-3 pt-2 d-flex gap-2 justify-content-start card-footer flex-wrap">{actionButtons}</div>}
+        </div>
+      </div>
     );
   };
 
   const renderCreateTab = () => {
     if (isAdmin() || canCreateEvents) {
-      return (
-        <CreateEvent
-          createdEventCount={user?.created_event_count || 0}
-          onCreated={() => setActiveView('all')}
-          onError={setErrorMessage}
-        />
-      );
+      return <CreateEvent createdEventCount={user?.created_event_count || 0} onCreated={() => setActiveView('all')} onError={setErrorMessage} />;
     }
 
     if (user && !organizerSetupComplete) {
       return (
-        <Card sx={{ borderRadius: 2, boxShadow: theme.shadows[2], mb: 3 }}>
-          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-            <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-              Creating an Event
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Attendees will pay through Stripe, so you need an account to collect payments.
-            </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              Stripe Setup will require:
-            </Typography>
-            <Box component="ol" sx={{ p: 0, m: 0, pl: 3, mb: 2 }}>
+        <div className="rounded mb-4 card">
+          <div className="p-3 p-sm-4 card-body">
+            <h5 className="fw-semibold mb-2">Creating an Event</h5>
+            <p className="text-body-secondary mb-3 small">Attendees will pay through Stripe, so you need an account to collect payments.</p>
+            <h6 className="fw-semibold mb-0">Stripe Setup will require:</h6>
+            <ol className="p-0 m-0 ps-4 mb-3">
               <li>Phone number verification</li>
               <li>Personal information</li>
               <li>Bank account information</li>
-            </Box>
-            <Button variant="outlined" onClick={handleConnectOnboarding} fullWidth>
-              {hasStartedStripeSetup ? 'Finish Stripe Setup' : 'Continue to Stripe Setup'}
-            </Button>
-          </CardContent>
-        </Card>
+            </ol>
+            <button type="button" onClick={handleConnectOnboarding} className="btn btn-outline-primary w-100"> {hasStartedStripeSetup ? 'Finish Stripe Setup' : 'Continue to Stripe Setup'} </button>
+          </div>
+        </div>
       );
     }
     return null;
@@ -740,328 +600,184 @@ const EventList = () => {
 
   return (
     <>
-      <Dialog open={showProfilePreferences} onClose={(_, reason) => { if (reason !== 'backdropClick') closeProfilePreferences(); }} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-          <Typography variant="h6" component="span" sx={{ fontWeight: 700 }}>Preferences</Typography>
-          <Button onClick={closeProfilePreferences} color="inherit" size="small">Skip</Button>
-        </DialogTitle>
-        <DialogContent dividers>
-          {preferencesError && <Alert severity="error" sx={{ mb: 2 }}>{preferencesError}</Alert>}
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Your answers will not determine how many dates you go on.</Typography>
-          <ProfilePreferences values={profilePreferences} editable onChange={(field, value) => setProfilePreferences(prev => ({ ...prev, [field]: value }))} />
-          <Button variant="contained" onClick={handleSaveProfilePreferences} disabled={preferencesSaving} fullWidth sx={{ mt: 4 }}>{preferencesSaving ? 'Saving...' : 'Done'}</Button>
-        </DialogContent>
-      </Dialog>
-      <Container maxWidth="md">
+      <Modal onClose={(_, reason) => { if (reason !== 'backdropClick') closeProfilePreferences(); }} size="" open={showProfilePreferences} >
+        <div className="d-flex align-items-center justify-content-between gap-3 modal-header fw-semibold">
+          <span className="fw-bold mb-0">Preferences</span>
+          <button type="button" onClick={closeProfilePreferences} className="text-body btn btn-link btn-sm"> Skip </button>
+        </div>
+        <div className="modal-body">
+          {preferencesError && (
+            <div role="alert" className="mb-3 alert alert-danger"> {preferencesError} </div>
+          )}
+          <p className="text-body-secondary mb-3 small">Your answers will not determine how many dates you go on.</p>
+          <ProfilePreferences values={profilePreferences} editable onChange={(field, value) => setProfilePreferences((prev) => ({ ...prev, [field]: value }))} />
+          <button type="button" onClick={handleSaveProfilePreferences} disabled={preferencesSaving} className="mt-5 btn btn-primary w-100"> {preferencesSaving ? 'Saving...' : 'Done'} </button>
+        </div>
+      </Modal>
+      <div className="container content-medium">
         {errorMessage && (
-          <Alert severity="error" onClose={() => setErrorMessage(null)} sx={{ mb: 2 }}>
+          <div role="alert" className="mb-3 alert alert-danger alert-dismissible">
             {errorMessage}
-          </Alert>
+            <button type="button" className="btn-close" aria-label="Close" onClick={() => setErrorMessage(null)} />
+          </div>
         )}
-
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'flex-start',
-            alignItems: 'flex-start',
-            mb: 2,
-            flexDirection: 'column',
-            gap: 1
-          }}
-        >
-          <Typography variant={isMobile ? "h5" : "h4"} component="h1" sx={{ fontWeight: 'bold' }}>
-            Events
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-            <Button onClick={() => setActiveView('my')} sx={pillSx('my')}>My</Button>
-            <Button onClick={() => setActiveView('all')} sx={pillSx('all')}>All</Button>
-            <Button onClick={() => setActiveView('create')} sx={pillSx('create')}>Create</Button>
-          </Box>
-        </Box>
-
+        <div className="d-flex justify-content-start align-items-start mb-3 flex-column gap-2">
+          <h1 className="fw-bold mb-0">Events</h1>
+          <div className="d-flex gap-2 align-items-center flex-wrap">
+            <button type="button" onClick={() => setActiveView('my')} aria-pressed={activeView === 'my'} className={`btn rounded-pill ${activeView === 'my' ? 'btn-primary' : 'btn-outline-secondary'}`} > My </button>
+            <button type="button" onClick={() => setActiveView('all')} aria-pressed={activeView === 'all'} className={`btn rounded-pill ${activeView === 'all' ? 'btn-primary' : 'btn-outline-secondary'}`} > All </button>
+            <button type="button" onClick={() => setActiveView('create')} aria-pressed={activeView === 'create'} className={`btn rounded-pill ${activeView === 'create' ? 'btn-primary' : 'btn-outline-secondary'}`} > Create </button>
+          </div>
+        </div>
         {activeView === 'create' && renderCreateTab()}
-
         {activeView !== 'create' && (
           <>
-            <Grid container spacing={3}>
-              {visibleEvents.map(renderEventCard)}
-            </Grid>
+            <div className="row g-3">{visibleEvents.map(renderEventCard)}</div>
 
             {activeView === 'my' && visibleEvents.length === 0 && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body1" color="text.secondary">
-                  To sign up for an event, switch to All.
-                </Typography>
-              </Box>
+              <div className="mt-3">
+                <p className="text-body-secondary mb-0">To sign up for an event, switch to All.</p>
+              </div>
             )}
 
             {(activeView !== 'my' || pastEvents.length > 0 || userHasAnyRegistrations) && (
-              <Box sx={{ mt: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 1, overflow: 'hidden' }}>
-                <Box
-                  sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-                  onClick={() => setPastEventsOpen(prev => !prev)}
-                >
-                  <Typography variant="h6" sx={{ fontSize: isMobile ? '1.1rem' : '1.5rem', fontWeight: 600 }}>
-                    Past Events
-                  </Typography>
-                  {pastEventsOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                </Box>
-                <Collapse in={pastEventsOpen}>
-                  <Box sx={{ p: 2, pt: 0 }}>
-                    <Grid container spacing={3}>
-                      {pastEvents.map(renderEventCard)}
-                    </Grid>
-                  </Box>
-                </Collapse>
-              </Box>
+              <div className="mt-4 rounded overflow-hidden">
+                <button type="button" aria-expanded={pastEventsOpen} onClick={() => setPastEventsOpen((prev) => !prev)} className="btn btn-link text-body text-decoration-none text-start w-100 px-3 py-3 d-flex align-items-center justify-content-between">
+                  <h6 className="fw-semibold mb-0">Past Events</h6>
+                  {pastEventsOpen ? (
+                    <i className="fa-solid fa-chevron-up" aria-hidden="true" />
+                  ) : (
+                    <i className="fa-solid fa-chevron-down" aria-hidden="true" />
+                  )}
+                </button>
+                <div hidden={!pastEventsOpen}>
+                  <div className="p-3 pt-0">
+                    <div className="row g-3">{pastEvents.map(renderEventCard)}</div>
+                  </div>
+                </div>
+              </div>
             )}
           </>
         )}
-
-      <ConfirmDialog
-        open={signUpDialogOpen}
-        title="Sign Up for Event"
-        confirmLabel="Continue to Checkout"
-        onCancel={() => setSignUpDialogOpen(false)}
-        onConfirm={handleSignUpConfirm}
-      >
-        Are you sure you want to sign up for this event?
-      </ConfirmDialog>
-
-      <ConfirmDialog
-        open={cancelDialogOpen}
-        title="Cancel Event Registration"
-        confirmLabel="Yes, Cancel Registration"
-        cancelLabel="No"
-        confirmColor="error"
-        onCancel={() => setCancelDialogOpen(false)}
-        onConfirm={handleCancelConfirm}
-      >
-        Are you sure you want to cancel your registration? Contact your event organizer for refund questions.
-      </ConfirmDialog>
-
-      <ViewRegisteredUsers
-        open={viewRegisteredUsersDialogOpen}
-        event={selectedEventForRegisteredUsers}
-        onClose={() => setViewRegisteredUsersDialogOpen(false)}
-      />
-
-      {/* Generate Schedules Dialog */}
-      <ConfirmDialog open={!!eventToRegenerate} title="Re-generate Schedules" confirmLabel="Continue" confirmColor="error" onCancel={() => setEventToRegenerate(null)} onConfirm={handleRegenerateConfirm}>
-        Are you sure you want to Re-generate Schedules?
-        <Typography variant="body1" sx={{ mt: 1 }}>This will lose <strong>all</strong> current progress and re-generate each attendee&apos;s schedule.</Typography>
-      </ConfirmDialog>
-
-      <ConfirmDialog
-        open={checkedInConfirmationOpen}
-        title="Generate Schedules"
-        confirmLabel="Next"
-        cancelLabel="Cancel"
-        onCancel={() => setCheckedInConfirmationOpen(false)}
-        onConfirm={handleCheckedInConfirmation}
-      >
-        <Typography variant="body1" sx={{ mt: 1, fontWeight: 'bold' }}>
-          {checkedInAttendeeCount} people are currently Checked in
-        </Typography>
-        <Typography variant="body1" sx={{ mt: 1 }}>
-          Please ask all Attendees to see if they are Checked in
-        </Typography>
-        <Typography variant="body1">
-          Only Checked in attendees will be included in the schedule generation
-        </Typography>
-      </ConfirmDialog>
-
-      <Dialog
-        open={isTableConfigOpen}
-        onClose={() => setIsTableConfigOpen(false)}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle>Generate Schedules</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Please specify how many tables and rounds you want for this event.
-          </DialogContentText>
-          <Box sx={{ mt: 2, mb: 2 }}>
-            <TextField
-              fullWidth
-              margin="dense"
-              label="Number of Tables"
-              type="number"
-              variant="outlined"
-              value={numTables}
-              onChange={(e) => setNumTables(e.target.value as any)}
-              inputProps={{ min: 1 }}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              margin="dense"
-              label="Number of Rounds"
-              type="number"
-              variant="outlined"
-              value={numRounds}
-              onChange={(e) => setNumRounds(e.target.value as any)}
-              inputProps={{ min: 1 }}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsTableConfigOpen(false)}>Cancel</Button>
-          <Button onClick={handleTableConfigSubmit} color="primary" variant="contained">
-            Next
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Start Event Confirmation Dialog */}
-      <ConfirmDialog
-        open={startEventDialogOpen}
-        title="Generate Schedules"
-        confirmLabel="Generate Schedules"
-        confirmColor="success"
-        onCancel={() => setStartEventDialogOpen(false)}
-        onConfirm={handleStartEvent}
-      >
-        Are you sure you want to generate schedules?
-        <Typography variant="body1" sx={{ mt: 1, fontWeight: 'bold' }}>
-          This will use {numTables} tables and {numRounds} rounds.
-        </Typography>
-      </ConfirmDialog>
-
-      <ViewAllSchedules
-        open={viewAllSchedulesDialogOpen}
-        event={selectedEventForAllSchedules}
-        onClose={() => setViewAllSchedulesDialogOpen(false)}
-      />
-
-      {/* ADD: Edit Event Dialog */}
-      <Dialog open={editEventDialogOpen} onClose={() => setEditEventDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Event: {eventToEdit?.name}</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ pt: 1 }}>
-            <Grid item xs={12}>
-              <TextField
-                label="Event Name"
-                name="name"
-                value={editEventForm.name || ''}
-                onChange={handleEditEventFormChange}
-                fullWidth
-                required
-                size={isMobile ? "small" : "medium"}
-                margin="dense"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                label="Description"
-                name="description"
-                value={editEventForm.description || ''}
-                onChange={handleEditEventFormChange}
-                fullWidth
-                multiline
-                rows={isMobile ? 2 : 4}
-                size={isMobile ? "small" : "medium"}
-                margin="dense"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Start Date and Time"
-                name="starts_at"
-                type="datetime-local"
-                value={editEventForm.starts_at || ''}
-                onChange={handleEditEventFormChange}
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                required
-                size={isMobile ? "small" : "medium"}
-                margin="dense"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Address"
-                name="address"
-                value={editEventForm.address || ''}
-                onChange={handleEditEventFormChange}
-                fullWidth
-                size={isMobile ? "small" : "medium"}
-                margin="dense"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <FormControlLabel
-                control={(
-                  <Checkbox
-                    checked={Boolean(editEventForm.enforce_gender_balance)}
-                    onChange={(e) => setEditEventForm(prev => ({ ...prev, enforce_gender_balance: e.target.checked }))}
-                  />
-                )}
-                label="Enforce 60/40 gender balance"
-              />
-              <Typography variant="body2" color="text.secondary" sx={{ ml: 4.5, mt: -0.5 }}>
-                E.g. if Max Capacity is 100, the 61st female (or male) will be waitlisted.
-              </Typography>
-            </Grid>
-            <Grid item xs={6} sm={6}>
-              <TextField
-                label="Max Capacity"
-                name="max_capacity"
-                type="number"
-                value={editEventForm.max_capacity || ''}
-                onChange={handleEditEventFormChange}
-                fullWidth
-                InputProps={{ inputProps: { min: 0 } }}
-                size={isMobile ? "small" : "medium"}
-                margin="dense"
-              />
-            </Grid>
-            <Grid item xs={6} sm={6}>
-              <TextField
-                label="Price Per Person"
-                name="price_per_person"
-                type="number"
-                value={editEventForm.price_per_person || '0'}
-                onChange={handleEditEventFormChange}
-                fullWidth
-                InputProps={{ inputProps: { min: 0, step: "0.01" } }}
-                size={isMobile ? "small" : "medium"}
-                margin="dense"
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditEventDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleUpdateEvent} color="primary" variant="contained">Update Event</Button>
-        </DialogActions>
-      </Dialog>
-
-      <ConfirmDialog
-        open={waitlistDialogOpen}
-        title={`Join Waitlist for "${eventForWaitlist?.name}"?`}
-        confirmLabel="Yes, Join Waitlist"
-        cancelLabel="No, Thanks"
-        onCancel={() => {
-          setWaitlistDialogOpen(false);
-          setEventForWaitlist(null);
-        }}
-        onConfirm={handleJoinWaitlistConfirm}
-      >
-        {waitlistReason}. Would you like to be added to the waitlist?
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          If a spot opens, we will email you so you can return and sign up yourself.
-        </Typography>
-      </ConfirmDialog>
-
-      <ViewWaitlistedUsers
-        open={viewWaitlistDialogOpen}
-        event={selectedEventForWaitlistUsers}
-        onClose={() => setViewWaitlistDialogOpen(false)}
-      />
-    </Container>
-  </>
+        <ConfirmDialog open={signUpDialogOpen} title="Sign Up for Event" confirmLabel="Continue to Checkout" onCancel={() => setSignUpDialogOpen(false)} onConfirm={handleSignUpConfirm} > Are you sure you want to sign up for this event? </ConfirmDialog>
+        <ConfirmDialog open={cancelDialogOpen} title="Cancel Event Registration" confirmLabel="Yes, Cancel Registration" cancelLabel="No" confirmColor="error" onCancel={() => setCancelDialogOpen(false)} onConfirm={handleCancelConfirm} > Are you sure you want to cancel your registration? Contact your event organizer for refund questions. </ConfirmDialog>
+        <ViewRegisteredUsers open={viewRegisteredUsersDialogOpen} event={selectedEventForRegisteredUsers} onClose={() => setViewRegisteredUsersDialogOpen(false)} />
+        {/* Generate Schedules Dialog */}
+        <ConfirmDialog open={!!eventToRegenerate} title="Re-generate Schedules" confirmLabel="Continue" confirmColor="error" onCancel={() => setEventToRegenerate(null)} onConfirm={handleRegenerateConfirm} >
+          Are you sure you want to Re-generate Schedules?
+          <p className="mt-2 mb-0"> This will lose <strong>all</strong> current progress and re-generate each attendee&apos;s schedule. </p>
+        </ConfirmDialog>
+        <ConfirmDialog open={checkedInConfirmationOpen} title="Generate Schedules" confirmLabel="Next" cancelLabel="Cancel" onCancel={() => setCheckedInConfirmationOpen(false)} onConfirm={handleCheckedInConfirmation} >
+          <p className="mt-2 fw-bold mb-0">{checkedInAttendeeCount} people are currently Checked in</p>
+          <p className="mt-2 mb-0">Please ask all Attendees to see if they are Checked in</p>
+          <p className="mb-0">Only Checked in attendees will be included in the schedule generation</p>
+        </ConfirmDialog>
+        <Modal onClose={() => setIsTableConfigOpen(false)} size="sm" open={isTableConfigOpen}>
+          <div className="modal-header fw-semibold">Generate Schedules</div>
+          <div className="modal-body">
+            <div>Please specify how many tables and rounds you want for this event.</div>
+            <div className="mt-3 mb-3">
+              <div className="my-2 mb-3">
+                <label className="d-block">
+                  <span className="form-label d-block">{'Number of Tables'}</span>
+                  <input className="form-control" type="number" value={numTables} onChange={(e) => setNumTables(e.target.value as any)} min={1} />
+                </label>
+              </div>
+              <div className="my-2 w-100">
+                <label className="d-block">
+                  <span className="form-label d-block">{'Number of Rounds'}</span>
+                  <input className="form-control" type="number" value={numRounds} onChange={(e) => setNumRounds(e.target.value as any)} min={1} />
+                </label>
+              </div>
+            </div>
+          </div>
+          <div className="modal-footer">
+            <button type="button" onClick={() => setIsTableConfigOpen(false)} className="btn btn-link"> Cancel </button>
+            <button type="button" onClick={handleTableConfigSubmit} className="btn btn-primary"> Next </button>
+          </div>
+        </Modal>
+        {/* Start Event Confirmation Dialog */}
+        <ConfirmDialog open={startEventDialogOpen} title="Generate Schedules" confirmLabel="Generate Schedules" confirmColor="success" onCancel={() => setStartEventDialogOpen(false)} onConfirm={handleStartEvent} >
+          Are you sure you want to generate schedules?
+          <p className="mt-2 fw-bold mb-0"> This will use {numTables} tables and {numRounds} rounds. </p>
+        </ConfirmDialog>
+        <ViewAllSchedules open={viewAllSchedulesDialogOpen} event={selectedEventForAllSchedules} onClose={() => setViewAllSchedulesDialogOpen(false)} />
+        {/* ADD: Edit Event Dialog */}
+        <Modal onClose={() => setEditEventDialogOpen(false)} size="" open={editEventDialogOpen}>
+          <div className="modal-header fw-semibold">Edit Event: {eventToEdit?.name}</div>
+          <div className="modal-body">
+            <div className="pt-2 row g-3">
+              <div className="col-12">
+                <div className="my-2 w-100">
+                  <label className="d-block">
+                    <span className="form-label d-block">{'Event Name'}</span>
+                    <input className="form-control" name="name" value={editEventForm.name || ''} onChange={handleEditEventFormChange} required />
+                  </label>
+                </div>
+              </div>
+              <div className="col-12">
+                <div className="my-2 w-100">
+                  <label className="d-block">
+                    <span className="form-label d-block">{'Description'}</span>
+                    <textarea className="form-control" name="description" value={editEventForm.description || ''} onChange={handleEditEventFormChange} rows={4} />
+                  </label>
+                </div>
+              </div>
+              <div className="col-12 col-sm-6">
+                <div className="my-2 w-100">
+                  <label className="d-block">
+                    <span className="form-label d-block">{'Start Date and Time'}</span>
+                    <input className="form-control" name="starts_at" type="datetime-local" value={editEventForm.starts_at || ''} onChange={handleEditEventFormChange} required />
+                  </label>
+                </div>
+              </div>
+              <div className="col-12 col-sm-6">
+                <div className="my-2 w-100">
+                  <label className="d-block">
+                    <span className="form-label d-block">{'Address'}</span>
+                    <input className="form-control" name="address" value={editEventForm.address || ''} onChange={handleEditEventFormChange} />
+                  </label>
+                </div>
+              </div>
+              <div className="col-12">
+                <label className="form-check my-2">
+                  {
+                    <input type="checkbox" checked={Boolean(editEventForm.enforce_gender_balance)} onChange={(e) => setEditEventForm((prev) => ({ ...prev, enforce_gender_balance: e.target.checked }))} className="form-check-input" />
+                  }
+                  <span className="form-check-label">{'Enforce 60/40 gender balance'}</span>
+                </label>
+                <p className="text-body-secondary ms-5 mb-0 small">E.g. if Max Capacity is 100, the 61st female (or male) will be waitlisted.</p>
+              </div>
+              <div className="col-6 col-sm-6">
+                <div className="my-2 w-100">
+                  <label className="d-block">
+                    <span className="form-label d-block">{'Max Capacity'}</span>
+                    <input className="form-control" name="max_capacity" type="number" value={editEventForm.max_capacity || ''} onChange={handleEditEventFormChange} min={0} />
+                  </label>
+                </div>
+              </div>
+              <div className="col-6 col-sm-6">
+                <div className="my-2 w-100">
+                  <label className="d-block">
+                    <span className="form-label d-block">{'Price Per Person'}</span>
+                    <input className="form-control" name="price_per_person" type="number" value={editEventForm.price_per_person || '0'} onChange={handleEditEventFormChange} min={0} step={'0.01'} />
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-footer">
+            <button type="button" onClick={() => setEditEventDialogOpen(false)} className="btn btn-link"> Cancel </button>
+            <button type="button" onClick={handleUpdateEvent} className="btn btn-primary"> Update Event </button>
+          </div>
+        </Modal>
+        <ConfirmDialog open={waitlistDialogOpen} title={`Join Waitlist for "${eventForWaitlist?.name}"?`} confirmLabel="Yes, Join Waitlist" cancelLabel="No, Thanks" onCancel={() => { setWaitlistDialogOpen(false); setEventForWaitlist(null); }} onConfirm={handleJoinWaitlistConfirm} >
+          {waitlistReason}. Would you like to be added to the waitlist?
+          <p className="text-body-secondary mt-2 mb-0 small">If a spot opens, we will email you so you can return and sign up yourself.</p>
+        </ConfirmDialog>
+        <ViewWaitlistedUsers open={viewWaitlistDialogOpen} event={selectedEventForWaitlistUsers} onClose={() => setViewWaitlistDialogOpen(false)} />
+      </div>
+    </>
   );
 };
 

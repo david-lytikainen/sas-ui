@@ -1,11 +1,4 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
-import { Alert, Box, Button, Card, CardContent, Container, Divider, IconButton, Switch, TextField, Typography, useMediaQuery } from '@mui/material';
-import { Theme } from '@mui/material/styles';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import EditIcon from '@mui/icons-material/Edit';
-import CheckIcon from '@mui/icons-material/Check';
-import CloseIcon from '@mui/icons-material/Close';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import authApi from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { ColorModeContext } from '../../context/ColorModeContext';
@@ -16,7 +9,6 @@ import ProfilePreferences from './ProfilePreferences';
 const ProfilePage = () => {
   const { user, refreshUser, logout } = useAuth();
   const { mode, toggleColorMode } = useContext(ColorModeContext);
-  const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'));
   const [dashboard, setDashboard] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [dashboardLoading, setDashboardLoading] = useState(false);
@@ -99,11 +91,11 @@ const ProfilePage = () => {
 
   const handleTextChange = (field: string, value: string) => {
     if (field === 'phone') {
-      setFormData(prev => ({ ...prev, phone: normalizePhone(value) }));
+      setFormData((prev) => ({ ...prev, phone: normalizePhone(value) }));
       return;
     }
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [field]: field === 'email' ? value.toLowerCase() : value,
     }));
@@ -215,11 +207,12 @@ const ProfilePage = () => {
     { label: 'Phone Number', value: formattedPhone },
     {
       label: 'Birthday',
-      value: parseDateOnly(formData.birthday)?.toLocaleDateString(undefined, {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-      }) || '',
+      value:
+        parseDateOnly(formData.birthday)?.toLocaleDateString(undefined, {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+        }) || '',
     },
     { label: 'Gender', value: formData.gender },
   ];
@@ -243,345 +236,184 @@ const ProfilePage = () => {
   }, [formData, user]);
 
   return (
-    <Container maxWidth="sm">
+    <div className="container content-narrow">
       {user?.role_id === 3 && (
-        <Card sx={{ borderRadius: 2, mb: 2 }}>
-          <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <Typography variant={isMobile ? 'h6' : 'h5'} sx={{ fontWeight: 700 }}>
-              Admin Tools
-            </Typography>
+        <div className="rounded mb-3 card">
+          <div className="d-flex flex-column gap-3 card-body">
+            <p className="fw-bold mb-0">Admin Tools</p>
             {dashboardLoading ? (
-              <Typography variant="body2" color="text.secondary">
-                Loading scheduler status...
-              </Typography>
+              <p className="text-body-secondary mb-0 small">Loading scheduler status...</p>
             ) : (
               <>
-                <Box sx={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: 1.25 }}>
+                <div className="d-flex flex-wrap gap-3">
                   {latestRuns.map((run: any) => (
-                    <Box
-                      key={run.job_name}
-                      sx={{
-                        border: '1px solid',
-                        borderColor: run.status === 'failed' ? 'error.light' : 'divider',
-                        borderRadius: 2,
-                        px: 2,
-                        py: 1.5,
-                      }}
-                    >
-                      <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', textTransform: 'uppercase', mb: 0.4 }}>
-                        {run.job_name}
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 600, mb: 0.3 }}>
-                        {run.status === 'failed' ? 'Failed' : 'Healthy'}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Processed {run.processed_count ?? 0} item(s)
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {run.created_at ? new Date(run.created_at).toLocaleString() : 'No run recorded'}
-                      </Typography>
-                    </Box>
+                    <div key={run.job_name} className={`flex-grow-1 border rounded px-3 py-3 ${run.status === 'failed' ? 'border-danger' : ''}`}>
+                      <p className="d-block text-body-secondary text-uppercase mb-1 small">{run.job_name}</p>
+                      <p className="fw-semibold mb-1">{run.status === 'failed' ? 'Failed' : 'Healthy'}</p>
+                      <p className="text-body-secondary mb-0 small">Processed {run.processed_count ?? 0} item(s)</p>
+                      <p className="text-body-secondary mb-0 small"> {run.created_at ? new Date(run.created_at).toLocaleString() : 'No run recorded'} </p>
+                    </div>
                   ))}
-                </Box>
+                </div>
                 {recentFailures.length > 0 && (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                      Recent Scheduler Failures
-                    </Typography>
+                  <div className="d-flex flex-column gap-2">
+                    <p className="fw-bold mb-0 small">Recent Scheduler Failures</p>
                     {recentFailures.map((failure: any, index: number) => (
-                      <Box
-                        key={`${failure.job_name}-${index}`}
-                        sx={{
-                          border: '1px solid',
-                          borderColor: 'error.light',
-                          borderRadius: 2,
-                          px: 2,
-                          py: 1.5,
-                          backgroundColor: 'rgba(211, 47, 47, 0.04)',
-                        }}
-                      >
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {failure.job_name}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {failure.error_message || 'Unknown error'}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {failure.created_at ? new Date(failure.created_at).toLocaleString() : ''}
-                        </Typography>
-                      </Box>
+                      <div key={`${failure.job_name}-${index}`} className="border rounded px-3 py-3">
+                        <p className="fw-semibold mb-0 small">{failure.job_name}</p>
+                        <p className="text-body-secondary mb-0 small">{failure.error_message || 'Unknown error'}</p>
+                        <p className="text-body-secondary mb-0 small">{failure.created_at ? new Date(failure.created_at).toLocaleString() : ''}</p>
+                      </div>
                     ))}
-                  </Box>
+                  </div>
                 )}
               </>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
-
       {(user?.role_id === 2 || user?.role_id === 3) && (
-        <Card sx={{ borderRadius: 2, mb: 2 }}>
-          <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-              <Typography variant={isMobile ? 'h6' : 'h5'} sx={{ fontWeight: 700 }}>Billing</Typography>
+        <div className="rounded mb-3 card">
+          <div className="d-flex flex-column gap-3 card-body">
+            <div className="d-flex align-items-center justify-content-between gap-2">
+              <p className="fw-bold mb-0">Billing</p>
               {user?.role_id === 3 ? (
-                <Button component="a" href="https://dashboard.stripe.com" target="_blank" rel="noopener noreferrer" size="small" endIcon={<OpenInNewIcon fontSize="small" />}>Open Stripe</Button>
+                <a href={'https://dashboard.stripe.com'} target="_blank" rel="noopener noreferrer" className="btn btn-link btn-sm">
+                  Open Stripe<span className="ms-2">{<i className="fa-solid fa-arrow-up-right-from-square" aria-hidden="true" />}</span>
+                </a>
               ) : (
-                <Button size="small" onClick={handleOpenStripeDashboard} disabled={stripeDashboardLoading} endIcon={<OpenInNewIcon fontSize="small" />}>{stripeDashboardLoading ? 'Opening...' : 'Open Stripe'}</Button>
+                <button type="button" onClick={handleOpenStripeDashboard} disabled={stripeDashboardLoading} className="btn btn-link btn-sm">
+                  {stripeDashboardLoading ? 'Opening...' : 'Open Stripe'}
+                  <span className="ms-2">{<i className="fa-solid fa-arrow-up-right-from-square" aria-hidden="true" />}</span>
+                </button>
               )}
-            </Box>
+            </div>
             {dashboardLoading ? (
-              <Typography variant="body2" color="text.secondary">
-                Loading billing summary...
-              </Typography>
+              <p className="text-body-secondary mb-0 small">Loading billing summary...</p>
             ) : (
               <>
-                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1.25 }}>
+                <div className="d-flex flex-wrap gap-3">
                   {billingHighlights.map((item) => (
-                    <Box
-                      key={item.label}
-                      sx={{
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        borderRadius: 2,
-                        px: 1.5,
-                        py: 1.25,
-                      }}
-                    >
-                      <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', textTransform: 'uppercase', mb: 0.4 }}>
-                        {item.label}
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                        {item.value}
-                      </Typography>
-                    </Box>
+                    <div key={item.label} className="flex-grow-1 border rounded px-3 py-3">
+                      <p className="d-block text-body-secondary text-uppercase mb-1 small">{item.label}</p>
+                      <p className="fw-semibold mb-0">{item.value}</p>
+                    </div>
                   ))}
-                </Box>
+                </div>
                 {ownBilling?.recent_activity?.length > 0 && (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                      Recent Billing Activity
-                    </Typography>
+                  <div className="d-flex flex-column gap-2">
+                    <p className="fw-bold mb-0 small">Recent Billing Activity</p>
                     {ownBilling.recent_activity.map((activity: any, index: number) => (
-                      <Box
-                        key={`${activity.created_at || activity.event_name}-${index}`}
-                        sx={{
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          borderRadius: 2,
-                          px: 2,
-                          py: 1.5,
-                        }}
-                      >
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {activity.event_name}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {activity.attendee_name} • ${activity.amount}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Payment {activity.payment_status} | Registration {activity.registration_status}{activity.refund_status ? ` | Refund ${activity.refund_status}` : ''}
-                        </Typography>
-                      </Box>
+                      <div key={`${activity.created_at || activity.event_name}-${index}`} className="border rounded px-3 py-3">
+                        <p className="fw-semibold mb-0 small">{activity.event_name}</p>
+                        <p className="text-body-secondary mb-0 small"> {activity.attendee_name} • ${activity.amount} </p>
+                        <p className="text-body-secondary mb-0 small"> Payment {activity.payment_status} | Registration {activity.registration_status} {activity.refund_status ? ` | Refund ${activity.refund_status}` : ''} </p>
+                      </div>
                     ))}
-                  </Box>
+                  </div>
                 )}
               </>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
-
-      <Box sx={{ mb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-          <Typography variant={isMobile ? 'h5' : 'h4'} component="h1" sx={{ fontWeight: 'bold' }}>
-            Profile
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <div className="mb-3">
+        <div className="d-flex align-items-center justify-content-between gap-2">
+          <h1 className="fw-bold mb-0">Profile</h1>
+          <div className="d-flex align-items-center gap-2">
             {isEditing ? (
               <>
-                <IconButton
-                  aria-label="Save profile changes"
-                  onClick={handleSubmit}
-                  disabled={!hasChanges || loading}
-                  size={isMobile ? 'small' : 'medium'}
-                  sx={{
-                    border: '1px solid',
-                    borderColor: hasChanges && !loading ? 'primary.main' : 'divider',
-                    borderRadius: 2.5,
-                    px: 1.1,
-                    py: 0.75,
-                  }}
-                >
-                  <CheckIcon fontSize={isMobile ? 'small' : 'medium'} />
-                </IconButton>
-                <IconButton
-                  aria-label="Stop editing profile"
-                  onClick={handleStopEditing}
-                  size={isMobile ? 'small' : 'medium'}
-                  sx={{
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderRadius: 2.5,
-                    px: 1.1,
-                    py: 0.75,
-                  }}
-                >
-                  <CloseIcon fontSize={isMobile ? 'small' : 'medium'} />
-                </IconButton>
+                <button type="button" aria-label="Save profile changes" onClick={handleSubmit} disabled={!hasChanges || loading} className="border rounded px-3 py-2 btn btn-outline-secondary" >
+                  <i className="fa-solid fa-check" aria-hidden="true" />
+                </button>
+                <button type="button" aria-label="Stop editing profile" onClick={handleStopEditing} className="border rounded px-3 py-2 btn btn-outline-secondary" >
+                  <i className="fa-solid fa-xmark" aria-hidden="true" />
+                </button>
               </>
             ) : (
-              <IconButton
-                aria-label="Edit profile"
-                onClick={() => {
-                  setIsEditing(true);
-                  setMessage(null);
-                  setError(null);
-                }}
-                size={isMobile ? 'small' : 'medium'}
-                sx={{
-                  border: '1px solid',
-                  borderColor: 'primary.main',
-                  borderRadius: 2.5,
-                  px: 1.1,
-                  py: 0.75,
-                }}
-              >
-                <EditIcon fontSize={isMobile ? 'small' : 'medium'} />
-              </IconButton>
+              <button type="button" aria-label="Edit profile" onClick={() => { setIsEditing(true); setMessage(null); setError(null); }} className="border rounded px-3 py-2 btn btn-outline-secondary" >
+                <i className="fa-solid fa-pen" aria-hidden="true" />
+              </button>
             )}
-          </Box>
-        </Box>
-      </Box>
-
+          </div>
+        </div>
+      </div>
       {message && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage(null)}>
+        <div role="alert" className="mb-3 alert alert-success alert-dismissible">
           {message}
-        </Alert>
+          <button type="button" className="btn-close" aria-label="Close" onClick={() => setMessage(null)} />
+        </div>
       )}
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+        <div role="alert" className="mb-3 alert alert-danger alert-dismissible">
           {error}
-        </Alert>
+          <button type="button" className="btn-close" aria-label="Close" onClick={() => setError(null)} />
+        </div>
       )}
-
-      <Card sx={{ borderRadius: 2 }}>
-        <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+      <div className="rounded card">
+        <div className="d-flex flex-column gap-3 card-body">
           {isEditing ? (
             <>
-              <TextField
-                label="First Name"
-                value={formData.first_name}
-                onChange={(e) => handleTextChange('first_name', e.target.value)}
-                fullWidth
-                required
-                size={isMobile ? 'small' : 'medium'}
-              />
-              <TextField
-                label="Last Name"
-                value={formData.last_name}
-                onChange={(e) => handleTextChange('last_name', e.target.value)}
-                fullWidth
-                required
-                size={isMobile ? 'small' : 'medium'}
-              />
-              <TextField
-                label="Email Address"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleTextChange('email', e.target.value)}
-                fullWidth
-                required
-                size={isMobile ? 'small' : 'medium'}
-              />
-              <TextField
-                label="Phone Number"
-                value={formattedPhone}
-                onChange={(e) => handleTextChange('phone', e.target.value)}
-                fullWidth
-                required
-                size={isMobile ? 'small' : 'medium'}
-                inputProps={{ inputMode: 'numeric', maxLength: 14 }}
-              />
-              <DatePicker
-                label="Birthday"
-                value={parseDateOnly(formData.birthday)}
-                onChange={(value) => {
-                  setFormData(prev => ({ ...prev, birthday: !value || Number.isNaN(value.getTime()) ? '' : formatDateOnly(value) }));
-                }}
-                closeOnSelect
-                disableFuture
-                referenceDate={new Date(2000, 0, 1)}
-                views={['year', 'month', 'day']}
-                openTo="year"
-                slotProps={{
-                  actionBar: { actions: [] },
-                  textField: {
-                    fullWidth: true,
-                    required: true,
-                    size: isMobile ? 'small' : 'medium',
-                    inputProps: { readOnly: true },
-                  }
-                }}
-              />
+              <div className="my-2 w-100">
+                <label className="d-block">
+                  <span className="form-label d-block">{'First Name'}</span>
+                  <input className="form-control" value={formData.first_name} onChange={(e) => handleTextChange('first_name', e.target.value)} required />
+                </label>
+              </div>
+              <div className="my-2 w-100">
+                <label className="d-block">
+                  <span className="form-label d-block">{'Last Name'}</span>
+                  <input className="form-control" value={formData.last_name} onChange={(e) => handleTextChange('last_name', e.target.value)} required />
+                </label>
+              </div>
+              <div className="my-2 w-100">
+                <label className="d-block">
+                  <span className="form-label d-block">{'Email Address'}</span>
+                  <input className="form-control" type="email" value={formData.email} onChange={(e) => handleTextChange('email', e.target.value)} required />
+                </label>
+              </div>
+              <div className="my-2 w-100">
+                <label className="d-block">
+                  <span className="form-label d-block">{'Phone Number'}</span>
+                  <input className="form-control" value={formattedPhone} onChange={(e) => handleTextChange('phone', e.target.value)} required inputMode="numeric" maxLength={14} />
+                </label>
+              </div>
+              <label className="d-block my-2">
+                <span className="form-label d-block">Birthday</span>
+                <input className="form-control" type="date" required max={formatDateOnly(new Date())} value={formData.birthday} onChange={(e) => setFormData((prev) => ({ ...prev, birthday: e.target.value }))} />
+              </label>
             </>
           ) : (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <div className="d-flex flex-column gap-3">
               {readOnlyRows.map((row) => (
-                <Box
-                  key={row.label}
-                  sx={{
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderRadius: 2,
-                    px: 2,
-                    py: 1.5,
-                    backgroundColor: 'background.paper',
-                  }}
-                >
-                  <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', letterSpacing: '0.04em', textTransform: 'uppercase', mb: 0.4 }}>
-                    {row.label}
-                  </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                    {row.value || 'Not provided'}
-                  </Typography>
-                </Box>
+                <div key={row.label} className="border rounded px-3 py-3 bg-body-tertiary">
+                  <p className="d-block text-body-secondary text-uppercase mb-1 small">{row.label}</p>
+                  <p className="fw-medium mb-0">{row.value || 'Not provided'}</p>
+                </div>
               ))}
-            </Box>
+            </div>
           )}
-          <Divider />
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>Preferences</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Your answers will not determine how many dates you go on.</Typography>
-            <ProfilePreferences values={formData} editable={isEditing} onChange={(field, value) => setFormData(prev => ({ ...prev, [field]: value }))} />
-          </Box>
-          <Divider />
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, minHeight: 56, px: 2, py: 1, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
-            <Box>
-              <Typography variant="body1" sx={{ fontWeight: 600 }}>Dark Mode</Typography>
-              <Typography variant="body2" color="text.secondary">Use the darker app appearance</Typography>
-            </Box>
-            <Switch checked={mode === 'dark'} onChange={toggleColorMode} inputProps={{ 'aria-label': 'Dark Mode' }} />
-          </Box>
-          <Divider sx={{ mt: isEditing ? 0 : 1 }} />
-          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-            <Button
-              onClick={handleLogout}
-              variant="outlined"
-              color="inherit"
-              sx={{
-                borderRadius: 999,
-                px: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-              }}
-            >
-              Log out
-            </Button>
-          </Box>
-        </CardContent>
-      </Card>
-    </Container>
+          <hr />
+          <div>
+            <h6 className="fw-bold mb-1">Preferences</h6>
+            <p className="text-body-secondary mb-3 small">Your answers will not determine how many dates you go on.</p>
+            <ProfilePreferences values={formData} editable={isEditing} onChange={(field, value) => setFormData((prev) => ({ ...prev, [field]: value }))} />
+          </div>
+          <hr />
+          <div className="d-flex align-items-center justify-content-between gap-3 px-3 py-2 border rounded">
+            <div>
+              <p className="fw-semibold mb-0">Dark Mode</p>
+              <p className="text-body-secondary mb-0 small">Use the darker app appearance</p>
+            </div>
+            <input type="checkbox" aria-label="Dark Mode" checked={mode === 'dark'} onChange={toggleColorMode} className="form-check-input" />
+          </div>
+          <hr />
+          <div className="d-flex justify-content-start">
+            <button type="button" onClick={handleLogout} className="rounded-pill px-3 fw-semibold btn btn-outline-secondary"> Log out </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

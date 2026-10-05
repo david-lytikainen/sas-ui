@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Box, Button, Collapse, Grid, IconButton, Paper, Typography, useTheme } from '@mui/material';
-import { ContentCopy as ContentCopyIcon, ExpandLess as ExpandLessIcon, ExpandMore as ExpandMoreIcon, List as ListIcon } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import { eventsApi } from '../../services/api';
 import { Event, ScheduleItem } from '../../types/event';
@@ -26,11 +24,10 @@ const persistAllSelectionsForEvent = (eventId: number, selections: Record<number
 };
 
 const MySchedule = ({ event, currentRound }: MyScheduleProps) => {
-  const theme = useTheme();
   const { user } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const [schedule, setSchedule] = useState<ScheduleItem[] | null>(null);
-  const [attendeeSpeedDateSelections, setAttendeeSpeedDateSelections] = useState<Record<number, { eventId: number, interested: boolean }>>({});
+  const [attendeeSpeedDateSelections, setAttendeeSpeedDateSelections] = useState<Record<number, { eventId: number; interested: boolean }>>({});
   const [savedAttendeeSelections, setSavedAttendeeSelections] = useState<Record<number, boolean>>({});
   const [attendeeSelectionError, setAttendeeSelectionError] = useState<string | null>(null);
   const [saveIndicator, setSaveIndicator] = useState(false);
@@ -48,8 +45,8 @@ const MySchedule = ({ event, currentRound }: MyScheduleProps) => {
 
         const persisted = getPersistedSelections(event.id);
         setSavedAttendeeSelections(persisted);
-        const nextSelections: Record<number, { eventId: number, interested: boolean }> = {};
-        nextSchedule.forEach(item => {
+        const nextSelections: Record<number, { eventId: number; interested: boolean }> = {};
+        nextSchedule.forEach((item) => {
           if (item.event_speed_date_id && Object.prototype.hasOwnProperty.call(persisted, item.event_speed_date_id)) {
             nextSelections[item.event_speed_date_id] = { eventId: event.id, interested: persisted[item.event_speed_date_id] };
           }
@@ -66,10 +63,13 @@ const MySchedule = ({ event, currentRound }: MyScheduleProps) => {
   const getCurrentPicks = () => {
     return Object.entries(attendeeSpeedDateSelections)
       .filter(([, sel]) => sel.eventId === event.id)
-      .reduce((acc, [id, sel]) => {
-        acc[Number(id)] = sel.interested;
-        return acc;
-      }, {} as Record<number, boolean>);
+      .reduce(
+        (acc, [id, sel]) => {
+          acc[Number(id)] = sel.interested;
+          return acc;
+        },
+        {} as Record<number, boolean>
+      );
   };
 
   const isSaveDisabled = useMemo(() => {
@@ -83,7 +83,7 @@ const MySchedule = ({ event, currentRound }: MyScheduleProps) => {
   }, [attendeeSpeedDateSelections, savedAttendeeSelections]);
 
   const handleSelectionChange = (eventSpeedDateId: number, interested: boolean) => {
-    setAttendeeSpeedDateSelections(prev => ({ ...prev, [eventSpeedDateId]: { eventId: event.id, interested } }));
+    setAttendeeSpeedDateSelections((prev) => ({ ...prev, [eventSpeedDateId]: { eventId: event.id, interested } }));
     persistSelection(event.id, eventSpeedDateId, interested);
     setAttendeeSelectionError(null);
   };
@@ -105,9 +105,9 @@ const MySchedule = ({ event, currentRound }: MyScheduleProps) => {
       return;
     }
 
-    const selectionsToSubmit = schedule.map(item => ({
+    const selectionsToSubmit = schedule.map((item) => ({
       event_speed_date_id: item.event_speed_date_id,
-      interested: currentPicks[item.event_speed_date_id] === true
+      interested: currentPicks[item.event_speed_date_id] === true,
     }));
 
     try {
@@ -141,7 +141,7 @@ const MySchedule = ({ event, currentRound }: MyScheduleProps) => {
         'Not a match, no problem 👑',
         'Not a match, still that guy 👑',
         'Not a match, you still the prize 👑',
-        'Not a match, but your vibe is elite 👑'
+        'Not a match, but your vibe is elite 👑',
       ],
       Female: [
         'Not a match, head up queen 👸',
@@ -150,8 +150,8 @@ const MySchedule = ({ event, currentRound }: MyScheduleProps) => {
         'Not a match, no problem 👸',
         'Not a match, stay glowing 👸',
         'Not a match, royalty never settles 👸',
-        'Not a match, but your worth is not up for debate 👸'
-      ]
+        'Not a match, but your worth is not up for debate 👸',
+      ],
     };
     const genderMessages = messages[user.gender as 'Male' | 'Female'];
     return genderMessages[Math.floor(Math.random() * genderMessages.length)];
@@ -159,117 +159,100 @@ const MySchedule = ({ event, currentRound }: MyScheduleProps) => {
 
   return (
     <>
-      <Box sx={{ mt: 1, pt: 1, borderTop: `1px dashed ${theme.palette.divider}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} onClick={() => setExpanded(prev => !prev)}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <ListIcon fontSize="small" color="action" />
-          <Typography variant="subtitle2" color="text.secondary">My Schedule</Typography>
-        </Box>
-        {expanded ? <ExpandLessIcon color="action" /> : <ExpandMoreIcon color="action" />}
-      </Box>
+      <button type="button" aria-expanded={expanded} onClick={() => setExpanded((prev) => !prev)} className="btn btn-link text-body text-decoration-none text-start w-100 mt-2 pt-2 d-flex align-items-center justify-content-between">
+        <div className="d-flex align-items-center gap-2">
+          <i className="fa-solid fa-list text-body-secondary" aria-hidden="true" />
+          <p className="text-body-secondary mb-0 small">My Schedule</p>
+        </div>
+        {expanded ? (
+          <i className="fa-solid fa-chevron-up text-body-secondary" aria-hidden="true" />
+        ) : (
+          <i className="fa-solid fa-chevron-down text-body-secondary" aria-hidden="true" />
+        )}
+      </button>
 
-      <Collapse in={expanded} timeout="auto" unmountOnExit sx={{ width: '100%' }}>
-        <Paper elevation={1} sx={{ p: 1.5, mt: 1, bgcolor: 'background.default' }}>
+      <div hidden={!expanded}>
+        <div className="p-3 mt-2 bg-body border rounded">
           {schedule && schedule.length > 0 && event.num_rounds ? (
             <>
               {Array.from({ length: Number(event.num_rounds) }, (_, i) => {
                 const roundNum = i + 1;
-                const speedDate = schedule.find(si => si.round === roundNum);
+                const speedDate = schedule.find((si) => si.round === roundNum);
                 const isLast = i === Number(event.num_rounds) - 1;
                 const isCurrentRound = currentRound === roundNum && event.status === 'In Progress';
-                const cardSx = {
-                  mb: isLast ? 0 : 1,
-                  p: { xs: 0.5, sm: 0.75 },
-                  borderLeft: '3px solid',
-                  borderColor: isCurrentRound ? theme.palette.success.main : 'primary.dark',
-                  borderRadius: '4px',
-                  backgroundColor: isCurrentRound ? theme.palette.success.dark + '33' : theme.palette.action.hover,
-                  transition: 'all 0.2s ease-in-out',
-                  transform: isCurrentRound ? 'scale(1.01)' : 'scale(1)',
-                  boxShadow: isCurrentRound ? theme.shadows[2] : 'none'
-                };
+                const cardClass = `p-2 rounded border-start border-3 ${isLast ? '' : 'mb-2'} ${isCurrentRound ? 'border-success bg-success-subtle' : 'border-primary bg-body-tertiary'}`;
 
                 if (!speedDate || !speedDate.partner_id) {
-                  return event.status !== 'Completed' && (
-                    <Box key={`break-round-${roundNum}`} sx={cardSx}>
-                      <Grid container spacing={1} alignItems="center">
-                        <Grid item xs={12}>
-                          <Typography variant="subtitle2" component="div" gutterBottom={false} sx={{ fontWeight: 'bold', mb: 0.25 }}>
-                            Round {roundNum} — Break Round
-                          </Typography>
-                        </Grid>
-                      </Grid>
-                    </Box>
+                  return (
+                    event.status !== 'Completed' && (
+                      <div key={`break-round-${roundNum}`} className={cardClass}>
+                        <div className="align-items-center row g-3">
+                          <div className="col-12">
+                            <div className="fw-bold mb-1 small mb-2">Round {roundNum} — Break Round</div>
+                          </div>
+                        </div>
+                      </div>
+                    )
                   );
                 }
 
                 return (
-                  <Box key={speedDate.event_speed_date_id || `round-${roundNum}`} sx={cardSx}>
-                    <Grid container spacing={1} alignItems="center">
-                      <Grid item xs={12}>
-                        <Typography variant="subtitle2" component="div" gutterBottom={false} sx={{ fontWeight: 'bold', mb: 0.25 }}>
-                          {event.status !== 'Completed' ? `Round ${speedDate.round}` : speedDate.partner_name}
-                        </Typography>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Box>
+                  <div key={speedDate.event_speed_date_id || `round-${roundNum}`} className={cardClass}>
+                    <div className="align-items-center row g-3">
+                      <div className="col-12">
+                        <div className="fw-bold mb-1 small mb-2"> {event.status !== 'Completed' ? `Round ${speedDate.round}` : speedDate.partner_name} </div>
+                        <div className="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                          <div>
                             {event.status !== 'Completed' && (
                               <>
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.1 }}>Table: {speedDate.table}</Typography>
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0 }}>Partner: {speedDate.partner_name} </Typography>
+                                <p className="text-body-secondary mb-1 small">Table: {speedDate.table}</p>
+                                <p className="text-body-secondary mb-0 small">Partner: {speedDate.partner_name}</p>
                               </>
                             )}
-                            {event.status === 'Completed' && (
-                              <Typography variant="body2" sx={{ color: 'primary.main', mt: 0.5, fontWeight: 'medium' }}>
-                                {getMatchMessage(speedDate)}
-                              </Typography>
-                            )}
+                            {event.status === 'Completed' && <p className="text-primary mt-1 fw-medium mb-0 small">{getMatchMessage(speedDate)}</p>}
                             {event.status === 'Completed' && speedDate.match && (
-                              <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                                <Box component="span" onClick={() => handleCopyEmail(speedDate.partner_email)} sx={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', color: 'text.secondary', '&:hover': { opacity: 0.8 } }}>
-                                  <IconButton size="small" sx={{ p: 0.25, mr: 1, color: 'inherit' }}>
-                                    <ContentCopyIcon sx={{ fontSize: '0.9rem' }} />
-                                  </IconButton>
+                              <div className="d-flex align-items-center mt-1">
+                                <span onClick={() => handleCopyEmail(speedDate.partner_email)} className="d-inline-flex align-items-center text-body-secondary" >
+                                  <button type="button" aria-label="Copy email" className="p-1 me-2 btn btn-outline-secondary btn-sm">
+                                    <i className="fa-solid fa-copy" aria-hidden="true" />
+                                  </button>
                                   {speedDate.partner_email}
-                                </Box>
-                              </Box>
+                                </span>
+                              </div>
                             )}
-                          </Box>
+                          </div>
                           {event.status !== 'Completed' && speedDate.event_speed_date_id && (
-                            <Box sx={{ display: 'flex', gap: 0.75, ml: 2, position: 'relative', top: '-10px' }}>
-                              <Button variant={attendeeSpeedDateSelections[speedDate.event_speed_date_id]?.interested === true ? 'contained' : 'outlined'} size="small" color="success" onClick={() => handleSelectionChange(speedDate.event_speed_date_id, true)} sx={{ minWidth: '50px', px: 1.5, py: 0.5, fontSize: '0.85rem' }}>
-                                Yes
-                              </Button>
-                              <Button variant={attendeeSpeedDateSelections[speedDate.event_speed_date_id]?.interested === false ? 'contained' : 'outlined'} size="small" color="error" onClick={() => handleSelectionChange(speedDate.event_speed_date_id, false)} sx={{ minWidth: '50px', px: 1.5, py: 0.5, fontSize: '0.85rem' }}>
-                                No
-                              </Button>
-                            </Box>
+                            <div className="d-flex gap-2 ms-3 position-relative">
+                              <button type="button" aria-pressed={attendeeSpeedDateSelections[speedDate.event_speed_date_id]?.interested === true} className={`px-3 py-1 btn btn-sm ${attendeeSpeedDateSelections[speedDate.event_speed_date_id]?.interested === true ? 'btn-success' : 'btn-outline-success'}`} onClick={() => handleSelectionChange(speedDate.event_speed_date_id, true)} > Yes </button>
+                              <button type="button" aria-pressed={attendeeSpeedDateSelections[speedDate.event_speed_date_id]?.interested === false} className={`px-3 py-1 btn btn-sm ${attendeeSpeedDateSelections[speedDate.event_speed_date_id]?.interested === false ? 'btn-danger' : 'btn-outline-danger'}`} onClick={() => handleSelectionChange(speedDate.event_speed_date_id, false)} > No </button>
+                            </div>
                           )}
-                        </Box>
-                      </Grid>
-                    </Grid>
-                  </Box>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 );
               })}
               {attendeeSelectionError && (
-                <Alert severity="error" sx={{ mt: 1.5 }} onClose={() => setAttendeeSelectionError(null)}>
+                <div role="alert" className="mt-3 alert alert-danger alert-dismissible">
                   {attendeeSelectionError}
-                </Alert>
+                  <button type="button" className="btn-close" aria-label="Close" onClick={() => setAttendeeSelectionError(null)} />
+                </div>
               )}
               {event.status !== 'Completed' && (
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1, mt: 1.5 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Button variant="outlined" color="inherit" size="small" onClick={handleSaveAttendeeSelections} disabled={isSaveDisabled}>
-                      Save Selections
-                    </Button>
-                    {saveIndicator && <Typography variant="body2" color="success.main">Saved!</Typography>}
-                  </Box>
-                </Box>
+                <div className="d-flex align-items-center justify-content-end gap-2 mt-3">
+                  <div className="d-flex align-items-center gap-2">
+                    <button type="button" onClick={handleSaveAttendeeSelections} disabled={isSaveDisabled} className="btn btn-outline-secondary btn-sm" > Save Selections </button>
+                    {saveIndicator && <p className="text-success mb-0 small">Saved!</p>}
+                  </div>
+                </div>
               )}
             </>
           ) : (
-            <Typography variant="body2" color="text.secondary">Your schedule will be populated once the organizer generates it.</Typography>
+            <p className="text-body-secondary mb-0 small">Your schedule will be populated once the organizer generates it.</p>
           )}
-        </Paper>
-      </Collapse>
+        </div>
+      </div>
     </>
   );
 };

@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useSplash } from '../../context/SplashContext';
-import { Container, Box, TextField, Button, Typography, Link, Alert, Paper, Fade, InputAdornment, IconButton } from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -20,7 +18,7 @@ const Login = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.name === 'email' ? e.target.value.toLowerCase() : e.target.value
+      [e.target.name]: e.target.name === 'email' ? e.target.value.toLowerCase() : e.target.value,
     });
     // Clear error when user starts typing
     if (error) {
@@ -48,110 +46,49 @@ const Login = () => {
   };
 
   return (
-    <Container component="main" maxWidth="sm" sx={{ mt: 4, mb: 2 }}>
-      <Typography 
-        variant="h4" 
-        component="h1" 
-        sx={{ 
-          textAlign: 'center', 
-          mb: 3,
-          fontWeight: 'bold',
-          color: 'primary.main'
-        }}
-      >
-        Saved & Single
-      </Typography>
-      <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
-        <Typography sx={{ textAlign: 'center', fontWeight: 'bold', fontSize: '1.2rem' }}>
-          Login
-        </Typography>
-        {error && (<Fade in={!!error}>
-          <Alert 
-            severity="error" 
-            sx={{ 
-              width: '100%', 
-              mb: 1,
-              fontSize: '0.8rem',
-              py: 0.5,
-              animation: 'shake 0.5s',
-              '@keyframes shake': {
-                '0%, 100%': { transform: 'translateX(0)' },
-                '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-5px)' },
-                '20%, 40%, 60%, 80%': { transform: 'translateX(5px)' },
-              }
-            }}
-          >
-            {error}
-          </Alert>
-        </Fade>)}
-        
-        <Box component="form" onSubmit={handleSubmit}>
-          <Button
-            fullWidth
-            onClick={() => navigate('/register')}
-            size="small"
-          >
-            Don't have an account? Register
-          </Button>
-          <TextField
-            margin="dense"
-            required
-            fullWidth
-            id="email"
-            label="Email Address"
-            name="email"
-            autoComplete="email"
-            autoFocus
-            size="small"
-            value={formData.email}
-            onChange={handleChange}
-            error={!!error}
-          />
-          <TextField
-            margin="normal"
-            required
-            fullWidth
-            name="password"
-            label="Password"
-            type={showPassword ? 'text' : 'password'}
-            id="password"
-            autoComplete="current-password"
-            size="small"
-            value={formData.password}
-            onChange={handleChange}
-            error={!!error}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    size="small"
-                    onClick={handleTogglePassword}
-                    edge="end"
-                  >
-                    {showPassword ? <VisibilityOff fontSize="small"/> : <Visibility fontSize="small" />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            size="medium"
-            sx={{ mt: 1.5, mb: 1 }}
-            disabled={loading}
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </Button>
-          <Box sx={{ textAlign: 'center'}}>
-            <Link component={RouterLink} to="/forgot-password" variant="subtitle1" sx={{ fontSize: '0.7rem'}}>
-              {"Forgot Password?"}
-            </Link>
-          </Box>
-        </Box>
-      </Paper>
-    </Container>
+    <div className="mt-5 mb-3 container content-narrow">
+      <h1 className="text-center mb-4 fw-bold text-primary">Saved & Single</h1>
+      <div className="p-3 p-sm-4 rounded border">
+        <p className="text-center fw-bold mb-0">Login</p>
+        {error && (
+          <div hidden={!error}>
+            <div role="alert" className="w-100 mb-2 py-1 alert alert-danger"> {error} </div>
+          </div>
+        )}
+        <form onSubmit={handleSubmit}>
+          <button type="button" onClick={() => navigate('/register')} className="btn btn-link btn-sm w-100"> Don't have an account? Register </button>
+          <div className="my-2 w-100">
+            <label className="d-block">
+              <span className="form-label d-block">{'Email Address'}</span>
+              <input className="form-control" required id="email" name="email" autoComplete="email" autoFocus value={formData.email} onChange={handleChange} type="email" aria-invalid={!!error} />
+            </label>
+          </div>
+          <div className="my-2 w-100">
+            <label className="d-block">
+              <span className="form-label d-block">{'Password'}</span>
+              <span className="input-group">
+                <input className="form-control" required name="password" type={showPassword ? 'text' : 'password'} id="password" autoComplete="current-password" value={formData.password} onChange={handleChange} aria-invalid={!!error} />
+                {
+                  <span className="input-group-text">
+                    <button type="button" aria-label="Show or hide password" onClick={handleTogglePassword} className="btn btn-outline-secondary btn-sm" >
+                      {showPassword ? (
+                        <i className="fa-solid fa-eye-slash" aria-hidden="true" />
+                      ) : (
+                        <i className="fa-solid fa-eye" aria-hidden="true" />
+                      )}
+                    </button>
+                  </span>
+                }
+              </span>
+            </label>
+          </div>
+          <button type="submit" disabled={loading} className="mt-3 mb-2 btn btn-primary w-100"> {loading ? 'Logging in...' : 'Login'} </button>
+          <div className="text-center">
+            <RouterLink to="/forgot-password">{'Forgot Password?'}</RouterLink>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 };
 

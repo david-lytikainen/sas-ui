@@ -1,5 +1,4 @@
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material';
-import { Download as DownloadIcon } from '@mui/icons-material';
+import Modal from '../common/Modal';
 import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import type { Event } from '../../types/event';
@@ -17,10 +16,10 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
   const { isAdmin, user } = useAuth();
   const [allSchedules, setAllSchedules] = useState<Record<number, any[]>>({});
   const [filteredSchedules, setFilteredSchedules] = useState<Record<number, any[]>>({});
-  const [usersMap, setUsersMap] = useState<Record<number, { id: number, first_name: string, last_name: string }>>({});
+  const [usersMap, setUsersMap] = useState<Record<number, { id: number; first_name: string; last_name: string }>>({});
   const [loadingAllSchedules, setLoadingAllSchedules] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'ascending' | 'descending' } | null>(null);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' } | null>(null);
   const [selectionErrorMessage, setSelectionErrorMessage] = useState<string | null>(null);
   const canExportSchedules = !!event && (isAdmin() || (user?.role_id === 2 && String(event.creator_id) === String(user.id)));
   const getUserName = (userId: number) => {
@@ -43,12 +42,12 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
         setFilteredSchedules(response.schedules || {});
 
         const attendeesResponse = await eventsApi.getEventAttendees(event.id.toString());
-        const userMap: Record<number, { id: number, first_name: string, last_name: string }> = {};
+        const userMap: Record<number, { id: number; first_name: string; last_name: string }> = {};
         attendeesResponse.data.forEach((attendee: any) => {
           userMap[attendee.id] = {
             id: attendee.id,
             first_name: attendee.first_name || '',
-            last_name: attendee.last_name || ''
+            last_name: attendee.last_name || '',
           };
         });
         setUsersMap(userMap);
@@ -62,7 +61,7 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
     fetchSchedules();
   }, [open, event]);
 
-  const applyFilterAndSort = (search: string, sort: { key: string, direction: 'ascending' | 'descending' } | null) => {
+  const applyFilterAndSort = (search: string, sort: { key: string; direction: 'ascending' | 'descending' } | null) => {
     let filtered: Record<number, any[]> = {};
 
     if (!search || search.trim() === '') {
@@ -73,7 +72,7 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
         if (!Array.isArray(userSchedule) || userSchedule.length === 0) return;
         const userName = getUserName(Number(userId)).toLowerCase();
         const nameWords = userName.split(/\s+/);
-        const nameMatch = nameWords.some(word => word.startsWith(lowercaseSearch));
+        const nameMatch = nameWords.some((word) => word.startsWith(lowercaseSearch));
         if (nameMatch) filtered[Number(userId)] = userSchedule;
       });
     }
@@ -118,7 +117,7 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
       });
 
       filtered = {};
-      allItems.forEach(item => {
+      allItems.forEach((item) => {
         const userId = item.userId;
         if (!filtered[userId]) filtered[userId] = [];
         const { userId: _userId, userName: _userName, ...rest } = item;
@@ -168,96 +167,77 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
   };
 
   const renderSortableHeader = (key: string, label: string) => (
-    <TableCell onClick={() => handleSort(key)} sx={{ cursor: 'pointer', backgroundColor: sortConfig?.key === key ? 'rgba(0, 0, 0, 0.04)' : 'inherit', '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.08)' } }}>
-      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+    <th scope="col" aria-sort={sortConfig?.key === key ? sortConfig.direction : 'none'}><button type="button" className="btn btn-link text-body text-decoration-none p-0" onClick={() => handleSort(key)}>
+      <div className="d-flex align-items-center">
         <strong>{label}</strong>
-        {sortConfig?.key === key && (
-          <span style={{ marginLeft: '4px' }}>
-            {sortConfig.direction === 'ascending' ? '↑' : '↓'}
-          </span>
-        )}
-      </Box>
-    </TableCell>
+        {sortConfig?.key === key && <span style={{ marginLeft: '4px' }}>{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>}
+      </div>
+    </button></th>
   );
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>{event?.name} - All Schedules</DialogTitle>
-      <DialogContent dividers sx={{ p: { xs: 0, sm: 1 } }}>
+    <Modal onClose={onClose} size="lg" open={open}>
+      <div className="modal-header fw-semibold">{event?.name} - All Schedules</div>
+      <div className="p-0 p-sm-2 modal-body">
         {loadingAllSchedules ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-            <Typography>Loading all schedules...</Typography>
-          </Box>
+          <div className="d-flex justify-content-center p-5">
+            <p className="mb-0">Loading all schedules...</p>
+          </div>
         ) : Object.keys(allSchedules).length > 0 ? (
-          <Box sx={{ mt: 2 }}>
-            <Box sx={{ mb: 2, px: 1, display: 'flex', gap: 2, alignItems: 'center' }}>
-              <TextField
-                label="Search"
-                placeholder="Search by name..."
-                variant="outlined"
-                size="small"
-                fullWidth
-                value={searchTerm}
-                onChange={handleSearchChange}
-                InputProps={{
-                  startAdornment: (
-                    <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>
-                      🔍
-                    </Box>
-                  ),
-                }}
-              />
+          <div className="mt-3">
+            <div className="mb-3 px-2 d-flex flex-wrap gap-3 align-items-center">
+              <div className="my-2 w-100">
+                <label className="d-block">
+                  <span className="form-label d-block">{'Search'}</span>
+                  <span className="input-group">
+                    {<span className="text-body-secondary me-2">🔍</span>}
+                    <input className="form-control" placeholder={'Search by name...'} value={searchTerm} onChange={handleSearchChange} />
+                  </span>
+                </label>
+              </div>
               {canExportSchedules && (
-                <Button variant="outlined" color="primary" onClick={handleExportSchedules} startIcon={<DownloadIcon />} sx={{ whiteSpace: 'nowrap' }}>
-                  Export CSV
-                </Button>
+                <button type="button" onClick={handleExportSchedules} className="text-nowrap btn btn-outline-primary">
+                  <span className="me-2">{<i className="fa-solid fa-download" aria-hidden="true" />}</span>Export CSV
+                </button>
               )}
-            </Box>
+            </div>
             {selectionErrorMessage && (
-              <Alert severity="error" sx={{ mb: 2, mx: 1 }} onClose={() => setSelectionErrorMessage(null)}>
+              <div role="alert" className="mb-3 mx-2 alert alert-danger alert-dismissible">
                 {selectionErrorMessage}
-              </Alert>
+                <button type="button" className="btn-close" aria-label="Close" onClick={() => setSelectionErrorMessage(null)} />
+              </div>
             )}
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, px: 1 }}>
-              Showing schedules for {Object.keys(filteredSchedules).length} users
-            </Typography>
-            <TableContainer component={Paper}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    {renderSortableHeader('user', 'User')}
-                    {renderSortableHeader('partner', 'Partner')}
-                    {renderSortableHeader('round', 'Round')}
-                    {renderSortableHeader('table', 'Table')}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+            <p className="text-body-secondary mb-2 px-2 small">Showing schedules for {Object.keys(filteredSchedules).length} users</p>
+            <div className="table-responsive">
+              <table className="table table-sm align-middle mb-0">
+                <thead>
+                  <tr> {renderSortableHeader('user', 'User')} {renderSortableHeader('partner', 'Partner')} {renderSortableHeader('round', 'Round')} {renderSortableHeader('table', 'Table')} </tr>
+                </thead>
+                <tbody>
                   {Object.entries(filteredSchedules).flatMap(([userId, userSchedule]) => {
                     if (!Array.isArray(userSchedule) || userSchedule.length === 0) return [];
                     const userName = getUserName(Number(userId));
                     return userSchedule.map((item: any, index: number) => (
-                      <TableRow key={`${userId}-${index}`}>
-                        <TableCell>{userName}</TableCell>
-                        <TableCell>{item.partner_name}</TableCell>
-                        <TableCell>{item.round}</TableCell>
-                        <TableCell>{item.table}</TableCell>
-                      </TableRow>
+                      <tr key={`${userId}-${index}`}>
+                        <td>{userName}</td>
+                        <td>{item.partner_name}</td>
+                        <td>{item.round}</td>
+                        <td>{item.table}</td>
+                      </tr>
                     ));
                   })}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
+                </tbody>
+              </table>
+            </div>
+          </div>
         ) : (
-          <DialogContentText sx={{ textAlign: 'center', py: 3 }}>
-            No schedules available. The event might not have started yet, or there may not be enough attendees checked in.
-          </DialogContentText>
+          <div className="text-center py-4"> No schedules available. The event might not have started yet, or there may not be enough attendees checked in. </div>
         )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Close</Button>
-      </DialogActions>
-    </Dialog>
+      </div>
+      <div className="modal-footer">
+        <button type="button" onClick={onClose} className="btn btn-link"> Close </button>
+      </div>
+    </Modal>
   );
 };
 

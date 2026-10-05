@@ -1,9 +1,4 @@
 import React, { useState, useEffect, CSSProperties } from 'react';
-import { useTheme } from '@mui/material/styles';
-import Typography from '@mui/material/Typography';
-import Container from '@mui/material/Container';
-import Box from '@mui/material/Box';
-import Paper from '@mui/material/Paper';
 
 const LandingPage: React.FC = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -15,13 +10,11 @@ const LandingPage: React.FC = () => {
   useEffect(() => {
     if (typedLength >= fullText.length) return;
     const speed = typedLength === 17 ? 400 : 55;
-    const timeout = setTimeout(() => setTypedLength(prev => prev + 1), speed);
+    const timeout = setTimeout(() => setTypedLength((prev) => prev + 1), speed);
     return () => clearTimeout(timeout);
   }, [fullText.length, typedLength]);
 
   const displayedText = fullText.slice(0, typedLength);
-
-  const theme = useTheme();
 
   const images = [
     { src: '/images/event-photo-1.jpg', alt: 'Saved and Single event venue' },
@@ -35,9 +28,7 @@ const LandingPage: React.FC = () => {
   const handleNext = () => {
     if (isTransitioning) return;
     setIsTransitioning(true);
-    setCurrentImageIndex((prevIndex) => 
-      (prevIndex + 1) % images.length
-    );
+    setCurrentImageIndex((prevIndex) => (prevIndex + 1) % images.length);
     setTimeout(() => setIsTransitioning(false), 800);
   };
 
@@ -78,118 +69,32 @@ const LandingPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ flexGrow: 1, backgroundColor: 'background.default' }}> 
-
-      {/* Hero Section */}
-      <Container maxWidth="lg" sx={{ textAlign: 'center', mt: 4, pt: 0 }}>
-        <Typography 
-          variant="h4" 
-          component="h1" 
-          sx={{ 
-            textAlign: 'center', 
-            mb: 0.5, 
-            fontWeight: 'bold',
-            color: 'primary.main'
-          }}
-        >
-          Saved & Single
-        </Typography>
-        <Box sx={{ minHeight: '2.4em', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Typography 
-            variant="h5" 
-            component="h5"  
-            sx={{ 
-              fontWeight: 700, 
-              letterSpacing: '0.01em',
-              textAlign: 'center',
-              my: 0
-            }}
-          >
-            {displayedText || '\u00A0'}
-          </Typography>
-        </Box>
-      </Container>
-
-      {/* Photos Carousel Section */}
-      <Container maxWidth="lg" sx={{ py: { xs: 2.5, md: 5 } }}>
-        <Box sx={{ position: 'relative', maxWidth: '1000px', mx: 'auto' }}>
-          <Paper 
-            elevation={3} 
-            sx={{ 
-              borderRadius: 2, 
-              overflow: 'hidden', 
-              aspectRatio: '16/9',
-              position: 'relative',
-              bgcolor: 'grey.100'
-            }}
-          >
-            {images.map((image, index) => (
-              <img 
-                key={index}
-                src={image.src} 
-                alt={image.alt} 
-                style={getImageStyle(index)}
-              />
-            ))}
-          </Paper>
-          {/* Image Indicators */}
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, gap: 1 }}>
-            {images.map((_, index) => (
-              <Box
-                key={index}
-                onClick={() => {
-                  if (!isTransitioning) {
-                    setCurrentImageIndex(index);
-                    setIsTransitioning(true);
-                    setTimeout(() => setIsTransitioning(false), 500);
-                  }
-                }}
-                sx={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: '50%',
-                  bgcolor: currentImageIndex === index ? 'primary.main' : 'grey.300',
-                  cursor: isTransitioning ? 'default' : 'pointer',
-                  transition: 'background-color 0.3s',
-                  opacity: isTransitioning ? 0.5 : 1
-                }}
-              />
-            ))}
-          </Box>
-        </Box>
-      </Container>
-
-      {/* About Section */}
-      <Box sx={{ backgroundColor: 'background.paper', py: { xs: 4, md: 8 } }}>
-        <Container maxWidth="md">
-          <Typography 
-            variant="h4" 
-            component="h2" 
-            gutterBottom 
-            align="center" 
-            sx={{ 
-              fontWeight: 600, 
-              mb: 4, 
-              color: theme.palette.primary.main,
-              fontSize: { xs: '1.75rem', sm: '2.125rem' }
-            }}
-          >
-            Why Saved & Single?
-          </Typography>
-          <Typography 
-            variant="body1" 
-            color="text.secondary" 
-            sx={{ 
-              mb: 2, 
-              fontSize: { xs: '0.95rem', sm: '1.1rem' }, 
-              textAlign: 'center' 
-            }}
-          >
-            Tired of endless swiping? Saved & Single hosts speed-dating events for Christian singles to connect authentically, in person.
-          </Typography>
-        </Container>
-      </Box>
-    </Box>
+    <div>
+      <div className="container text-center mt-4">
+        <h1 className="h2 fw-bold text-primary">Saved & Single</h1>
+        <h2 className="h4 fw-bold">{displayedText || '\u00A0'}</h2>
+      </div>
+      <div className="container py-4">
+        <div className="ratio ratio-16x9 rounded overflow-hidden shadow-sm">
+          {images.map((image, index) => (
+            <img key={image.src} src={image.src} alt={image.alt} aria-hidden={index !== currentImageIndex} style={getImageStyle(index)} />
+          ))}
+        </div>
+        <div className="d-flex justify-content-center mt-2 gap-1" role="group" aria-label="Event photos">
+          {images.map((_, index) => (
+            <button key={index} type="button" className={`btn btn-link ${currentImageIndex === index ? 'text-primary' : 'text-body-secondary'}`} aria-label={`Show photo ${index + 1}`} aria-pressed={currentImageIndex === index} disabled={isTransitioning} onClick={() => { setCurrentImageIndex(index); setIsTransitioning(true); setTimeout(() => setIsTransitioning(false), 500); }} >
+              <i className="fa-solid fa-circle small" aria-hidden="true" />
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="bg-body-tertiary py-5 text-center">
+        <div className="container content-medium">
+          <h2 className="text-primary mb-4">Why Saved & Single?</h2>
+          <p className="text-body-secondary mb-0"> Tired of endless swiping? Saved & Single hosts speed-dating events for Christian singles to connect authentically, in person. </p>
+        </div>
+      </div>
+    </div>
   );
 };
 
