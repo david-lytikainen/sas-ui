@@ -96,7 +96,7 @@ const ViewWaitlistedUsers = ({ open, event, onClose }: ViewWaitlistedUsersProps)
   return (
     <Modal onClose={onClose} size="xl" open={open}>
       <div className="modal-header fw-semibold">{event?.name} - Waitlisted Users</div>
-      <div className="p-0 p-sm-2 modal-body">
+      <div className="p-0 p-sm-2 modal-body overflow-y-auto">
         {errorMessage && (
           <div role="alert" className="mb-3 alert alert-danger alert-dismissible">
             {errorMessage}

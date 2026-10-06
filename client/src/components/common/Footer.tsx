@@ -7,8 +7,8 @@ const Footer: React.FC = () => {
       <div className="container">
         <p className="text-body-secondary d-block mb-0 small text-center">- Saved & Single {new Date().getFullYear()} -</p>
         <div className="d-flex justify-content-center gap-3">
-          <a href="mailto:savedandsingle.events@gmail.com" style={{ color: 'inherit', textDecoration: 'none' }}> Contact Us </a>
-          <RouterLink to="/privacy-policy" style={{ color: 'inherit', textDecoration: 'none' }}> Privacy Policy </RouterLink>
+          <a href="mailto:savedandsingle.events@gmail.com" className="text-body text-decoration-none"> Contact Us </a>
+          <RouterLink to="/privacy-policy" className="text-body text-decoration-none"> Privacy Policy </RouterLink>
         </div>
       </div>
     </footer>

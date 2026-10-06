@@ -24,7 +24,7 @@ const ConfirmDialog = ({
 }: ConfirmDialogProps) => (
   <Modal onClose={onCancel} size="" open={open}>
     <div className="modal-header fw-semibold">{title}</div>
-    <div className="modal-body">
+    <div className="modal-body overflow-y-auto">
       <div>{children}</div>
     </div>
     <div className="modal-footer">

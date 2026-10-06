@@ -345,7 +345,7 @@ const EventTimer = ({ eventId, isAdmin, isCheckedIn = false, eventStatus = 'In P
         <div className="modal-header">
           <h2 className="fs-5 mb-0"> <i className="fa-solid fa-gear me-2 text-primary" aria-hidden="true" /> Timer Settings </h2>
         </div>
-        <div className="modal-body">
+        <div className="modal-body overflow-y-auto">
           <label className="form-label" htmlFor="round-duration-slider">
             Round Duration: <span className="text-primary">{formatTime(newDuration)}</span>
           </label>

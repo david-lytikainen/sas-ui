@@ -170,7 +170,7 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
     <th scope="col" aria-sort={sortConfig?.key === key ? sortConfig.direction : 'none'}><button type="button" className="btn btn-link text-body text-decoration-none p-0" onClick={() => handleSort(key)}>
       <div className="d-flex align-items-center">
         <strong>{label}</strong>
-        {sortConfig?.key === key && <span style={{ marginLeft: '4px' }}>{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>}
+        {sortConfig?.key === key && <span className="ms-1">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>}
       </div>
     </button></th>
   );
@@ -178,7 +178,7 @@ const ViewAllSchedules = ({ open, event, onClose }: ViewAllSchedulesProps) => {
   return (
     <Modal onClose={onClose} size="lg" open={open}>
       <div className="modal-header fw-semibold">{event?.name} - All Schedules</div>
-      <div className="p-0 p-sm-2 modal-body">
+      <div className="p-0 p-sm-2 modal-body overflow-y-auto">
         {loadingAllSchedules ? (
           <div className="d-flex justify-content-center p-5">
             <p className="mb-0">Loading all schedules...</p>

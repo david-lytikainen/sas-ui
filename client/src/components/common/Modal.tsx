@@ -26,7 +26,7 @@ const Modal = ({ open, onClose, children, size = '' }: ModalProps) => {
     };
   }, [open, titleId]);
   return (
-    <dialog ref={ref} className={`sas-modal rounded ${size ? `modal-${size}` : ''}`} aria-labelledby={titleId} onCancel={(e) => { e.preventDefault(); onClose(e, 'escapeKeyDown'); }} onClick={(e) => { const bounds = e.currentTarget.getBoundingClientRect(); if (e.target === e.currentTarget && (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom)) onClose(e, 'backdropClick'); }} >
+    <dialog ref={ref} className={`sas-modal rounded p-0 border-0 bg-transparent text-body ${size ? `modal-${size}` : ''}`} aria-labelledby={titleId} onCancel={(e) => { e.preventDefault(); onClose(e, 'escapeKeyDown'); }} onClick={(e) => { const bounds = e.currentTarget.getBoundingClientRect(); if (e.target === e.currentTarget && (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom)) onClose(e, 'backdropClick'); }} >
       {open && <div className="modal-content">{children}</div>}
     </dialog>
   );

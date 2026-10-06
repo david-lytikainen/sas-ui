@@ -1,3 +1,4 @@
+* { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
 :root, [data-bs-theme="light"] {
   --bs-body-bg: #f7f7f8;
   --bs-body-color: #1d1d20;
@@ -30,12 +31,10 @@
 .btn, .form-control, .form-select { min-height: 44px; }
 .form-check-input { width: 1.25em; height: 1.25em; }
 .form-check-input:checked { background-color: var(--bs-primary); border-color: var(--bs-primary); }
-.sas-modal { width: calc(100% - 1rem); max-width: 500px; max-height: calc(100dvh - 1rem); padding: 0; border: 0; background: transparent; color: inherit; }
+.sas-modal { width: calc(100% - 1rem); max-width: 500px; max-height: calc(100dvh - 1rem); }
 .sas-modal.modal-sm { max-width: 400px; }
 .sas-modal.modal-lg { max-width: 800px; }
 .sas-modal.modal-xl { max-width: 1140px; }
 .sas-modal::backdrop { background: rgb(0 0 0 / 50%); }
 .sas-modal .modal-content { max-height: calc(100dvh - 1rem); }
-.sas-modal .modal-body { overflow-y: auto; }
-.sas-modal .modal-header, .sas-modal .modal-footer { flex-shrink: 0; }
 .splash { padding-top: 40vh; }

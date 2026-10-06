@@ -605,7 +605,7 @@ const EventList = () => {
           <span className="fw-bold mb-0">Preferences</span>
           <button type="button" onClick={closeProfilePreferences} className="text-body btn btn-link btn-sm"> Skip </button>
         </div>
-        <div className="modal-body">
+        <div className="modal-body overflow-y-auto">
           {preferencesError && (
             <div role="alert" className="mb-3 alert alert-danger"> {preferencesError} </div>
           )}
@@ -674,7 +674,7 @@ const EventList = () => {
         </ConfirmDialog>
         <Modal onClose={() => setIsTableConfigOpen(false)} size="sm" open={isTableConfigOpen}>
           <div className="modal-header fw-semibold">Generate Schedules</div>
-          <div className="modal-body">
+          <div className="modal-body overflow-y-auto">
             <div>Please specify how many tables and rounds you want for this event.</div>
             <div className="mt-3 mb-3">
               <div className="my-2 mb-3">
@@ -705,7 +705,7 @@ const EventList = () => {
         {/* ADD: Edit Event Dialog */}
         <Modal onClose={() => setEditEventDialogOpen(false)} size="" open={editEventDialogOpen}>
           <div className="modal-header fw-semibold">Edit Event: {eventToEdit?.name}</div>
-          <div className="modal-body">
+          <div className="modal-body overflow-y-auto">
             <div className="pt-2 row g-3">
               <div className="col-12">
                 <div className="my-2 w-100">

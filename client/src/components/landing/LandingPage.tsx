@@ -1,4 +1,4 @@
-import React, { useState, useEffect, CSSProperties } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const LandingPage: React.FC = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -39,35 +39,6 @@ const LandingPage: React.FC = () => {
     return () => clearInterval(timer);
   }, [isTransitioning]);
 
-  const getImageStyle = (index: number): CSSProperties => {
-    const isCurrent = index === currentImageIndex;
-    const isNext = index === (currentImageIndex + 1) % images.length;
-    const isPrev = index === (currentImageIndex - 1 + images.length) % images.length;
-
-    let opacity = 0;
-    let zIndex = 0;
-
-    if (isCurrent) {
-      opacity = 1;
-      zIndex = 2;
-    } else if (isNext || isPrev) {
-      opacity = 0;
-      zIndex = 1;
-    }
-
-    return {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: '100%',
-      objectFit: 'cover',
-      opacity,
-      zIndex,
-      transition: 'opacity 0.8s ease-in-out',
-    };
-  };
-
   return (
     <div>
       <div className="container text-center mt-4">
@@ -77,7 +48,7 @@ const LandingPage: React.FC = () => {
       <div className="container py-4">
         <div className="ratio ratio-16x9 rounded overflow-hidden shadow-sm">
           {images.map((image, index) => (
-            <img key={image.src} src={image.src} alt={image.alt} aria-hidden={index !== currentImageIndex} style={getImageStyle(index)} />
+            <img key={image.src} src={image.src} alt={image.alt} aria-hidden={index !== currentImageIndex} className={`object-fit-cover fade ${index === currentImageIndex ? 'show z-2' : 'z-1'}`} style={{ transitionDuration: '0.8s' }} />
           ))}
         </div>
         <div className="d-flex justify-content-center mt-2 gap-1" role="group" aria-label="Event photos">
