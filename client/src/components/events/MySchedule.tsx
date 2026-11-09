@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { eventsApi } from '../../services/api';
 import { Event, ScheduleItem } from '../../types/event';
@@ -8,29 +8,17 @@ interface MyScheduleProps {
   currentRound: number | undefined;
 }
 
-const getPersistedSelections = (eventId: number): Record<number, boolean> => {
-  const selections = localStorage.getItem(`attendeeSelections_${eventId}`);
-  return selections ? JSON.parse(selections) : {};
-};
-
-const persistSelection = (eventId: number, eventSpeedDateId: number, interested: boolean) => {
-  const selections = getPersistedSelections(eventId);
-  selections[eventSpeedDateId] = interested;
-  localStorage.setItem(`attendeeSelections_${eventId}`, JSON.stringify(selections));
-};
-
-const persistAllSelectionsForEvent = (eventId: number, selections: Record<number, boolean>) => {
-  localStorage.setItem(`attendeeSelections_${eventId}`, JSON.stringify(selections));
-};
-
 const MySchedule = ({ event, currentRound }: MyScheduleProps) => {
   const { user } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const [schedule, setSchedule] = useState<ScheduleItem[] | null>(null);
-  const [attendeeSpeedDateSelections, setAttendeeSpeedDateSelections] = useState<Record<number, { eventId: number; interested: boolean }>>({});
-  const [savedAttendeeSelections, setSavedAttendeeSelections] = useState<Record<number, boolean>>({});
+  const [attendeeSpeedDateSelections, setAttendeeSpeedDateSelections] = useState<Record<number, { eventId: number; interested: boolean | null }>>({});
   const [attendeeSelectionError, setAttendeeSelectionError] = useState<string | null>(null);
-  const [saveIndicator, setSaveIndicator] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'saving' | 'saved' | null>(null);
+  const saveQueues = useRef<Record<number, Promise<void>>>({});
+  const saveSequences = useRef<Record<number, number>>({});
+  const latestSaveSequence = useRef(0);
+  const confirmedSelections = useRef<Record<number, boolean | null>>({});
 
   useEffect(() => {
     if (!expanded) return;
@@ -43,12 +31,12 @@ const MySchedule = ({ event, currentRound }: MyScheduleProps) => {
         const nextSchedule = response?.schedule || [];
         setSchedule(nextSchedule);
 
-        const persisted = getPersistedSelections(event.id);
-        setSavedAttendeeSelections(persisted);
-        const nextSelections: Record<number, { eventId: number; interested: boolean }> = {};
+        const nextSelections: Record<number, { eventId: number; interested: boolean | null }> = {};
         nextSchedule.forEach((item) => {
-          if (item.event_speed_date_id && Object.prototype.hasOwnProperty.call(persisted, item.event_speed_date_id)) {
-            nextSelections[item.event_speed_date_id] = { eventId: event.id, interested: persisted[item.event_speed_date_id] };
+          if (item.event_speed_date_id) {
+            const interested = item.user_interested ?? null;
+            confirmedSelections.current[item.event_speed_date_id] = interested;
+            if (interested !== null) nextSelections[item.event_speed_date_id] = { eventId: event.id, interested };
           }
         });
         setAttendeeSpeedDateSelections(nextSelections);
@@ -60,64 +48,34 @@ const MySchedule = ({ event, currentRound }: MyScheduleProps) => {
     loadSchedule();
   }, [event.id, event.status, expanded, schedule]);
 
-  const getCurrentPicks = () => {
-    return Object.entries(attendeeSpeedDateSelections)
-      .filter(([, sel]) => sel.eventId === event.id)
-      .reduce(
-        (acc, [id, sel]) => {
-          acc[Number(id)] = sel.interested;
-          return acc;
-        },
-        {} as Record<number, boolean>
-      );
-  };
-
-  const isSaveDisabled = useMemo(() => {
-    const current = getCurrentPicks();
-    const saved = savedAttendeeSelections;
-    const allIds = new Set([...Object.keys(current), ...Object.keys(saved)]);
-    for (const id of Array.from(allIds)) {
-      if (current[Number(id)] !== saved[Number(id)]) return false;
-    }
-    return true;
-  }, [attendeeSpeedDateSelections, savedAttendeeSelections]);
-
   const handleSelectionChange = (eventSpeedDateId: number, interested: boolean) => {
-    setAttendeeSpeedDateSelections((prev) => ({ ...prev, [eventSpeedDateId]: { eventId: event.id, interested } }));
-    persistSelection(event.id, eventSpeedDateId, interested);
+    const currentValue = attendeeSpeedDateSelections[eventSpeedDateId]?.interested ?? null;
+    const nextValue = currentValue === interested ? null : interested;
+    const sequence = (saveSequences.current[eventSpeedDateId] || 0) + 1;
+    saveSequences.current[eventSpeedDateId] = sequence;
+    latestSaveSequence.current += 1;
+    const requestSequence = latestSaveSequence.current;
+    setAttendeeSpeedDateSelections((prev) => ({ ...prev, [eventSpeedDateId]: { eventId: event.id, interested: nextValue } }));
     setAttendeeSelectionError(null);
-  };
-
-  const handleSaveAttendeeSelections = async () => {
-    if (!schedule || schedule.length === 0) {
-      setAttendeeSelectionError('No schedule found to save selections for this event.');
-      return;
-    }
-
-    const currentPicks = getCurrentPicks();
-    setSavedAttendeeSelections({ ...currentPicks });
-    persistAllSelectionsForEvent(event.id, currentPicks);
-    setAttendeeSelectionError(null);
-    setSaveIndicator(true);
-
-    if (event.status === 'Completed') {
-      setTimeout(() => setSaveIndicator(false), 1200);
-      return;
-    }
-
-    const selectionsToSubmit = schedule.map((item) => ({
-      event_speed_date_id: item.event_speed_date_id,
-      interested: currentPicks[item.event_speed_date_id] === true,
-    }));
-
-    try {
-      await eventsApi.submitSpeedDateSelections(event.id.toString(), selectionsToSubmit);
-    } catch (error: any) {
-      const backendErrorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
-      setAttendeeSelectionError(backendErrorMessage || 'Failed to save your selections.');
-    } finally {
-      setTimeout(() => setSaveIndicator(false), 1200);
-    }
+    setSaveStatus('saving');
+    const previousRequest = saveQueues.current[eventSpeedDateId] || Promise.resolve();
+    saveQueues.current[eventSpeedDateId] = previousRequest.catch(() => undefined).then(async () => {
+      try {
+        await eventsApi.submitSpeedDateSelections(event.id.toString(), [{ event_speed_date_id: eventSpeedDateId, interested: nextValue }]);
+        confirmedSelections.current[eventSpeedDateId] = nextValue;
+        if (saveSequences.current[eventSpeedDateId] === sequence) {
+          setSaveStatus('saved');
+          window.setTimeout(() => { if (latestSaveSequence.current === requestSequence) setSaveStatus(null); }, 1200);
+        }
+      } catch (error: any) {
+        if (saveSequences.current[eventSpeedDateId] === sequence) {
+          const backendErrorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
+          setAttendeeSpeedDateSelections((prev) => ({ ...prev, [eventSpeedDateId]: { eventId: event.id, interested: confirmedSelections.current[eventSpeedDateId] ?? null } }));
+          setAttendeeSelectionError(backendErrorMessage || 'Failed to save your selection. Please try again.');
+          setSaveStatus(null);
+        }
+      }
+    });
   };
 
   const handleCopyEmail = async (email: string) => {
@@ -240,11 +198,9 @@ const MySchedule = ({ event, currentRound }: MyScheduleProps) => {
                 </div>
               )}
               {event.status !== 'Completed' && (
-                <div className="d-flex align-items-center justify-content-end gap-2 mt-3">
-                  <div className="d-flex align-items-center gap-2">
-                    <button type="button" onClick={handleSaveAttendeeSelections} disabled={isSaveDisabled} className="btn btn-outline-secondary btn-sm" > Save Selections </button>
-                    {saveIndicator && <p className="text-success mb-0 small">Saved!</p>}
-                  </div>
+                <div className="d-flex align-items-center justify-content-end gap-2 mt-3" aria-live="polite">
+                  {saveStatus === 'saving' && <p className="text-body-secondary mb-0 small">Saving…</p>}
+                  {saveStatus === 'saved' && <p className="text-success mb-0 small">Saved</p>}
                 </div>
               )}
             </>

@@ -258,7 +258,7 @@ interface EventsApi {
   startEvent: (eventId: string, numTables?: number, numRounds?: number) => Promise<{ message: string }>;
   submitSpeedDateSelections: (
     eventId: string, 
-    selections: Array<{ event_speed_date_id: number; interested: boolean }>
+    selections: Array<{ event_speed_date_id: number; interested: boolean | null }>
   ) => Promise<any>;
   getEventWaitlist: (eventId: string) => Promise<{ data: any[] }>;
   getTimer: (eventId: string) => Promise<Timer | null>;
@@ -390,7 +390,7 @@ const realEventsApi: EventsApi = {
   
   submitSpeedDateSelections: async (
     eventId: string, 
-    selections: Array<{ event_speed_date_id: number; interested: boolean }>
+    selections: Array<{ event_speed_date_id: number; interested: boolean | null }>
   ) => {
     const response = await axiosInstance.post(`/events/${eventId}/submit-selections`, { selections });
     return response.data;
