@@ -17,11 +17,11 @@ const LandingPage: React.FC = () => {
   const displayedText = fullText.slice(0, typedLength);
 
   const images = [
-    { src: '/images/event-photo-1.jpg', alt: 'Saved and Single event venue' },
-    { src: '/images/event-photo-2.jpg', alt: 'Speakers at a Saved and Single event' },
-    { src: '/images/event-photo-3.jpg', alt: 'Guests mingling at a Saved and Single event' },
-    { src: '/images/event-photo-4.jpg', alt: 'Guests mingling at a Saved and Single event' },
-    { src: '/images/event-photo-5.jpg', alt: 'Food selection at the 2024 Saved and Single event' },
+    { src: '/images/photo3.avif', alt: 'Saved and Single event venue' },
+    { src: '/images/photo2.avif', alt: 'Speakers at a Saved and Single event' },
+    { src: '/images/photo5.avif', alt: 'Guests mingling at a Saved and Single event' },
+    { src: '/images/photo4.avif', alt: 'Guests mingling at a Saved and Single event' },
+    { src: '/images/photo1.avif', alt: 'Food selection at the 2024 Saved and Single event' },
   ];
 
   // Auto-advance carousel
@@ -53,7 +53,7 @@ const LandingPage: React.FC = () => {
         </div>
         <div className="d-flex justify-content-center mt-2 gap-1" role="group" aria-label="Event photos">
           {images.map((_, index) => (
-            <button key={index} type="button" className={`btn btn-link ${currentImageIndex === index ? 'text-primary' : 'text-body-secondary'}`} aria-label={`Show photo ${index + 1}`} aria-pressed={currentImageIndex === index} disabled={isTransitioning} onClick={() => { setCurrentImageIndex(index); setIsTransitioning(true); setTimeout(() => setIsTransitioning(false), 500); }} >
+            <button key={index} type="button" className={`btn btn-link ${currentImageIndex === index ? 'text-primary' : 'text-body-secondary'}`} disabled={isTransitioning} onClick={() => { setCurrentImageIndex(index); setIsTransitioning(true); setTimeout(() => setIsTransitioning(false), 500); }} >
               <i className="fa-solid fa-circle small" aria-hidden="true" />
             </button>
           ))}
