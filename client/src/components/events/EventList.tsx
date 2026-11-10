@@ -624,9 +624,9 @@ const EventList = () => {
         <div className="d-flex justify-content-start align-items-start mb-3 flex-column gap-2">
           <h1 className="fw-bold mb-0">Events</h1>
           <div className="d-flex gap-2 align-items-center flex-wrap">
-            <button type="button" onClick={() => setActiveView('my')} aria-pressed={activeView === 'my'} className={`btn rounded-pill ${activeView === 'my' ? 'btn-primary' : 'btn-outline-secondary'}`} > My </button>
-            <button type="button" onClick={() => setActiveView('all')} aria-pressed={activeView === 'all'} className={`btn rounded-pill ${activeView === 'all' ? 'btn-primary' : 'btn-outline-secondary'}`} > All </button>
-            <button type="button" onClick={() => setActiveView('create')} aria-pressed={activeView === 'create'} className={`btn rounded-pill ${activeView === 'create' ? 'btn-primary' : 'btn-outline-secondary'}`} > Create </button>
+            <button type="button" onClick={() => setActiveView('my')} className={`btn rounded-pill ${activeView === 'my' ? 'btn-primary' : 'btn-outline-secondary'}`} > My </button>
+            <button type="button" onClick={() => setActiveView('all')} className={`btn rounded-pill ${activeView === 'all' ? 'btn-primary' : 'btn-outline-secondary'}`} > All </button>
+            <button type="button" onClick={() => setActiveView('create')} className={`btn rounded-pill ${activeView === 'create' ? 'btn-primary' : 'btn-outline-secondary'}`} > Create </button>
           </div>
         </div>
         {activeView === 'create' && renderCreateTab()}
