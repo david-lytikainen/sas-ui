@@ -235,12 +235,139 @@ const ProfilePage = () => {
   }, [formData, user]);
 
   return (
-    <div className="container content-narrow">
+    <div className="container content-narrow mb-4">
+      <div className="mb-3">
+        <div className="d-flex align-items-center justify-content-between gap-2">
+          <h1 className="fw-bold mb-0">Profile</h1>
+          <div className="d-flex align-items-center gap-2">
+            {isEditing ? (
+              <>
+                <button type="button" aria-label="Save profile changes" onClick={handleSubmit} disabled={!hasChanges || loading} className="border rounded px-3 py-2 btn btn-outline-secondary" >
+                  <i className="fa-solid fa-check" aria-hidden="true" />
+                </button>
+                <button type="button" aria-label="Stop editing profile" onClick={handleStopEditing} className="border rounded px-3 py-2 btn btn-outline-secondary" >
+                  <i className="fa-solid fa-xmark" aria-hidden="true" />
+                </button>
+              </>
+            ) : (
+              <button type="button" aria-label="Edit profile" onClick={() => { setIsEditing(true); setMessage(null); setError(null); }} className="border rounded px-3 py-2 btn btn-outline-secondary" >
+                <i className="fa-solid fa-pen" aria-hidden="true" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+      {message && (
+        <div role="alert" className="mb-3 alert alert-success alert-dismissible">
+          {message}
+          <button type="button" className="btn-close" aria-label="Close" onClick={() => setMessage(null)} />
+        </div>
+      )}
+      {error && (
+        <div role="alert" className="mb-3 alert alert-danger alert-dismissible">
+          {error}
+          <button type="button" className="btn-close" aria-label="Close" onClick={() => setError(null)} />
+        </div>
+      )}
+      <div className="rounded card">
+        <div className="d-flex flex-column gap-2 card-body">
+          {isEditing ? (
+            <>
+              <div className="w-100">
+                <label className="d-block">
+                  <span className="form-label d-block">{'First Name'}</span>
+                  <input className="form-control" value={formData.first_name} onChange={(e) => handleTextChange('first_name', e.target.value)} required />
+                </label>
+              </div>
+              <div className="w-100">
+                <label className="d-block">
+                  <span className="form-label d-block">{'Last Name'}</span>
+                  <input className="form-control" value={formData.last_name} onChange={(e) => handleTextChange('last_name', e.target.value)} required />
+                </label>
+              </div>
+              <div className="w-100">
+                <label className="d-block">
+                  <span className="form-label d-block">{'Email Address'}</span>
+                  <input className="form-control" type="email" value={formData.email} onChange={(e) => handleTextChange('email', e.target.value)} required />
+                </label>
+              </div>
+              <div className="w-100">
+                <label className="d-block">
+                  <span className="form-label d-block">{'Phone Number'}</span>
+                  <input className="form-control" value={formattedPhone} onChange={(e) => handleTextChange('phone', e.target.value)} required inputMode="numeric" maxLength={14} />
+                </label>
+              </div>
+              <label className="d-block">
+                <span className="form-label d-block">Birthday</span>
+                <input className="form-control" type="date" required max={formatDateOnly(new Date())} value={formData.birthday} onChange={(e) => setFormData((prev) => ({ ...prev, birthday: e.target.value }))} />
+              </label>
+            </>
+          ) : (
+            <div className="d-flex flex-column gap-3">
+              {readOnlyRows.map((row) => (
+                <div key={row.label} className="border rounded px-3 py-1 bg-body-tertiary">
+                  <p className="d-block text-body-secondary text-uppercase mb-0 small">{row.label}</p>
+                  <p className="fw-medium mb-0">{row.value || 'Not provided'}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          <hr />
+          {user?.role_id !== 3 && (
+            <>
+              <div>
+                <h6 className="fw-bold mb-1">Preferences</h6>
+                <p className="text-body-secondary mb-3 small">Your answers will not determine how many dates you go on.</p>
+                <ProfilePreferences values={formData} editable={isEditing} onChange={(field, value) => setFormData((prev) => ({ ...prev, [field]: value }))} />
+              </div>
+              <hr />
+              <div className="d-flex align-items-center justify-content-between gap-3 px-3 py-2 border rounded">
+                <div>
+                  <p className="fw-semibold mb-0">Dark Mode</p>
+                  <p className="text-body-secondary mb-0 small">Use the darker app appearance</p>
+                </div>
+                <input type="checkbox" aria-label="Dark Mode" checked={mode === 'dark'} onChange={toggleColorMode} className="form-check-input" />
+              </div>
+              <hr />
+            </>
+          )}
+          <div className="d-flex justify-content-start">
+            <button type="button" onClick={handleLogout} className="rounded-pill px-3 fw-semibold btn btn-outline-secondary"> Log out </button>
+          </div>
+        </div>
+      </div>
+
+      {user?.role_id === 3 && (
+        <div className="rounded my-3 card">
+          <div className="d-flex flex-column gap-2 card-body">
+            <p className="fw-bold fs-5 mb-0">Organizer Earnings</p>
+            {dashboardLoading ? (
+              <p className="text-body-secondary mb-0 small">Loading organizer totals...</p>
+            ) : organizerOverview.length ? (
+              <div className="table-responsive">
+                <table className="table table-sm align-middle mb-0">
+                  <thead><tr><th scope="col">Organizer email</th><th scope="col" className="text-end">Events</th><th scope="col" className="text-end">Ticket sales</th><th scope="col" className="text-end">Organizer transfer</th><th scope="col" className="text-end">SAS net after Stripe</th></tr></thead>
+                  <tbody>{organizerOverview.map((organizer: any) => (
+                    <tr key={organizer.organizer_id}>
+                      <td>{organizer.organizer_email}</td>
+                      <td className="text-end">{organizer.event_count}</td>
+                      <td className="text-end">{organizer.tracked_payment_count ? `$${organizer.ticket_sales_after_refunds}` : '—'}</td>
+                      <td className="text-end">{organizer.tracked_payment_count ? `$${organizer.organizer_transfer_after_refunds}` : '—'}</td>
+                      <td className="text-end">{organizer.tracked_payment_count ? `$${organizer.sas_net_after_stripe}` : '—'}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            ) : <p className="text-body-secondary mb-0 small">No organizers found.</p>}
+          </div>
+        </div>
+      )}
+
       {(user?.role_id === 2 || user?.role_id === 3) && (
-        <div className="rounded mb-3 card">
+        <div className="rounded my-3 card">
           <div className="d-flex flex-column gap-3 card-body">
             <div className="d-flex align-items-center justify-content-between gap-2">
-              <p className="fw-bold mb-0">Billing</p>
+              <p className="fw-bold fs-5 mb-0">Billing</p>
               {user?.role_id === 3 ? (
                 <a href={'https://dashboard.stripe.com'} target="_blank" rel="noopener noreferrer" className="btn btn-link btn-sm">
                   Open Stripe<span className="ms-2">{<i className="fa-solid fa-arrow-up-right-from-square" aria-hidden="true" />}</span>
@@ -281,128 +408,6 @@ const ProfilePage = () => {
           </div>
         </div>
       )}
-      {user?.role_id === 3 && (
-        <div className="rounded mb-3 card">
-          <div className="d-flex flex-column gap-2 card-body">
-            <p className="fw-bold mb-0">Organizer Earnings</p>
-            <p className="text-body-secondary mb-0 small">Payment totals include only new payments with a saved Stripe processing fee. Older payments are not included.</p>
-            {dashboardLoading ? (
-              <p className="text-body-secondary mb-0 small">Loading organizer totals...</p>
-            ) : organizerOverview.length ? (
-              <div className="table-responsive">
-                <table className="table table-sm align-middle mb-0">
-                  <thead><tr><th scope="col">Organizer email</th><th scope="col" className="text-end">Events</th><th scope="col" className="text-end">Ticket sales</th><th scope="col" className="text-end">Organizer transfer</th><th scope="col" className="text-end">SAS net after Stripe</th></tr></thead>
-                  <tbody>{organizerOverview.map((organizer: any) => (
-                    <tr key={organizer.organizer_id}>
-                      <td>{organizer.organizer_email}</td>
-                      <td className="text-end">{organizer.event_count}</td>
-                      <td className="text-end">{organizer.tracked_payment_count ? `$${organizer.ticket_sales_after_refunds}` : '—'}</td>
-                      <td className="text-end">{organizer.tracked_payment_count ? `$${organizer.organizer_transfer_after_refunds}` : '—'}</td>
-                      <td className="text-end">{organizer.tracked_payment_count ? `$${organizer.sas_net_after_stripe}` : '—'}</td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>
-            ) : <p className="text-body-secondary mb-0 small">No organizers found.</p>}
-          </div>
-        </div>
-      )}
-      <div className="mb-3">
-        <div className="d-flex align-items-center justify-content-between gap-2">
-          <h1 className="fw-bold mb-0">Profile</h1>
-          <div className="d-flex align-items-center gap-2">
-            {isEditing ? (
-              <>
-                <button type="button" aria-label="Save profile changes" onClick={handleSubmit} disabled={!hasChanges || loading} className="border rounded px-3 py-2 btn btn-outline-secondary" >
-                  <i className="fa-solid fa-check" aria-hidden="true" />
-                </button>
-                <button type="button" aria-label="Stop editing profile" onClick={handleStopEditing} className="border rounded px-3 py-2 btn btn-outline-secondary" >
-                  <i className="fa-solid fa-xmark" aria-hidden="true" />
-                </button>
-              </>
-            ) : (
-              <button type="button" aria-label="Edit profile" onClick={() => { setIsEditing(true); setMessage(null); setError(null); }} className="border rounded px-3 py-2 btn btn-outline-secondary" >
-                <i className="fa-solid fa-pen" aria-hidden="true" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-      {message && (
-        <div role="alert" className="mb-3 alert alert-success alert-dismissible">
-          {message}
-          <button type="button" className="btn-close" aria-label="Close" onClick={() => setMessage(null)} />
-        </div>
-      )}
-      {error && (
-        <div role="alert" className="mb-3 alert alert-danger alert-dismissible">
-          {error}
-          <button type="button" className="btn-close" aria-label="Close" onClick={() => setError(null)} />
-        </div>
-      )}
-      <div className="rounded card">
-        <div className="d-flex flex-column gap-3 card-body">
-          {isEditing ? (
-            <>
-              <div className="my-2 w-100">
-                <label className="d-block">
-                  <span className="form-label d-block">{'First Name'}</span>
-                  <input className="form-control" value={formData.first_name} onChange={(e) => handleTextChange('first_name', e.target.value)} required />
-                </label>
-              </div>
-              <div className="my-2 w-100">
-                <label className="d-block">
-                  <span className="form-label d-block">{'Last Name'}</span>
-                  <input className="form-control" value={formData.last_name} onChange={(e) => handleTextChange('last_name', e.target.value)} required />
-                </label>
-              </div>
-              <div className="my-2 w-100">
-                <label className="d-block">
-                  <span className="form-label d-block">{'Email Address'}</span>
-                  <input className="form-control" type="email" value={formData.email} onChange={(e) => handleTextChange('email', e.target.value)} required />
-                </label>
-              </div>
-              <div className="my-2 w-100">
-                <label className="d-block">
-                  <span className="form-label d-block">{'Phone Number'}</span>
-                  <input className="form-control" value={formattedPhone} onChange={(e) => handleTextChange('phone', e.target.value)} required inputMode="numeric" maxLength={14} />
-                </label>
-              </div>
-              <label className="d-block my-2">
-                <span className="form-label d-block">Birthday</span>
-                <input className="form-control" type="date" required max={formatDateOnly(new Date())} value={formData.birthday} onChange={(e) => setFormData((prev) => ({ ...prev, birthday: e.target.value }))} />
-              </label>
-            </>
-          ) : (
-            <div className="d-flex flex-column gap-3">
-              {readOnlyRows.map((row) => (
-                <div key={row.label} className="border rounded px-3 py-3 bg-body-tertiary">
-                  <p className="d-block text-body-secondary text-uppercase mb-1 small">{row.label}</p>
-                  <p className="fw-medium mb-0">{row.value || 'Not provided'}</p>
-                </div>
-              ))}
-            </div>
-          )}
-          <hr />
-          <div>
-            <h6 className="fw-bold mb-1">Preferences</h6>
-            <p className="text-body-secondary mb-3 small">Your answers will not determine how many dates you go on.</p>
-            <ProfilePreferences values={formData} editable={isEditing} onChange={(field, value) => setFormData((prev) => ({ ...prev, [field]: value }))} />
-          </div>
-          <hr />
-          <div className="d-flex align-items-center justify-content-between gap-3 px-3 py-2 border rounded">
-            <div>
-              <p className="fw-semibold mb-0">Dark Mode</p>
-              <p className="text-body-secondary mb-0 small">Use the darker app appearance</p>
-            </div>
-            <input type="checkbox" aria-label="Dark Mode" checked={mode === 'dark'} onChange={toggleColorMode} className="form-check-input" />
-          </div>
-          <hr />
-          <div className="d-flex justify-content-start">
-            <button type="button" onClick={handleLogout} className="rounded-pill px-3 fw-semibold btn btn-outline-secondary"> Log out </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
