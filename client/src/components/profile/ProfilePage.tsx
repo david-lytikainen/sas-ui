@@ -190,8 +190,7 @@ const ProfilePage = () => {
   };
 
   const ownBilling = dashboard?.billing?.own_summary;
-  const latestRuns = dashboard?.admin_tools?.latest_runs || [];
-  const recentFailures = dashboard?.admin_tools?.recent_failures || [];
+  const organizerOverview = dashboard?.billing?.organizer_overview || [];
 
   const billingHighlights = ownBilling
     ? [
@@ -237,41 +236,6 @@ const ProfilePage = () => {
 
   return (
     <div className="container content-narrow">
-      {user?.role_id === 3 && (
-        <div className="rounded mb-3 card">
-          <div className="d-flex flex-column gap-3 card-body">
-            <p className="fw-bold mb-0">Admin Tools</p>
-            {dashboardLoading ? (
-              <p className="text-body-secondary mb-0 small">Loading scheduler status...</p>
-            ) : (
-              <>
-                <div className="d-flex flex-wrap gap-3">
-                  {latestRuns.map((run: any) => (
-                    <div key={run.job_name} className={`flex-grow-1 border rounded px-3 py-3 ${run.status === 'failed' ? 'border-danger' : ''}`}>
-                      <p className="d-block text-body-secondary text-uppercase mb-1 small">{run.job_name}</p>
-                      <p className="fw-semibold mb-1">{run.status === 'failed' ? 'Failed' : 'Healthy'}</p>
-                      <p className="text-body-secondary mb-0 small">Processed {run.processed_count ?? 0} item(s)</p>
-                      <p className="text-body-secondary mb-0 small"> {run.created_at ? new Date(run.created_at).toLocaleString() : 'No run recorded'} </p>
-                    </div>
-                  ))}
-                </div>
-                {recentFailures.length > 0 && (
-                  <div className="d-flex flex-column gap-2">
-                    <p className="fw-bold mb-0 small">Recent Scheduler Failures</p>
-                    {recentFailures.map((failure: any, index: number) => (
-                      <div key={`${failure.job_name}-${index}`} className="border rounded px-3 py-3">
-                        <p className="fw-semibold mb-0 small">{failure.job_name}</p>
-                        <p className="text-body-secondary mb-0 small">{failure.error_message || 'Unknown error'}</p>
-                        <p className="text-body-secondary mb-0 small">{failure.created_at ? new Date(failure.created_at).toLocaleString() : ''}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      )}
       {(user?.role_id === 2 || user?.role_id === 3) && (
         <div className="rounded mb-3 card">
           <div className="d-flex flex-column gap-3 card-body">
@@ -314,6 +278,32 @@ const ProfilePage = () => {
                 )}
               </>
             )}
+          </div>
+        </div>
+      )}
+      {user?.role_id === 3 && (
+        <div className="rounded mb-3 card">
+          <div className="d-flex flex-column gap-2 card-body">
+            <p className="fw-bold mb-0">Organizer Earnings</p>
+            <p className="text-body-secondary mb-0 small">Payment totals include only new payments with a saved Stripe processing fee. Older payments are not included.</p>
+            {dashboardLoading ? (
+              <p className="text-body-secondary mb-0 small">Loading organizer totals...</p>
+            ) : organizerOverview.length ? (
+              <div className="table-responsive">
+                <table className="table table-sm align-middle mb-0">
+                  <thead><tr><th scope="col">Organizer email</th><th scope="col" className="text-end">Events</th><th scope="col" className="text-end">Ticket sales</th><th scope="col" className="text-end">Organizer transfer</th><th scope="col" className="text-end">SAS net after Stripe</th></tr></thead>
+                  <tbody>{organizerOverview.map((organizer: any) => (
+                    <tr key={organizer.organizer_id}>
+                      <td>{organizer.organizer_email}</td>
+                      <td className="text-end">{organizer.event_count}</td>
+                      <td className="text-end">{organizer.tracked_payment_count ? `$${organizer.ticket_sales_after_refunds}` : '—'}</td>
+                      <td className="text-end">{organizer.tracked_payment_count ? `$${organizer.organizer_transfer_after_refunds}` : '—'}</td>
+                      <td className="text-end">{organizer.tracked_payment_count ? `$${organizer.sas_net_after_stripe}` : '—'}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            ) : <p className="text-body-secondary mb-0 small">No organizers found.</p>}
           </div>
         </div>
       )}
