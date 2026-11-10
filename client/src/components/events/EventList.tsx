@@ -75,8 +75,8 @@ const EventList = () => {
   const [checkedInAttendeeCount, setCheckedInAttendeeCount] = useState(0);
   const [eventToRegenerate, setEventToRegenerate] = useState<Event | null>(null);
 
-  const [editEventDialogOpen, setEditEventDialogOpen] = useState<boolean>(false);
   const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
+  const [editEventSaving, setEditEventSaving] = useState(false);
   const [editEventForm, setEditEventForm] = useState<Partial<Event>>({
     name: '',
     description: '',
@@ -378,9 +378,7 @@ const EventList = () => {
               <span className="me-2">{<i className="fa-solid fa-play" aria-hidden="true" />}</span>
               {event.status === 'In Progress' ? 'Re-generate Schedules' : 'Generate Schedules'}
             </button>
-            <button type="button" onClick={() => handleOpenEditEventDialog(event)} className="rounded mt-1 btn btn-outline-primary btn-sm w-100" >
-              <span className="me-2">{<i className="fa-solid fa-pen" aria-hidden="true" />}</span>Edit Event
-            </button>
+            {eventToEdit?.id !== event.id && <button type="button" onClick={() => handleOpenEditEventDialog(event)} className="rounded mt-1 btn btn-outline-primary btn-sm w-100"><span className="me-2"><i className="fa-solid fa-pen" aria-hidden="true" /></span>Edit Event</button>}
           </div>
         </div>
       </>
@@ -451,11 +449,10 @@ const EventList = () => {
       enforce_gender_balance: event.enforce_gender_balance ?? true,
       status: event.status,
     });
-    setEditEventDialogOpen(true);
   };
 
-  const handleEditEventFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | { name?: string; value: unknown }>) => {
-    const target = e.target as HTMLInputElement | HTMLTextAreaElement; // Type assertion
+  const handleEditEventFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const target = e.target;
     const name = target.name;
     const value = target.value;
 
@@ -469,6 +466,7 @@ const EventList = () => {
     if (!eventToEdit || !editEventForm) return;
 
     try {
+      setEditEventSaving(true);
       const dataToUpdate: Partial<Event> = { ...editEventForm };
       if (dataToUpdate.max_capacity) {
         dataToUpdate.max_capacity = dataToUpdate.max_capacity.toString();
@@ -481,13 +479,16 @@ const EventList = () => {
       }
 
       await eventsApi.updateEvent(eventToEdit.id.toString(), dataToUpdate);
-      setEditEventDialogOpen(false);
       setEventToEdit(null);
-      refreshEvents();
+      await refreshEvents();
     } catch (error: any) {
       setErrorMessage(error.response?.data?.error || error.message || 'Failed to update event');
+    } finally {
+      setEditEventSaving(false);
     }
   };
+
+  const handleCancelEditEvent = () => setEventToEdit(null);
 
   const handleConnectOnboarding = async () => {
     try {
@@ -516,26 +517,49 @@ const EventList = () => {
 
   const renderEventCard = (event: Event) => {
     const actionButtons = renderActionButtons(event);
+    const isEditing = eventToEdit?.id === event.id;
     return (
       <div key={event.id} className="col-12">
         <div className="rounded card">
           <div className="p-3 p-sm-4 card-body">
             <div className="d-flex justify-content-between align-items-start gap-2 mb-2 mb-sm-3">
-              <h2 className="h4 fw-semibold text-break mb-0">{event.name}</h2>
-              {isRegisteredForEvent(event.id) &&
-                event.registration?.status !== 'Waitlisted' &&
-                (event.registration?.status === 'Checked In' ? (
-                  <span className={'badge rounded-pill text-bg-' + 'success'.replace('error', 'danger')}>
-                    {<i className="fa-solid fa-circle-check" aria-hidden="true" />}
-                    {'Checked In'}
-                  </span>
-                ) : (
-                  <span className={'badge rounded-pill text-bg-' + 'primary'.replace('error', 'danger')}>{'Registered'}</span>
-                ))}
+              {isEditing ? (
+                <label className="flex-grow-1">
+                  <span className="form-label small">Event Name</span>
+                  <input className="form-control" name="name" value={editEventForm.name || ''} onChange={handleEditEventFormChange} required />
+                </label>
+              ) : (
+                <h2 className="h4 fw-semibold text-break mb-0">{event.name}</h2>
+              )}
+              <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                {isRegisteredForEvent(event.id) &&
+                  event.registration?.status !== 'Waitlisted' &&
+                  (event.registration?.status === 'Checked In' ? (
+                    <span className={'badge rounded-pill text-bg-' + 'success'.replace('error', 'danger')}>
+                      {<i className="fa-solid fa-circle-check" aria-hidden="true" />}
+                      {'Checked In'}
+                    </span>
+                  ) : (
+                    <span className={'badge rounded-pill text-bg-' + 'primary'.replace('error', 'danger')}>{'Registered'}</span>
+                  ))}
+                {isEditing && (
+                  <>
+                    <button type="button" aria-label="Save event changes" title="Save changes" disabled={editEventSaving} onClick={handleUpdateEvent} className="btn btn-success btn-sm"><i className="fa-solid fa-check" aria-hidden="true" /></button>
+                    <button type="button" aria-label="Cancel event editing" title="Cancel" disabled={editEventSaving} onClick={handleCancelEditEvent} className="btn btn-outline-secondary btn-sm"><i className="fa-solid fa-xmark" aria-hidden="true" /></button>
+                  </>
+                )}
+              </div>
             </div>
-            {event.status !== 'In Progress' && (
+            {(event.status !== 'In Progress' || isEditing) && (
               <div className="mb-3 mb-sm-3">
-                <p className="text-body-secondary mb-2 mb-sm-3">{event.description}</p>
+                {isEditing ? (
+                  <label className="d-block">
+                    <span className="form-label small">Description</span>
+                    <textarea className="form-control" name="description" value={editEventForm.description || ''} onChange={handleEditEventFormChange} rows={3} />
+                  </label>
+                ) : (
+                  <p className="text-body-secondary mb-2 mb-sm-3">{event.description}</p>
+                )}
               </div>
             )}
             {event.status === 'In Progress' && (canManageEvent(event) || event.registration) && (
@@ -552,14 +576,24 @@ const EventList = () => {
                 <EventTimer eventId={event.id} isAdmin={canManageEvent(event)} isCheckedIn={isRegisteredForEvent(event.id) && event.registration?.status === 'Checked In'} eventStatus={event.status} onRoundChange={(round) => { setCurrentRounds((prev) => (prev[event.id] === round ? prev : { ...prev, [event.id]: round })); }} />
               </div>
             )}
-            {event.status !== 'In Progress' && (
+            {(event.status !== 'In Progress' || isEditing) && (
               <div className="d-flex flex-column align-items-start gap-2">
-                <p className="text-body-secondary d-flex align-items-center gap-1 mb-0 small"> <i className="fa-solid fa-calendar-days" aria-hidden="true" /> {formatUTCToLocal(event.starts_at)} </p>
-                <p className="text-body-secondary d-flex align-items-center gap-1 mb-0 small"> <i className="fa-solid fa-location-dot" aria-hidden="true" /> {event.address} </p>
-                {typeof event.registered_attendee_count === 'number' && event.max_capacity && (
-                  <p className="text-body-secondary d-flex align-items-center gap-1 mb-0 small"> <i className="fa-solid fa-users" aria-hidden="true" /> {`${event.registered_attendee_count}/${event.max_capacity} spots filled`} </p>
+                {isEditing ? (
+                  <div className="row g-2 w-100">
+                    <label className="col-12 col-sm-6"><span className="form-label small">Start Date and Time</span><input className="form-control" name="starts_at" type="datetime-local" value={editEventForm.starts_at || ''} onChange={handleEditEventFormChange} required /></label>
+                    <label className="col-12 col-sm-6"><span className="form-label small">Address</span><input className="form-control" name="address" value={editEventForm.address || ''} onChange={handleEditEventFormChange} /></label>
+                    <label className="col-6 col-sm-6"><span className="form-label small">Max Capacity</span><input className="form-control" name="max_capacity" type="number" value={editEventForm.max_capacity || ''} onChange={handleEditEventFormChange} min={0} /></label>
+                    <label className="col-6 col-sm-6"><span className="form-label small">Price Per Person</span><input className="form-control" name="price_per_person" type="number" value={editEventForm.price_per_person || '0'} onChange={handleEditEventFormChange} min={0} step="0.01" /></label>
+                    <label className="col-12 form-check ms-2"><input type="checkbox" checked={Boolean(editEventForm.enforce_gender_balance)} onChange={(e) => setEditEventForm((prev) => ({ ...prev, enforce_gender_balance: e.target.checked }))} className="form-check-input" /><span className="form-check-label">Enforce 60/40 gender balance</span></label>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-body-secondary d-flex align-items-center gap-1 mb-0 small"><i className="fa-solid fa-calendar-days" aria-hidden="true" />{formatUTCToLocal(event.starts_at)}</p>
+                    <p className="text-body-secondary d-flex align-items-center gap-1 mb-0 small"><i className="fa-solid fa-location-dot" aria-hidden="true" />{event.address}</p>
+                    {typeof event.registered_attendee_count === 'number' && event.max_capacity && <p className="text-body-secondary d-flex align-items-center gap-1 mb-0 small"><i className="fa-solid fa-users" aria-hidden="true" />{`${event.registered_attendee_count}/${event.max_capacity} spots filled`}</p>}
+                    <p className="text-body-secondary d-flex align-items-center gap-1 mb-0 small"><i className="fa-solid fa-dollar-sign" aria-hidden="true" />${parseFloat(event.price_per_person).toFixed(2)} per person</p>
+                  </>
                 )}
-                <p className="text-body-secondary d-flex align-items-center gap-1 mb-0 small"> <i className="fa-solid fa-dollar-sign" aria-hidden="true" />${parseFloat(event.price_per_person).toFixed(2)} per person </p>
               </div>
             )}
             {renderEventControls(event)}
@@ -702,75 +736,6 @@ const EventList = () => {
           <p className="mt-2 fw-bold mb-0"> This will use {numTables} tables and {numRounds} rounds. </p>
         </ConfirmDialog>
         <ViewAllSchedules open={viewAllSchedulesDialogOpen} event={selectedEventForAllSchedules} onClose={() => setViewAllSchedulesDialogOpen(false)} />
-        {/* ADD: Edit Event Dialog */}
-        <Modal onClose={() => setEditEventDialogOpen(false)} size="" open={editEventDialogOpen}>
-          <div className="modal-header fw-semibold">Edit Event: {eventToEdit?.name}</div>
-          <div className="modal-body overflow-y-auto">
-            <div className="pt-2 row g-3">
-              <div className="col-12">
-                <div className="my-2 w-100">
-                  <label className="d-block">
-                    <span className="form-label d-block">{'Event Name'}</span>
-                    <input className="form-control" name="name" value={editEventForm.name || ''} onChange={handleEditEventFormChange} required />
-                  </label>
-                </div>
-              </div>
-              <div className="col-12">
-                <div className="my-2 w-100">
-                  <label className="d-block">
-                    <span className="form-label d-block">{'Description'}</span>
-                    <textarea className="form-control" name="description" value={editEventForm.description || ''} onChange={handleEditEventFormChange} rows={4} />
-                  </label>
-                </div>
-              </div>
-              <div className="col-12 col-sm-6">
-                <div className="my-2 w-100">
-                  <label className="d-block">
-                    <span className="form-label d-block">{'Start Date and Time'}</span>
-                    <input className="form-control" name="starts_at" type="datetime-local" value={editEventForm.starts_at || ''} onChange={handleEditEventFormChange} required />
-                  </label>
-                </div>
-              </div>
-              <div className="col-12 col-sm-6">
-                <div className="my-2 w-100">
-                  <label className="d-block">
-                    <span className="form-label d-block">{'Address'}</span>
-                    <input className="form-control" name="address" value={editEventForm.address || ''} onChange={handleEditEventFormChange} />
-                  </label>
-                </div>
-              </div>
-              <div className="col-12">
-                <label className="form-check my-2">
-                  {
-                    <input type="checkbox" checked={Boolean(editEventForm.enforce_gender_balance)} onChange={(e) => setEditEventForm((prev) => ({ ...prev, enforce_gender_balance: e.target.checked }))} className="form-check-input" />
-                  }
-                  <span className="form-check-label">{'Enforce 60/40 gender balance'}</span>
-                </label>
-                <p className="text-body-secondary ms-5 mb-0 small">E.g. if Max Capacity is 100, the 61st female (or male) will be waitlisted.</p>
-              </div>
-              <div className="col-6 col-sm-6">
-                <div className="my-2 w-100">
-                  <label className="d-block">
-                    <span className="form-label d-block">{'Max Capacity'}</span>
-                    <input className="form-control" name="max_capacity" type="number" value={editEventForm.max_capacity || ''} onChange={handleEditEventFormChange} min={0} />
-                  </label>
-                </div>
-              </div>
-              <div className="col-6 col-sm-6">
-                <div className="my-2 w-100">
-                  <label className="d-block">
-                    <span className="form-label d-block">{'Price Per Person'}</span>
-                    <input className="form-control" name="price_per_person" type="number" value={editEventForm.price_per_person || '0'} onChange={handleEditEventFormChange} min={0} step={'0.01'} />
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button type="button" onClick={() => setEditEventDialogOpen(false)} className="btn btn-link"> Cancel </button>
-            <button type="button" onClick={handleUpdateEvent} className="btn btn-primary"> Update Event </button>
-          </div>
-        </Modal>
         <ConfirmDialog open={waitlistDialogOpen} title={`Join Waitlist for "${eventForWaitlist?.name}"?`} confirmLabel="Yes, Join Waitlist" cancelLabel="No, Thanks" onCancel={() => { setWaitlistDialogOpen(false); setEventForWaitlist(null); }} onConfirm={handleJoinWaitlistConfirm} >
           {waitlistReason}. Would you like to be added to the waitlist?
           <p className="text-body-secondary mt-2 mb-0 small">If a spot opens, we will email you so you can return and sign up yourself.</p>
