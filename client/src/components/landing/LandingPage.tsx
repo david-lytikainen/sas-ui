@@ -70,10 +70,8 @@ const LandingPage: React.FC = () => {
         </div>
       </div>
       <div className="bg-body-secondary py-5 text-center border-top">
-        <div className="container content-medium">
-          <h2 className="text-primary mb-4">Why Saved & Single?</h2>
-          <p className="text-body-secondary mb-0"> Tired of endless swiping? Saved & Single hosts speed-dating events for Christian singles to connect authentically, in person. </p>
-        </div>
+        <h2 className="text-primary mb-4">Why Saved & Single?</h2>
+        <p className="text-body-secondary mb-0"> Tired of endless swiping? Saved & Single hosts speed-dating events for Christian singles to connect authentically, in person. </p>
       </div>
     </div>
   );

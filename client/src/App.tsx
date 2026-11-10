@@ -58,7 +58,7 @@ const AppLayout = () => {
   return (
     <div className="d-flex flex-column min-vh-100">
       <Navigation />
-      <main className="flex-grow-1 px-2 px-sm-3 py-4">
+      <main className="flex-grow-1 px-2 px-sm-3 pt-4">
         <ProtectedRoutes />
       </main>
       <Footer />
