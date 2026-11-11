@@ -1,4 +1,5 @@
 import { ReactNode, useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ModalProps {
   open: boolean;
@@ -8,27 +9,38 @@ interface ModalProps {
 }
 
 const Modal = ({ open, onClose, children, size = '' }: ModalProps) => {
-  const ref = useRef<HTMLDialogElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const titleId = useId();
   useEffect(() => {
-    const dialog = ref.current;
-    if (!open || !dialog) return;
+    const modal = ref.current;
+    if (!open || !modal) return;
     const previousFocus = document.activeElement as HTMLElement | null;
-    const title = dialog.querySelector('.modal-header');
+    const title = modal.querySelector('.modal-header');
     if (title) title.id = titleId;
-    dialog.showModal();
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    modal.focus();
+    const handleKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') onCloseRef.current(event, 'escapeKeyDown'); };
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      dialog.close();
+      document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = overflow;
       previousFocus?.focus();
     };
   }, [open, titleId]);
-  return (
-    <dialog ref={ref} className={`sas-modal rounded p-0 border-0 bg-transparent text-body ${size ? `modal-${size}` : ''}`} aria-labelledby={titleId} onCancel={(e) => { e.preventDefault(); onClose(e, 'escapeKeyDown'); }} onClick={(e) => { const bounds = e.currentTarget.getBoundingClientRect(); if (e.target === e.currentTarget && (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom)) onClose(e, 'backdropClick'); }} >
-      {open && <div className="modal-content">{children}</div>}
-    </dialog>
+  if (!open) return null;
+  return createPortal(
+    <>
+      <div ref={ref} className="modal fade show d-block" role="dialog" tabIndex={-1} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(event, 'backdropClick'); }}>
+        <div className={`modal-dialog modal-dialog-centered modal-dialog-scrollable ${size ? `modal-${size}` : ''}`}>
+          <div className="modal-content">{children}</div>
+        </div>
+      </div>
+      <div className="modal-backdrop fade show" />
+    </>,
+    document.body,
   );
 };
 

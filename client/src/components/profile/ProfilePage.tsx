@@ -178,12 +178,16 @@ const ProfilePage = () => {
   };
 
   const handleOpenStripeDashboard = async () => {
+    const stripeTab = window.open('about:blank', '_blank');
+    if (stripeTab) stripeTab.opener = null;
     try {
       setStripeDashboardLoading(true);
       setError(null);
       const { url } = await authApi.createConnectDashboardLink();
-      window.location.href = url;
+      if (stripeTab) stripeTab.location.href = url;
+      else window.location.href = url;
     } catch (stripeError: any) {
+      stripeTab?.close();
       setError(stripeError.message || 'Failed to open Stripe dashboard.');
       setStripeDashboardLoading(false);
     }
@@ -306,34 +310,24 @@ const ProfilePage = () => {
             <div className="d-flex flex-column gap-3">
               {readOnlyRows.map((row) => (
                 <div key={row.label} className="border rounded px-3 py-1 bg-body-tertiary">
-                  <p className="d-block text-body-secondary text-uppercase mb-0 small">{row.label}</p>
+                  <p className="d-block text-body-secondary mb-0 small">{row.label}</p>
                   <p className="fw-medium mb-0">{row.value || 'Not provided'}</p>
                 </div>
               ))}
+              <label className="d-flex bg-body-tertiary align-items-center justify-content-between px-3 py-2 border rounded">
+                <p className="fw-semibold mb-0">Dark Mode</p>
+                <input type="checkbox" checked={mode === 'dark'} onChange={toggleColorMode} className="form-check-input" />
+              </label>
             </div>
           )}
-          <hr />
           {user?.role_id !== 3 && (
             <>
+              <hr />
               <div>
-                <h6 className="fw-bold mb-1">Preferences</h6>
-                <p className="text-body-secondary mb-3 small">Your answers will not determine how many dates you go on.</p>
                 <ProfilePreferences values={formData} editable={isEditing} onChange={(field, value) => setFormData((prev) => ({ ...prev, [field]: value }))} />
               </div>
-              <hr />
-              <div className="d-flex align-items-center justify-content-between gap-3 px-3 py-2 border rounded">
-                <div>
-                  <p className="fw-semibold mb-0">Dark Mode</p>
-                  <p className="text-body-secondary mb-0 small">Use the darker app appearance</p>
-                </div>
-                <input type="checkbox" aria-label="Dark Mode" checked={mode === 'dark'} onChange={toggleColorMode} className="form-check-input" />
-              </div>
-              <hr />
             </>
           )}
-          <div className="d-flex justify-content-start">
-            <button type="button" onClick={handleLogout} className="rounded-pill px-3 fw-semibold btn btn-outline-secondary"> Log out </button>
-          </div>
         </div>
       </div>
 
@@ -408,6 +402,10 @@ const ProfilePage = () => {
           </div>
         </div>
       )}
+
+      <div className="d-flex justify-content-start mt-3">
+        <button type="button" onClick={handleLogout} className="w-100 rounded-pill px-3 fw-semibold btn btn-outline-secondary">Log out</button>
+      </div>
     </div>
   );
 };

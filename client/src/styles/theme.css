@@ -32,10 +32,4 @@
 .form-control, .form-select { min-height: 44px; }
 .form-check-input { width: 1.25em; height: 1.25em; }
 .form-check-input:checked { background-color: var(--bs-primary); border-color: var(--bs-primary); }
-.sas-modal { width: calc(100% - 1rem); max-width: 500px; max-height: calc(100dvh - 1rem); }
-.sas-modal.modal-sm { max-width: 400px; }
-.sas-modal.modal-lg { max-width: 800px; }
-.sas-modal.modal-xl { max-width: 1140px; }
-.sas-modal::backdrop { background: rgb(0 0 0 / 50%); }
-.sas-modal .modal-content { max-height: calc(100dvh - 1rem); }
 .splash { padding-top: 40vh; }

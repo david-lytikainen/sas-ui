@@ -49,14 +49,14 @@ const Login = () => {
     <div className="mt-5 mb-3 container content-narrow">
       <h1 className="text-center mb-4 fw-bold text-primary">Saved & Single</h1>
       <div className="p-3 p-sm-4 rounded border">
-        <p className="text-center fw-bold mb-0">Login</p>
+        <p className="text-center fw-bold fs-5 mb-0">Login</p>
         {error && (
           <div hidden={!error}>
             <div role="alert" className="w-100 mb-2 py-1 alert alert-danger"> {error} </div>
           </div>
         )}
         <form onSubmit={handleSubmit}>
-          <button type="button" onClick={() => navigate('/register')} className="btn btn-link btn-sm w-100"> Don't have an account? Register </button>
+          <button type="button" onClick={() => navigate('/register')} className="btn btn-link btn-sm w-100">Don't have an account? Register</button>
           <div className="my-2 w-100">
             <label className="d-block">
               <span className="form-label d-block">{'Email Address'}</span>

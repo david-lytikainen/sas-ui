@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useSplash } from '../../context/SplashContext';
-import { formatDateOnly, parseDateOnly } from '../../utils/date';
+import { parseDateOnly } from '../../utils/date';
 import { formatPhone, normalizePhone } from '../../utils/phone';
+import BirthdayPicker from '../common/BirthdayPicker';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -111,74 +112,33 @@ const Register = () => {
     <div className="mt-5 mb-3 container content-narrow">
       <h1 className="text-center mb-4 fw-bold text-primary">Saved & Single</h1>
       <div className="p-3 p-sm-3 p-md-4 rounded border">
-        <p className="text-center fw-bold mb-0">Register</p>
-        {error && (
-          <div role="alert" className="mb-2 py-1 alert alert-danger"> {error} </div>
-        )}
+        <p className="text-center fw-bold fs-5 mb-0">Register</p>
         <form onSubmit={handleSubmit}>
           <button type="button" onClick={() => navigate('/login')} className="btn btn-link btn-sm w-100"> Already have an account? Login </button>
-          <div className="my-2 w-100">
-            <label className="d-block">
-              <span className="form-label d-block">{'First Name'}</span>
-              <input className="form-control" name="first_name" value={formData.first_name} onChange={handleTextChange} required />
-            </label>
-          </div>
-          <div className="my-2 w-100">
-            <label className="d-block">
-              <span className="form-label d-block">{'Last Name'}</span>
-              <input className="form-control" name="last_name" value={formData.last_name} onChange={handleTextChange} required />
-            </label>
-          </div>
-          <div className="my-2 w-100">
-            <label className="d-block">
-              <span className="form-label d-block">{'Email Address'}</span>
-              <input className="form-control" name="email" type="email" value={formData.email} onChange={handleTextChange} required />
-            </label>
-          </div>
-          <div className="my-2 w-100">
-            <label className="d-block">
-              <span className="form-label d-block">{'Phone Number'}</span>
-              <input className="form-control" name="phone" value={formattedPhone} onChange={handleTextChange} required type="tel" inputMode="numeric" maxLength={14} pattern={'\\(\\d{3}\\)-\\d{3}-\\d{4}'} />
-            </label>
-          </div>
-          <label className="d-block my-2">
-            <span className="form-label d-block">Birthday</span>
-            <input className="form-control" type="date" required max={formatDateOnly(new Date())} value={formData.birthday} onChange={(e) => setFormData((prev) => ({ ...prev, birthday: e.target.value }))} />
-            <small className="form-text">18+ only</small>
-          </label>
-          <div className="my-2 w-100">
-            <label htmlFor="gender-select" id="gender-select-label" className="form-label"> Gender </label>
-            <select required id="gender-select" name="gender" value={formData.gender} onChange={handleSelectChange} className="form-select">
-              <option value="" disabled> Select </option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-            </select>
-          </div>
-          <div className="my-2 w-100">
-            <label className="d-block">
-              <span className="form-label d-block">{'Password'}</span>
-              <span className="input-group">
-                <input className="form-control" name="password" type={showPassword ? 'text' : 'password'} value={formData.password} onChange={handleTextChange} required />
-                {
-                  <span className="input-group-text">
-                    <button type="button" aria-label="Show or hide password" onClick={() => setShowPassword((prev) => !prev)} className="btn btn-outline-secondary btn-sm" >
-                      {showPassword ? (
-                        <i className="fa-solid fa-eye-slash" aria-hidden="true" />
-                      ) : (
-                        <i className="fa-solid fa-eye" aria-hidden="true" />
-                      )}
-                    </button>
-                  </span>
-                }
+          <input className="form-control mt-2" placeholder='First Name' name="first_name" value={formData.first_name} onChange={handleTextChange} required />
+          <input className="form-control my-2" placeholder='Last Name' name="last_name" value={formData.last_name} onChange={handleTextChange} required />
+          <BirthdayPicker value={formData.birthday} minAge={18} startingYear={2000} onChange={(birthday) => setFormData((prev) => ({ ...prev, birthday }))} />
+          <select className="form-select mt-2" required id="gender-select" name="gender" value={formData.gender} onChange={handleSelectChange}>
+            <option value="" disabled>Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+          <input className="form-control mt-2" placeholder='Phone Number' name="phone" value={formattedPhone} onChange={handleTextChange} required type="tel" inputMode="numeric" maxLength={14} pattern={'\\(\\d{3}\\)-\\d{3}-\\d{4}'} />
+          <input className="form-control mt-2" placeholder='Email Address' name="email" type="email" value={formData.email} onChange={handleTextChange} required />
+          <div className="input-group mt-2">
+            <input className="form-control" placeholder='Password' name="password" type={showPassword ? 'text' : 'password'} value={formData.password} onChange={handleTextChange} required />
+              <span className="input-group-text">
+                <button type="button" onClick={() => setShowPassword((prev) => !prev)} className="btn btn-outline-secondary btn-sm" >
+                  {showPassword ? (<i className="fa-solid fa-eye-slash" />) : (<i className="fa-solid fa-eye" />)}
+                </button>
               </span>
-            </label>
           </div>
           <div className="my-2 w-100">
-            <label className="d-block">
-              <span className="form-label d-block">{'Confirm Password'}</span>
-              <input className="form-control" name="confirmPassword" type={showPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={handleTextChange} required />
-            </label>
+            <input className="form-control" placeholder='Confirm Password' name="confirmPassword" type={showPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={handleTextChange} required />
           </div>
+          {error && (
+            <div role="alert" className="mb-2 py-1 alert alert-danger"> {error} </div>
+          )}
           <button type="submit" disabled={loading} className="mt-3 mb-2 btn btn-primary w-100"> {loading ? 'Working...' : 'Register'} </button>
         </form>
       </div>
