@@ -26,12 +26,15 @@ const Login = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const submittedForm = new FormData(e.currentTarget);
+    const email = String(submittedForm.get('email') || '').toLowerCase().trim();
+    const password = String(submittedForm.get('password') || '');
     setLoading(true);
     setError(null);
     try {
-      await login(formData.email.toLowerCase().trim(), formData.password);
+      await login(email, password);
       setShowLoginSplash(true);
       navigate('/events', { replace: true });
     } catch (err: any) {
@@ -50,38 +53,30 @@ const Login = () => {
       <h1 className="text-center mb-4 fw-bold text-primary">Saved & Single</h1>
       <div className="p-3 p-sm-4 rounded border">
         <p className="text-center fw-bold fs-5 mb-0">Login</p>
-        {error && (
-          <div hidden={!error}>
-            <div role="alert" className="w-100 mb-2 py-1 alert alert-danger"> {error} </div>
-          </div>
-        )}
         <form onSubmit={handleSubmit}>
           <button type="button" onClick={() => navigate('/register')} className="btn btn-link btn-sm w-100">Don't have an account? Register</button>
           <div className="my-2 w-100">
-            <label className="d-block">
-              <span className="form-label d-block">{'Email Address'}</span>
-              <input className="form-control" required id="email" name="email" autoComplete="email" autoFocus value={formData.email} onChange={handleChange} type="email" aria-invalid={!!error} />
-            </label>
+            <input className="form-control" placeholder='Email Address' required id="email" name="email" autoComplete="email" autoFocus value={formData.email} onChange={handleChange} type="email" />
           </div>
           <div className="my-2 w-100">
-            <label className="d-block">
-              <span className="form-label d-block">{'Password'}</span>
-              <span className="input-group">
-                <input className="form-control" required name="password" type={showPassword ? 'text' : 'password'} id="password" autoComplete="current-password" value={formData.password} onChange={handleChange} aria-invalid={!!error} />
-                {
-                  <span className="input-group-text">
-                    <button type="button" aria-label="Show or hide password" onClick={handleTogglePassword} className="btn btn-outline-secondary btn-sm" >
-                      {showPassword ? (
-                        <i className="fa-solid fa-eye-slash" aria-hidden="true" />
-                      ) : (
-                        <i className="fa-solid fa-eye" aria-hidden="true" />
-                      )}
-                    </button>
-                  </span>
-                }
-              </span>
-            </label>
+            <span className="input-group">
+              <input className="form-control" placeholder='Password' required name="password" type={showPassword ? 'text' : 'password'} id="password" autoComplete="current-password" value={formData.password} onChange={handleChange} />
+              {
+                <span className="input-group-text">
+                  <button type="button" onClick={handleTogglePassword} className="btn btn-outline-secondary btn-sm" >
+                    {showPassword ? (<i className="fa-solid fa-eye-slash" />) : (<i className="fa-solid fa-eye" aria-hidden="true" />)}
+                  </button>
+                </span>
+              }
+            </span>
           </div>
+
+          {error && (
+            <div hidden={!error}>
+              <div role="alert" className="w-100 mb-2 py-1 alert alert-danger"> {error} </div>
+            </div>
+          )}
+
           <button type="submit" disabled={loading} className="mt-3 mb-2 btn btn-primary w-100"> {loading ? 'Logging in...' : 'Login'} </button>
           <div className="text-center">
             <RouterLink to="/forgot-password">{'Forgot Password?'}</RouterLink>
