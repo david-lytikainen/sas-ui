@@ -29,9 +29,12 @@ const ProfilePage = () => {
     gender: '',
   });
   const [preferenceValues, setPreferenceValues] = useState<ProfilePreferenceValues>({ faith_importance: null, traditional_roles_importance: null, boundaries_importance: null, looks_importance: null, wants_kids: null, age_gap: null });
-  const [savingPreferences, setSavingPreferences] = useState<Partial<Record<keyof ProfilePreferenceValues, boolean>>>({});
   const [savedPreferences, setSavedPreferences] = useState<Partial<Record<keyof ProfilePreferenceValues, number>>>({});
   const preferenceSaveTimeouts = useRef<Partial<Record<keyof ProfilePreferenceValues, number>>>({});
+  const preferenceSaveRunning = useRef<Partial<Record<keyof ProfilePreferenceValues, boolean>>>({});
+  const desiredPreferenceValues = useRef<ProfilePreferenceValues>({ faith_importance: null, traditional_roles_importance: null, boundaries_importance: null, looks_importance: null, wants_kids: null, age_gap: null });
+  const confirmedPreferenceValues = useRef<ProfilePreferenceValues>({ faith_importance: null, traditional_roles_importance: null, boundaries_importance: null, looks_importance: null, wants_kids: null, age_gap: null });
+  const desiredClickedValues = useRef<Partial<Record<keyof ProfilePreferenceValues, number>>>({});
   const initializedUserId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -39,7 +42,10 @@ const ProfilePage = () => {
     if (initializedUserId.current === user.id) return;
     initializedUserId.current = user.id;
     setFormData(getUserFormData(user));
-    setPreferenceValues(getUserPreferences(user));
+    const preferences = getUserPreferences(user);
+    desiredPreferenceValues.current = preferences;
+    confirmedPreferenceValues.current = preferences;
+    setPreferenceValues(preferences);
   }, [user]);
 
   useEffect(() => () => Object.values(preferenceSaveTimeouts.current).forEach((timeout) => timeout && window.clearTimeout(timeout)), []);
@@ -155,23 +161,40 @@ const ProfilePage = () => {
   };
 
   const handlePreferenceChange = async (field: keyof ProfilePreferenceValues, nextValue: number | null, clickedValue: number) => {
-    if (savingPreferences[field]) return;
     const currentValue = preferenceValues[field];
     if (nextValue === currentValue) return;
 
-    setSavingPreferences((prev) => ({ ...prev, [field]: true }));
+    desiredPreferenceValues.current = { ...desiredPreferenceValues.current, [field]: nextValue };
+    desiredClickedValues.current[field] = clickedValue;
+    setPreferenceValues((prev) => ({ ...prev, [field]: nextValue }));
+    setSavedPreferences((prev) => { const next = { ...prev }; delete next[field]; return next; });
     setError(null);
+    if (preferenceSaveRunning.current[field]) return;
+
+    preferenceSaveRunning.current[field] = true;
     try {
-      await authApi.updatePreferences({ [field]: nextValue });
-      setPreferenceValues((prev) => ({ ...prev, [field]: nextValue }));
-      updateUser({ [field]: nextValue });
-      setSavedPreferences((prev) => ({ ...prev, [field]: clickedValue }));
-      if (preferenceSaveTimeouts.current[field]) window.clearTimeout(preferenceSaveTimeouts.current[field]);
-      preferenceSaveTimeouts.current[field] = window.setTimeout(() => setSavedPreferences((prev) => { const next = { ...prev }; delete next[field]; return next; }), 1000);
-    } catch (preferenceError: any) {
-      setError(preferenceError.message || 'Failed to update profile preference.');
+      while (desiredPreferenceValues.current[field] !== confirmedPreferenceValues.current[field]) {
+        const valueToSave = desiredPreferenceValues.current[field];
+        try {
+          await authApi.updatePreferences({ [field]: valueToSave });
+          confirmedPreferenceValues.current = { ...confirmedPreferenceValues.current, [field]: valueToSave };
+          updateUser({ [field]: valueToSave });
+          if (desiredPreferenceValues.current[field] === valueToSave) {
+            setSavedPreferences((prev) => ({ ...prev, [field]: desiredClickedValues.current[field] ?? clickedValue }));
+            if (preferenceSaveTimeouts.current[field]) window.clearTimeout(preferenceSaveTimeouts.current[field]);
+            preferenceSaveTimeouts.current[field] = window.setTimeout(() => setSavedPreferences((prev) => { const next = { ...prev }; delete next[field]; return next; }), 1000);
+          }
+        } catch (preferenceError: any) {
+          if (desiredPreferenceValues.current[field] === valueToSave) {
+            desiredPreferenceValues.current = { ...desiredPreferenceValues.current, [field]: confirmedPreferenceValues.current[field] };
+            setPreferenceValues((prev) => ({ ...prev, [field]: confirmedPreferenceValues.current[field] }));
+            updateUser({ [field]: confirmedPreferenceValues.current[field] });
+            setError(preferenceError.message || 'Failed to update profile preference.');
+          }
+        }
+      }
     } finally {
-      setSavingPreferences((prev) => ({ ...prev, [field]: false }));
+      preferenceSaveRunning.current[field] = false;
     }
   };
 
@@ -327,7 +350,7 @@ const ProfilePage = () => {
             <>
               <hr />
               <div>
-                <ProfilePreferences values={preferenceValues} editable savingFields={savingPreferences} savedFields={savedPreferences} onChange={handlePreferenceChange} />
+                <ProfilePreferences values={preferenceValues} editable savedFields={savedPreferences} onChange={handlePreferenceChange} />
               </div>
             </>
           )}
