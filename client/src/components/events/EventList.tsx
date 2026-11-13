@@ -41,7 +41,7 @@ const EventList = () => {
   const navigate = useNavigate();
   const locationState = location.state as { showProfilePreferences?: boolean; showIncompleteProfilePreferences?: boolean } | null;
   const showProfilePreferences = Boolean(locationState?.showProfilePreferences);
-  const showIncompleteProfilePreferences = Boolean(locationState?.showIncompleteProfilePreferences && [user?.faith_importance, user?.traditional_roles_importance, user?.boundaries_importance, user?.looks_importance, user?.wants_kids, user?.age_gap].some((value) => value == null));
+  const showIncompleteProfilePreferences = Boolean(!isAdmin() && locationState?.showIncompleteProfilePreferences && [user?.faith_importance, user?.traditional_roles_importance, user?.boundaries_importance, user?.looks_importance, user?.wants_kids, user?.age_gap].some((value) => value == null));
   const [profilePreferences, setProfilePreferences] = useState<ProfilePreferenceValues>({
     faith_importance: user?.faith_importance ?? null,
     traditional_roles_importance: user?.traditional_roles_importance ?? null,
