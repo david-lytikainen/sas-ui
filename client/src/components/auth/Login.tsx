@@ -36,7 +36,7 @@ const Login = () => {
     try {
       await login(email, password);
       setShowLoginSplash(true);
-      navigate('/events', { replace: true });
+      navigate('/events', { replace: true, state: { showIncompleteProfilePreferences: true } });
     } catch (err: any) {
       setError(err.message || 'Invalid email or password');
     } finally {

@@ -39,7 +39,9 @@ const EventList = () => {
   const { user, isAdmin, isOrganizer, refreshUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const showProfilePreferences = Boolean((location.state as { showProfilePreferences?: boolean } | null)?.showProfilePreferences);
+  const locationState = location.state as { showProfilePreferences?: boolean; showIncompleteProfilePreferences?: boolean } | null;
+  const showProfilePreferences = Boolean(locationState?.showProfilePreferences);
+  const showIncompleteProfilePreferences = Boolean(locationState?.showIncompleteProfilePreferences && [user?.faith_importance, user?.traditional_roles_importance, user?.boundaries_importance, user?.looks_importance, user?.wants_kids, user?.age_gap].some((value) => value == null));
   const [profilePreferences, setProfilePreferences] = useState<ProfilePreferenceValues>({
     faith_importance: user?.faith_importance ?? null,
     traditional_roles_importance: user?.traditional_roles_importance ?? null,
@@ -634,9 +636,9 @@ const EventList = () => {
 
   return (
     <>
-      <Modal onClose={(_, reason) => { if (reason !== 'backdropClick') closeProfilePreferences(); }} size="" open={showProfilePreferences} >
+      <Modal onClose={(_, reason) => { if (reason !== 'backdropClick') closeProfilePreferences(); }} size="" open={showProfilePreferences || showIncompleteProfilePreferences} >
         <div className="d-flex align-items-center justify-content-between gap-3 modal-header fw-semibold">
-          <span className="fw-bold mb-0">Preferences</span>
+          <span className="fw-bold mb-0">{showIncompleteProfilePreferences ? 'Complete your profile' : 'Preferences'}</span>
           <button type="button" onClick={closeProfilePreferences} className="text-body btn btn-link btn-sm"> Skip </button>
         </div>
         <div className="modal-body overflow-y-auto">
