@@ -171,7 +171,7 @@ const realAuthApi = {
     phone: string;
     birthday: string;
     gender: string;
-  } & ProfilePreferences): Promise<AuthResponse['user']> => {
+  }): Promise<AuthResponse['user']> => {
     try {
       const response = await axiosInstance.patch('/user/profile', userData);
       return response.data.user;
@@ -180,7 +180,7 @@ const realAuthApi = {
     }
   },
 
-  updatePreferences: async (preferences: ProfilePreferences): Promise<AuthResponse['user']> => {
+  updatePreferences: async (preferences: Partial<ProfilePreferences>): Promise<AuthResponse['user']> => {
     try {
       const response = await axiosInstance.patch('/user/profile', preferences);
       return response.data.user;

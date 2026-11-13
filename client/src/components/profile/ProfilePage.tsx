@@ -1,13 +1,17 @@
-import { useContext, useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import authApi from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { ColorModeContext } from '../../context/ColorModeContext';
 import { formatDateOnly, parseDateOnly } from '../../utils/date';
 import { formatPhone, normalizePhone } from '../../utils/phone';
 import ProfilePreferences from './ProfilePreferences';
+import type { ProfilePreferences as ProfilePreferenceValues } from '../../types/user';
+
+const getUserFormData = (currentUser: ReturnType<typeof useAuth>['user']) => ({ first_name: currentUser?.first_name || '', last_name: currentUser?.last_name || '', email: currentUser?.email || '', phone: currentUser?.phone || '', birthday: currentUser?.birthday || '', gender: currentUser?.gender || '' });
+const getUserPreferences = (currentUser: ReturnType<typeof useAuth>['user']): ProfilePreferenceValues => ({ faith_importance: currentUser?.faith_importance ?? null, traditional_roles_importance: currentUser?.traditional_roles_importance ?? null, boundaries_importance: currentUser?.boundaries_importance ?? null, looks_importance: currentUser?.looks_importance ?? null, wants_kids: currentUser?.wants_kids ?? null, age_gap: currentUser?.age_gap ?? null });
 
 const ProfilePage = () => {
-  const { user, refreshUser, logout } = useAuth();
+  const { user, refreshUser, updateUser, logout } = useAuth();
   const { mode, toggleColorMode } = useContext(ColorModeContext);
   const [dashboard, setDashboard] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -23,33 +27,22 @@ const ProfilePage = () => {
     phone: '',
     birthday: '',
     gender: '',
-    faith_importance: null as number | null,
-    traditional_roles_importance: null as number | null,
-    boundaries_importance: null as number | null,
-    looks_importance: null as number | null,
-    wants_kids: null as number | null,
-    age_gap: null as number | null,
   });
-
-  const getUserFormData = (currentUser: typeof user) => ({
-    first_name: currentUser?.first_name || '',
-    last_name: currentUser?.last_name || '',
-    email: currentUser?.email || '',
-    phone: currentUser?.phone || '',
-    birthday: currentUser?.birthday || '',
-    gender: currentUser?.gender || '',
-    faith_importance: currentUser?.faith_importance ?? null,
-    traditional_roles_importance: currentUser?.traditional_roles_importance ?? null,
-    boundaries_importance: currentUser?.boundaries_importance ?? null,
-    looks_importance: currentUser?.looks_importance ?? null,
-    wants_kids: currentUser?.wants_kids ?? null,
-    age_gap: currentUser?.age_gap ?? null,
-  });
+  const [preferenceValues, setPreferenceValues] = useState<ProfilePreferenceValues>({ faith_importance: null, traditional_roles_importance: null, boundaries_importance: null, looks_importance: null, wants_kids: null, age_gap: null });
+  const [savingPreferences, setSavingPreferences] = useState<Partial<Record<keyof ProfilePreferenceValues, boolean>>>({});
+  const [savedPreferences, setSavedPreferences] = useState<Partial<Record<keyof ProfilePreferenceValues, number>>>({});
+  const preferenceSaveTimeouts = useRef<Partial<Record<keyof ProfilePreferenceValues, number>>>({});
+  const initializedUserId = useRef<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
+    if (initializedUserId.current === user.id) return;
+    initializedUserId.current = user.id;
     setFormData(getUserFormData(user));
+    setPreferenceValues(getUserPreferences(user));
   }, [user]);
+
+  useEffect(() => () => Object.values(preferenceSaveTimeouts.current).forEach((timeout) => timeout && window.clearTimeout(timeout)), []);
 
   useEffect(() => {
     if (!user || (user.role_id !== 2 && user.role_id !== 3)) {
@@ -141,21 +134,16 @@ const ProfilePage = () => {
       setError(null);
       setMessage(null);
 
-      await authApi.updateProfile({
+      const updatedUser = await authApi.updateProfile({
         first_name: formData.first_name,
         last_name: formData.last_name,
         email: formData.email,
         phone: formData.phone,
         birthday: formData.birthday,
         gender: formData.gender,
-        faith_importance: formData.faith_importance,
-        traditional_roles_importance: formData.traditional_roles_importance,
-        boundaries_importance: formData.boundaries_importance,
-        looks_importance: formData.looks_importance,
-        wants_kids: formData.wants_kids,
-        age_gap: formData.age_gap,
       });
 
+      setFormData(getUserFormData(updatedUser));
       await refreshUser();
       setMessage('Profile updated.');
       setIsEditing(false);
@@ -163,6 +151,27 @@ const ProfilePage = () => {
       setError(submitError.message || 'Failed to update profile.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePreferenceChange = async (field: keyof ProfilePreferenceValues, nextValue: number | null, clickedValue: number) => {
+    if (savingPreferences[field]) return;
+    const currentValue = preferenceValues[field];
+    if (nextValue === currentValue) return;
+
+    setSavingPreferences((prev) => ({ ...prev, [field]: true }));
+    setError(null);
+    try {
+      await authApi.updatePreferences({ [field]: nextValue });
+      setPreferenceValues((prev) => ({ ...prev, [field]: nextValue }));
+      updateUser({ [field]: nextValue });
+      setSavedPreferences((prev) => ({ ...prev, [field]: clickedValue }));
+      if (preferenceSaveTimeouts.current[field]) window.clearTimeout(preferenceSaveTimeouts.current[field]);
+      preferenceSaveTimeouts.current[field] = window.setTimeout(() => setSavedPreferences((prev) => { const next = { ...prev }; delete next[field]; return next; }), 1000);
+    } catch (preferenceError: any) {
+      setError(preferenceError.message || 'Failed to update profile preference.');
+    } finally {
+      setSavingPreferences((prev) => ({ ...prev, [field]: false }));
     }
   };
 
@@ -228,13 +237,7 @@ const ProfilePage = () => {
       formData.last_name !== (user.last_name || '') ||
       formData.email !== (user.email || '') ||
       formData.phone !== (user.phone || '') ||
-      formData.birthday !== (user.birthday || '') ||
-      formData.faith_importance !== (user.faith_importance ?? null) ||
-      formData.traditional_roles_importance !== (user.traditional_roles_importance ?? null) ||
-      formData.boundaries_importance !== (user.boundaries_importance ?? null) ||
-      formData.looks_importance !== (user.looks_importance ?? null) ||
-      formData.wants_kids !== (user.wants_kids ?? null) ||
-      formData.age_gap !== (user.age_gap ?? null)
+      formData.birthday !== (user.birthday || '')
     );
   }, [formData, user]);
 
@@ -324,7 +327,7 @@ const ProfilePage = () => {
             <>
               <hr />
               <div>
-                <ProfilePreferences values={formData} editable={isEditing} onChange={(field, value) => setFormData((prev) => ({ ...prev, [field]: value }))} />
+                <ProfilePreferences values={preferenceValues} editable savingFields={savingPreferences} savedFields={savedPreferences} onChange={handlePreferenceChange} />
               </div>
             </>
           )}

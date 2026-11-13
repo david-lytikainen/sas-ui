@@ -14,6 +14,7 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   setError: (error: string | null) => void;
+  updateUser: (updates: Partial<User>) => void;
   login: (email: string, password: string) => Promise<void>;
   register: (userData: {
     email: string;
@@ -63,6 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user) setUser(user);
     localStorage.setItem('token', token);
   };
+  const updateUser = (updates: Partial<User>) => setUser((currentUser) => currentUser ? { ...currentUser, ...updates } : currentUser);
 
   const togglePersistLogin = () => {
     const newValue = !persistLogin;
@@ -157,6 +159,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         error,
         setError,
+        updateUser,
         login,
         register,
         refreshUser,

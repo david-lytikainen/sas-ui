@@ -2,8 +2,10 @@ import type { ProfilePreferences as ProfilePreferenceValues } from '../../types/
 
 interface ProfilePreferencesProps {
   values: ProfilePreferenceValues;
-  onChange?: (field: keyof ProfilePreferenceValues, value: number | null) => void;
+  onChange?: (field: keyof ProfilePreferenceValues, value: number | null, clickedValue: number) => void;
   editable?: boolean;
+  savingFields?: Partial<Record<keyof ProfilePreferenceValues, boolean>>;
+  savedFields?: Partial<Record<keyof ProfilePreferenceValues, number>>;
 }
 
 const importanceOptions = [1, 2, 3, 4, 5].map((value) => ({ label: String(value), value }));
@@ -34,16 +36,19 @@ const questions: Array<{
   },
 ];
 
-const ProfilePreferences = ({ values, onChange, editable = false }: ProfilePreferencesProps) => (
+const ProfilePreferences = ({ values, onChange, editable = false, savingFields = {}, savedFields = {} }: ProfilePreferencesProps) => (
   <div className="d-flex flex-column gap-4">
     {questions.map((question) => (
       <div key={question.field}>
         <p className="fw-semibold mb-2">{question.label}</p>
         <div className="d-flex gap-2" role="group" aria-label={question.label}>
-          {question.options.map((option) => (
-            <button key={option.value} type="button" disabled={!editable} aria-pressed={values[question.field] === option.value} onClick={() => onChange?.(question.field, values[question.field] === option.value ? null : option.value)} className={`btn rounded-pill flex-fill px-1 ${values[question.field] === option.value ? 'btn-primary' : 'btn-outline-secondary'}`} > {option.label} </button>
-          ))}
+          {question.options.map((option) => {
+            const saved = savedFields[question.field] === option.value;
+            const selected = values[question.field] === option.value;
+            return <button key={option.value} type="button" disabled={!editable || Boolean(savingFields[question.field])} aria-label={`${option.label}${saved ? ', saved' : ''}`} aria-pressed={selected} onClick={() => onChange?.(question.field, selected ? null : option.value, option.value)} className={`btn rounded-pill flex-fill px-1 ${saved ? 'btn-outline-success' : selected ? 'btn-primary' : 'btn-outline-secondary'}`} >{saved ? <i className="fa-solid fa-check" aria-hidden="true" /> : option.label}</button>;
+          })}
         </div>
+        {savingFields[question.field] && <p role="status" className="text-body-secondary small mt-1 mb-0">Saving...</p>}
         <div className="d-flex justify-content-between text-body-secondary small px-2">
           <span>{question.leftNote}</span>
           <span>{question.rightNote}</span>
