@@ -32,7 +32,7 @@ const PrivacyPolicy = () => {
               <p className="mb-0"> <strong>Event and registration data:</strong> We store the events you create or join, your registration status, check-in status, schedule participation, and your speed-dating selections and matches for completed events. </p>
             </li>
             <li>
-              <p className="mb-0"> <strong>Payment and payout records:</strong> For paid events, Stripe processes payment details. We store limited payment-related records such as checkout status, amounts, refunds, and connected-account onboarding state. </p>
+              <p className="mb-0"> <strong>Payment and payout records:</strong> For paid events, Stripe processes payment details. We store limited payment-related records such as checkout status, amounts, and connected-account onboarding state. </p>
             </li>
           </ul>
           <p className="mb-0">We do not collect profile photos or in-app direct messages between users.</p>
@@ -62,7 +62,7 @@ const PrivacyPolicy = () => {
               <p className="mb-0">Keep the platform safe – verify age, prevent fake accounts, and investigate abuse reports.</p>
             </li>
             <li>
-              <p className="mb-0"> Operate payments and payouts – support paid event registration, Stripe-connected organizer payouts, refund handling, and payment troubleshooting. </p>
+              <p className="mb-0"> Operate payments and payouts – support paid event registration, Stripe-connected organizer payouts, and payment troubleshooting. </p>
             </li>
           </ol>
         </div>
@@ -74,7 +74,7 @@ const PrivacyPolicy = () => {
               <p className="mb-0"> <strong>Hosting, infrastructure, and email service providers:</strong> To run the app and send messages to you. </p>
             </li>
             <li>
-              <p className="mb-0"> <strong>Stripe and related payment providers:</strong> To process attendee payments, refunds, and organizer payouts. </p>
+              <p className="mb-0"> <strong>Stripe and related payment providers:</strong> To process attendee payments and organizer payouts. Organizers handle any refunds directly through Stripe. </p>
             </li>
             <li>
               <p className="mb-0"> <strong>Law enforcement:</strong> Only when legally required or to protect users. </p>

@@ -371,8 +371,8 @@ const ProfilePage = () => {
                     <tr key={organizer.organizer_id}>
                       <td>{organizer.organizer_email}</td>
                       <td className="text-end">{organizer.event_count}</td>
-                      <td className="text-end">{organizer.tracked_payment_count ? `$${organizer.ticket_sales_after_refunds}` : '—'}</td>
-                      <td className="text-end">{organizer.tracked_payment_count ? `$${organizer.organizer_transfer_after_refunds}` : '—'}</td>
+                      <td className="text-end">{organizer.tracked_payment_count ? `$${organizer.ticket_sales}` : '—'}</td>
+                      <td className="text-end">{organizer.tracked_payment_count ? `$${organizer.organizer_transfer}` : '—'}</td>
                       <td className="text-end">{organizer.tracked_payment_count ? `$${organizer.sas_net_after_stripe}` : '—'}</td>
                     </tr>
                   ))}</tbody>
@@ -418,7 +418,7 @@ const ProfilePage = () => {
                       <div key={`${activity.created_at || activity.event_name}-${index}`} className="border rounded px-3 py-3">
                         <p className="fw-semibold mb-0 small">{activity.event_name}</p>
                         <p className="text-body-secondary mb-0 small"> {activity.attendee_name} • ${activity.amount} </p>
-                        <p className="text-body-secondary mb-0 small"> Payment {activity.payment_status} | Registration {activity.registration_status} {activity.refund_status ? ` | Refund ${activity.refund_status}` : ''} </p>
+                        <p className="text-body-secondary mb-0 small"> Payment {activity.payment_status} | Registration {activity.registration_status} </p>
                       </div>
                     ))}
                   </div>
