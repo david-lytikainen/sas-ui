@@ -307,9 +307,15 @@ const EventList = () => {
 
     // Handle Waitlisted status first
     if (registrationStatus === 'Waitlisted') {
+      const capacity = Number(event.max_capacity);
+      const hasCapacity = (event.registered_attendee_count ?? 0) < capacity;
+      const genderCount = user?.gender === 'Male' ? event.registered_male_count : event.registered_female_count;
+      const genderCapacity = Math.floor(capacity * 0.6);
+      const hasGenderCapacity = !event.enforce_gender_balance || (genderCount ?? 0) < genderCapacity;
       return (
         <div className="d-flex flex-column gap-2 align-items-start w-100">
           <span className={'align-self-start badge rounded-pill text-bg-' + 'warning'.replace('error', 'danger')}>{'Waitlisted'}</span>
+          {event.status === 'Registration Open' && hasCapacity && hasGenderCapacity && <button type="button" onClick={() => handleSignUpClick(event.id)} className="w-100 align-self-start btn btn-primary"> Sign Up </button>}
           <button type="button" onClick={() => handleCancelClick(event.id)} className="align-self-start btn btn-outline-danger btn-sm">
             <span className="me-2">{<i className="fa-solid fa-circle-xmark" aria-hidden="true" />}</span>Leave Waitlist
           </button>

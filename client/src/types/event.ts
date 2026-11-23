@@ -13,6 +13,8 @@ export interface Event {
   price_per_person: string;
   registration_deadline: string;
   registered_attendee_count?: number;
+  registered_male_count?: number;
+  registered_female_count?: number;
   registration?: {
     status: string;
     registration_date?: string;
