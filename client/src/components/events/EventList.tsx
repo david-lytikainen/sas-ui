@@ -629,7 +629,7 @@ const EventList = () => {
         <div className="rounded mb-4 card">
           <div className="p-3 p-sm-4 card-body">
             <h5 className="fw-semibold mb-2">Creating an Event</h5>
-            <p className="text-body-secondary mb-3 small">Attendees will pay through Stripe, so you need an account to collect payments.</p>
+            <p className="text-body-secondary mb-3 small">A Stripe account is needed in order to collect payments from your attendees.</p>
             <h6 className="fw-semibold mb-0">Stripe Setup will require:</h6>
             <ol className="p-0 m-0 ps-4 mb-3">
               <li>Phone number verification</li>
