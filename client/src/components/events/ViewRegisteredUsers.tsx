@@ -34,6 +34,7 @@ const ViewRegisteredUsers = ({ open, event, onClose }: ViewRegisteredUsersProps)
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
   const [filteredRegisteredUsers, setFilteredRegisteredUsers] = useState<RegisteredUser[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showCheckedInUsers, setShowCheckedInUsers] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [checkingInUserId, setCheckingInUserId] = useState<number | null>(null);
   const [userToCheckIn, setUserToCheckIn] = useState<RegisteredUser | null>(null);
@@ -72,6 +73,7 @@ const ViewRegisteredUsers = ({ open, event, onClose }: ViewRegisteredUsersProps)
     const fetchRegisteredUsers = async () => {
       try {
         setSearchTerm('');
+        setShowCheckedInUsers(false);
         setErrorMessage(null);
 
         await loadRegisteredUsers(event);
@@ -132,7 +134,7 @@ const ViewRegisteredUsers = ({ open, event, onClose }: ViewRegisteredUsersProps)
   };
 
   const handleExport = () => {
-    const usersToExport = searchTerm.trim() ? filteredRegisteredUsers : registeredUsers;
+    const usersToExport = searchTerm.trim() || showCheckedInUsers ? visibleRegisteredUsers : registeredUsers;
 
     if (!event || usersToExport.length === 0) {
       setErrorMessage('No registered users available to export');
@@ -157,6 +159,8 @@ const ViewRegisteredUsers = ({ open, event, onClose }: ViewRegisteredUsersProps)
       setErrorMessage('Failed to export registered users');
     }
   };
+
+  const visibleRegisteredUsers = filteredRegisteredUsers.filter((attendee) => (attendee.status === 'Checked In') === showCheckedInUsers);
 
   const handleEmailAttendees = () => {
     if (!event || registeredUsers.length === 0) {
@@ -186,6 +190,9 @@ const ViewRegisteredUsers = ({ open, event, onClose }: ViewRegisteredUsersProps)
         {registeredUsers.length > 0 ? (
           <>
             <div className="mb-3 px-2 px-sm-0">
+              <button type="button" onClick={() => setShowCheckedInUsers((show) => !show)} className={`mb-3 btn rounded-pill ${showCheckedInUsers ? 'btn-primary' : 'btn-outline-secondary'}`}>
+                {showCheckedInUsers ? 'Show not checked in attendees' : 'Show checked in attendees'}
+              </button>
               <div className="my-2 w-100">
                 <label className="d-block">
                   <span className="form-label d-block">{'Search by name'}</span>
@@ -193,7 +200,7 @@ const ViewRegisteredUsers = ({ open, event, onClose }: ViewRegisteredUsersProps)
                 </label>
               </div>
             </div>
-            <p className="text-body-secondary mb-2 px-2 px-sm-0 small"> Showing {filteredRegisteredUsers.length} of {registeredUsers.length} users </p>
+            <p className="text-body-secondary mb-2 px-2 px-sm-0 small"> Showing {visibleRegisteredUsers.length} of {registeredUsers.length} users </p>
             <div className="table-responsive">
               <table className="table table-sm align-middle mb-0">
                 <thead>
@@ -230,7 +237,7 @@ const ViewRegisteredUsers = ({ open, event, onClose }: ViewRegisteredUsersProps)
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRegisteredUsers.map((user) => (
+                  {visibleRegisteredUsers.map((user) => (
                     <tr key={user.id}>
                       {canManage && (
                         <td className="text-center">
