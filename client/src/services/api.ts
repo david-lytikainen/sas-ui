@@ -228,6 +228,8 @@ const realAuthApi = {
 
 interface EventsApi {
   getAll: () => Promise<Event[]>;
+  searchWalkInUsers: (eventId: string, search: string) => Promise<{ id: number; first_name: string; last_name: string; email: string }[]>;
+  addWalkInAttendee: (eventId: string, userId: number) => Promise<{ message: string; first_name: string }>;
   createRegistrationCheckout: (eventId: string) => Promise<{ url: string }>;
   completeRegistrationCheckout: (sessionId: string) => Promise<{ message: string; status?: string }>;
   create: (eventData: Omit<Event, 'id' | 'creator_id' | 'created_at' | 'updated_at' | 'registration_deadline'>) => Promise<Event>;
@@ -297,6 +299,16 @@ interface TimerDurationUpdate {
 const realEventsApi: EventsApi = {
   getAll: async () => {
     const response = await axiosInstance.get('/events');
+    return response.data;
+  },
+
+  searchWalkInUsers: async (eventId, search) => {
+    const response = await axiosInstance.get(`/events/${eventId}/walk-in-users`, { params: { q: search } });
+    return response.data;
+  },
+
+  addWalkInAttendee: async (eventId, userId) => {
+    const response = await axiosInstance.post(`/events/${eventId}/walk-ins`, { user_id: userId });
     return response.data;
   },
 

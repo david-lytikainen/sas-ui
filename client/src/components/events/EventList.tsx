@@ -12,6 +12,7 @@ import MySchedule from './MySchedule';
 import ViewAllSchedules from './ViewAllSchedules';
 import ViewRegisteredUsers from './ViewRegisteredUsers';
 import ViewWaitlistedUsers from './ViewWaitlistedUsers';
+import AddWalkInAttendee from './AddWalkInAttendee';
 import ConfirmDialog from '../common/ConfirmDialog';
 import ProfilePreferences from '../profile/ProfilePreferences';
 import type { ProfilePreferences as ProfilePreferenceValues } from '../../types/user';
@@ -63,6 +64,8 @@ const EventList = () => {
   const [expandedEventControls, setExpandedEventControls] = useState<number | null>(null);
   const [viewRegisteredUsersDialogOpen, setViewRegisteredUsersDialogOpen] = useState(false);
   const [selectedEventForRegisteredUsers, setSelectedEventForRegisteredUsers] = useState<Event | null>(null);
+  const [walkInDialogOpen, setWalkInDialogOpen] = useState(false);
+  const [selectedEventForWalkIn, setSelectedEventForWalkIn] = useState<Event | null>(null);
 
   const [startEventDialogOpen, setStartEventDialogOpen] = useState(false);
   const [selectedEventForStarting, setSelectedEventForStarting] = useState<Event | null>(null);
@@ -315,7 +318,7 @@ const EventList = () => {
       return (
         <div className="d-flex flex-column gap-2 align-items-start w-100">
           <span className={'align-self-start badge rounded-pill text-bg-' + 'warning'.replace('error', 'danger')}>{'Waitlisted'}</span>
-          {event.status === 'Registration Open' && hasCapacity && hasGenderCapacity && <button type="button" onClick={() => handleSignUpClick(event.id)} className="w-100 align-self-start btn btn-primary"> Sign Up </button>}
+          {event.status === 'Registration Open' && (event.walkin_allowed || (hasCapacity && hasGenderCapacity)) && <button type="button" onClick={() => handleSignUpClick(event.id)} className="w-100 align-self-start btn btn-primary"> Sign Up </button>}
           <button type="button" onClick={() => handleCancelClick(event.id)} className="align-self-start btn btn-outline-danger btn-sm">
             <span className="me-2">{<i className="fa-solid fa-circle-xmark" aria-hidden="true" />}</span>Leave Waitlist
           </button>
@@ -387,6 +390,7 @@ const EventList = () => {
               {event.status === 'In Progress' ? 'Re-generate Schedules' : 'Generate Schedules'}
             </button>
             {eventToEdit?.id !== event.id && <button type="button" onClick={() => handleOpenEditEventDialog(event)} className="rounded mt-1 btn btn-outline-primary btn-sm w-100"><span className="me-2"><i className="fa-solid fa-pen" aria-hidden="true" /></span>Edit Event</button>}
+            {Number(event.price_per_person) > 0 && event.status === 'Registration Open' && <button type="button" onClick={() => { setSelectedEventForWalkIn(event); setWalkInDialogOpen(true); }} className="rounded mt-1 btn btn-outline-primary btn-sm w-100"><span className="me-2"><i className="fa-solid fa-user-plus" aria-hidden="true" /></span>Add Walk-in Attendee</button>}
           </div>
         </div>
       </>
@@ -704,6 +708,7 @@ const EventList = () => {
         <ConfirmDialog open={signUpDialogOpen} title="Sign Up for Event" confirmLabel="Continue to Checkout" onCancel={() => setSignUpDialogOpen(false)} onConfirm={handleSignUpConfirm} > Are you sure you want to sign up for this event? </ConfirmDialog>
         <ConfirmDialog open={cancelDialogOpen} title="Cancel Event Registration" confirmLabel="Yes, Cancel Registration" cancelLabel="No" confirmColor="error" onCancel={() => setCancelDialogOpen(false)} onConfirm={handleCancelConfirm} > Are you sure you want to cancel your registration? Contact your event organizer for refund questions. </ConfirmDialog>
         <ViewRegisteredUsers open={viewRegisteredUsersDialogOpen} event={selectedEventForRegisteredUsers} onClose={() => setViewRegisteredUsersDialogOpen(false)} />
+        <AddWalkInAttendee open={walkInDialogOpen} event={selectedEventForWalkIn} onClose={() => setWalkInDialogOpen(false)} />
         {/* Generate Schedules Dialog */}
         <ConfirmDialog open={!!eventToRegenerate} title="Re-generate Schedules" confirmLabel="Continue" confirmColor="error" onCancel={() => setEventToRegenerate(null)} onConfirm={handleRegenerateConfirm} >
           Are you sure you want to Re-generate Schedules?
