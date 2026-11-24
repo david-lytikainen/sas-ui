@@ -15,6 +15,7 @@
 - Keep imports on one line where practical. Preserve the repository's compact JSX style; if `sx` is used, normally keep it on one line.
 - Keep interactive targets usable on touch screens; avoid movement or hover-only feedback on mobile. Preserve labels, keyboard behavior, visible focus, and sufficient contrast.
 - Date pickers should guide users through year, month, then day selection. Follow the existing UI patterns unless a design question is needed.
+- dont ever write any "aria" things on the UI
 
 ## Product and API behavior
 

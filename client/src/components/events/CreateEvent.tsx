@@ -117,25 +117,25 @@ const CreateEvent = ({ createdEventCount, onCreated, onError }: CreateEventProps
   return (
     <div className="rounded mb-4 card">
       <div className="p-3 p-sm-4 card-body">
-        <div className="d-flex justify-content-between align-items-center mb-2 mb-sm-3 flex-wrap gap-2">
-          <div className="my-2 w-100">
+        <div className="d-flex">
+          <div className="w-100">
             <label className="d-block">
               <span className="form-label d-block">{'Event Name'}</span>
               <input className="form-control" name="name" value={createForm.name} onChange={handleChange} required />
             </label>
           </div>
         </div>
-        <div className="mb-3 mb-sm-3">
-          <div className="my-2 w-100">
+        <div>
+          <div className="mt-2 w-100">
             <label className="d-block">
               <span className="form-label d-block">{'Description'}</span>
               <textarea className="form-control" name="description" value={createForm.description} onChange={handleChange} required placeholder="Description" rows={4} />
             </label>
           </div>
         </div>
-        <div className="row g-3">
-          <div className="col-12">
-            <div className="my-2 w-100">
+        <div className="row">
+          <div className="col-12 mt-2">
+            <div className="w-100">
               <label className="d-block">
                 <span className="form-label d-block">{'Start Date and Time'}</span>
                 <input className="form-control" name="starts_at" type="datetime-local" value={createForm.starts_at} onChange={handleDateChange} required />
@@ -143,17 +143,17 @@ const CreateEvent = ({ createdEventCount, onCreated, onError }: CreateEventProps
             </div>
           </div>
         </div>
-        <div className="mt-1 row g-3">
+        <div className="mt-2">
           <div className="col-12 col-sm-6">
-            <div className="my-2 w-100">
+            <div className="w-100">
               <label className="d-block">
                 <span className="form-label d-block">{'Max Capacity'}</span>
                 <input className="form-control" name="max_capacity" type="number" value={createForm.max_capacity} onChange={handleChange} required min={1} />
               </label>
             </div>
           </div>
-          <div className="col-12 col-sm-6">
-            <div className="my-2 w-100">
+          <div className="col-12 col-sm-6 mt-2">
+            <div className="w-100">
               <label className="d-block">
                 <span className="form-label d-block">{'Price Per Person'}</span>
                 <span className="input-group">
@@ -164,16 +164,16 @@ const CreateEvent = ({ createdEventCount, onCreated, onError }: CreateEventProps
               <div className="form-text"> {attendeePrice > 0 ? `Platform fee: $${platformFee.toFixed(2)} (${isIntroEvent ? '$1.00 + 5%' : '$1.50 + 8%'})` : `Platform fee: ${isIntroEvent ? '$1.00 + 5%' : '$1.50 + 8%'}.`} </div>
             </div>
           </div>
-          <div className="col-12">
-            <div className="my-2 w-100">
+          <div className="col-12 mt-2">
+            <div className="w-100">
               <label className="d-block">
                 <span className="form-label d-block">{'Address'}</span>
                 <input className="form-control" name="address" value={createForm.address} onChange={handleChange} required />
               </label>
             </div>
           </div>
-          <div className="col-12">
-            <label className="form-check my-2">
+          <div className="col-12 mt-3">
+            <label className="form-check">
               {
                 <input type="checkbox" checked={createForm.enforce_gender_balance} onChange={handleCheckboxChange} name="enforce_gender_balance" className="form-check-input" />
               }
@@ -183,8 +183,8 @@ const CreateEvent = ({ createdEventCount, onCreated, onError }: CreateEventProps
           </div>
         </div>
       </div>
-      <div className="p-3 p-sm-3 pt-2 d-block card-footer d-flex flex-wrap gap-2">
-        <button type="button" onClick={handleCreateEvent} disabled={isCreateDisabled} className="py-3 btn btn-primary w-100"> Create Event </button>
+      <div className="p-2 d-block card-footer d-flex flex-wrap">
+        <button type="button" onClick={handleCreateEvent} disabled={isCreateDisabled} className="py-2 btn btn-primary w-100"> Create Event </button>
       </div>
     </div>
   );

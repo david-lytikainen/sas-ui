@@ -27,6 +27,7 @@
 .btn-primary { --bs-btn-bg: var(--bs-primary); --bs-btn-color: var(--sas-primary-contrast); --bs-btn-disabled-bg: var(--bs-primary); --bs-btn-disabled-color: var(--sas-primary-contrast); }
 .btn-outline-primary { --bs-btn-color: var(--bs-primary); --bs-btn-disabled-color: var(--bs-primary); }
 .card, .modal-content { --bs-card-bg: var(--bs-tertiary-bg); --bs-modal-bg: var(--bs-tertiary-bg); }
+.modal .btn-link { text-decoration: none; }
 .content-narrow { max-width: 600px; }
 .content-medium { max-width: 900px; }
 .form-control, .form-select { min-height: 44px; }

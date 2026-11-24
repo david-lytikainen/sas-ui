@@ -15,6 +15,7 @@ export interface Event {
   registered_attendee_count?: number;
   registered_male_count?: number;
   registered_female_count?: number;
+  waitlist_count?: number;
   walkin_allowed?: boolean;
   registration?: {
     status: string;

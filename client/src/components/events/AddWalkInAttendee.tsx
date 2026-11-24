@@ -77,9 +77,15 @@ const AddWalkInAttendee = ({ open, event, onClose }: AddWalkInAttendeeProps) => 
       <div className="modal-body overflow-y-auto">
         {errorMessage && <div role="alert" className="mb-3 alert alert-danger">{errorMessage}</div>}
         {addedFirstName ? (
-          <div className="text-center py-3">
-            <i className="fa-solid fa-circle-check text-success fs-2 mb-3" aria-hidden="true" />
-            <p className="mb-0">Tell {addedFirstName} to refresh their page. They should now be able to sign up and pay with Stripe.</p>
+          <div className="py-1">
+            <div className="w-100 text-center">
+              <i className="fa-solid fa-circle-check text-success fs-2 mb-1" />
+            </div>
+            <ol>
+              <li>Tell the attendee to refresh their page</li>
+              <li>Have them Sign up for the event</li>
+              <li>Remember to check them in!</li>
+            </ol>
           </div>
         ) : (
           <>

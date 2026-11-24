@@ -358,11 +358,11 @@ const EventList = () => {
     if (!canManageEvent(event)) return null;
     const isExpanded = expandedEventControls === event.id;
 
-    return (
-      <>
-        <button type="button" aria-expanded={isExpanded} onClick={() => setExpandedEventControls(isExpanded ? null : event.id)} className="btn btn-link text-body text-decoration-none text-start w-100 mt-2 pt-2 d-flex align-items-center justify-content-between" >
+    return eventToEdit?.id !== event.id ? (
+        <>
+        <button type="button" onClick={() => setExpandedEventControls(isExpanded ? null : event.id)} className="btn btn-link text-body text-decoration-none text-start w-100 mt-2 p-0 d-flex align-items-center justify-content-between" >
           <div className="d-flex align-items-center gap-2">
-            <i className="fa-solid fa-gear text-body-secondary" aria-hidden="true" />
+            <i className="fa-solid fa-gear text-body-secondary" style={{fontSize: "13px"}} />
             <p className="text-body-secondary mb-0 small">Event Controls</p>
           </div>
           {isExpanded ? (
@@ -374,27 +374,16 @@ const EventList = () => {
 
         <div hidden={!isExpanded}>
           <div className="mt-2 d-flex flex-column gap-2">
-            <button type="button" onClick={() => { setSelectedEventForRegisteredUsers(event); setViewRegisteredUsersDialogOpen(true); }} className="rounded btn btn-outline-primary btn-sm w-100" >
-              <span className="me-2">{<i className="fa-solid fa-list" aria-hidden="true" />}</span>Check In Users
-            </button>
-            <button type="button" onClick={() => { setSelectedEventForWaitlistUsers(event); setViewWaitlistDialogOpen(true); }} className="rounded btn btn-outline-primary btn-sm w-100" >
-              <span className="me-2">{<i className="fa-solid fa-list" aria-hidden="true" />}</span>View Waitlist
-            </button>
-            {(event.status === 'In Progress' || event.status === 'Completed') && (
-              <button type="button" onClick={() => { setSelectedEventForAllSchedules(event); setViewAllSchedulesDialogOpen(true); }} className="rounded btn btn-outline-primary btn-sm w-100" >
-                <span className="me-2">{<i className="fa-solid fa-eye" aria-hidden="true" />}</span>View All Schedules
-              </button>
-            )}
-            <button type="button" onClick={() => (event.status === 'In Progress' ? setEventToRegenerate(event) : handleStartEventClick(event))} disabled={event.status === 'Completed'} className="rounded btn btn-outline-primary btn-sm w-100" >
-              <span className="me-2">{<i className="fa-solid fa-play" aria-hidden="true" />}</span>
-              {event.status === 'In Progress' ? 'Re-generate Schedules' : 'Generate Schedules'}
-            </button>
-            {eventToEdit?.id !== event.id && <button type="button" onClick={() => handleOpenEditEventDialog(event)} className="rounded mt-1 btn btn-outline-primary btn-sm w-100"><span className="me-2"><i className="fa-solid fa-pen" aria-hidden="true" /></span>Edit Event</button>}
-            {Number(event.price_per_person) > 0 && event.status === 'Registration Open' && <button type="button" onClick={() => { setSelectedEventForWalkIn(event); setWalkInDialogOpen(true); }} className="rounded mt-1 btn btn-outline-primary btn-sm w-100"><span className="me-2"><i className="fa-solid fa-user-plus" aria-hidden="true" /></span>Add Walk-in Attendee</button>}
+            <button type="button" onClick={() => { setSelectedEventForRegisteredUsers(event); setViewRegisteredUsersDialogOpen(true); }} className="rounded btn btn-outline-primary btn-sm w-100 mt-1 py-1" ><span className="me-2">{<i className="fa-solid fa-square-check"></i>}</span>Check In Attendees</button>
+            {Number(event.price_per_person) > 0 && event.status === 'Registration Open' && <button type="button" onClick={() => { setSelectedEventForWalkIn(event); setWalkInDialogOpen(true); }} className="rounded btn btn-outline-primary btn-sm w-100 py-1"><span className="me-2"><i className="fa-solid fa-user-plus" /></span>Add Walk-in Attendee</button>}
+            {!!event.waitlist_count && <button type="button" onClick={() => { setSelectedEventForWaitlistUsers(event); setViewWaitlistDialogOpen(true); }} className="rounded btn btn-outline-primary btn-sm w-100 py-1" ><span className="me-2">{<i className="fa-solid fa-list" aria-hidden="true" />}</span>View Waitlist</button>}
+            {(event.status === 'In Progress' || event.status === 'Completed') && (<button type="button" onClick={() => { setSelectedEventForAllSchedules(event); setViewAllSchedulesDialogOpen(true); }} className="rounded btn btn-outline-primary btn-sm w-100 py-1" ><span className="me-2">{<i className="fa-solid fa-eye" aria-hidden="true" />}</span>View All Pairings</button>)}
+            <button type="button" onClick={() => (event.status === 'In Progress' ? setEventToRegenerate(event) : handleStartEventClick(event))} disabled={event.status === 'Completed'} className="rounded btn btn-outline-primary btn-sm w-100 py-1" ><span className="me-2">{<i className="fa-solid fa-play" aria-hidden="true" />}</span>{event.status === 'In Progress' ? 'Re-generate Pairings' : 'Generate Pairings'}</button>
+            {eventToEdit?.id !== event.id && <button type="button" onClick={() => handleOpenEditEventDialog(event)} className="rounded btn btn-outline-primary btn-sm w-100 py-1"><span className="me-2"><i className="fa-solid fa-pen" aria-hidden="true" /></span>Edit Event</button>}
           </div>
         </div>
       </>
-    );
+    ) : null;
   };
 
   // Event status update functions
@@ -408,7 +397,7 @@ const EventList = () => {
       const femaleCount = checkedInAttendees.filter((attendee) => attendee.gender === 'Female').length;
 
       if (maleCount === 0 || femaleCount === 0) {
-        setErrorMessage('Schedule generation requires at least one checked-in male and one checked-in female.');
+        setErrorMessage('Pairings generation requires at least one checked-in male and one checked-in female.');
         return;
       }
 
@@ -596,14 +585,14 @@ const EventList = () => {
                     <label className="col-12 col-sm-6"><span className="form-label small">Address</span><input className="form-control" name="address" value={editEventForm.address || ''} onChange={handleEditEventFormChange} /></label>
                     <label className="col-6 col-sm-6"><span className="form-label small">Max Capacity</span><input className="form-control" name="max_capacity" type="number" value={editEventForm.max_capacity || ''} onChange={handleEditEventFormChange} min={0} /></label>
                     <label className="col-6 col-sm-6"><span className="form-label small">Price Per Person</span><input className="form-control" name="price_per_person" type="number" value={editEventForm.price_per_person || '0'} onChange={handleEditEventFormChange} min={0} step="0.01" /></label>
-                    <label className="col-12 form-check ms-2"><input type="checkbox" checked={Boolean(editEventForm.enforce_gender_balance)} onChange={(e) => setEditEventForm((prev) => ({ ...prev, enforce_gender_balance: e.target.checked }))} className="form-check-input" /><span className="form-check-label">Enforce 60/40 gender balance</span></label>
+                    <label className="col-12 form-check ms-1"><input type="checkbox" checked={Boolean(editEventForm.enforce_gender_balance)} onChange={(e) => setEditEventForm((prev) => ({ ...prev, enforce_gender_balance: e.target.checked }))} className="form-check-input" /><span className="form-check-label ms-1">Enforce 60/40 gender balance</span></label>
                   </div>
                 ) : (
                   <>
                     <p className="text-body-secondary d-flex align-items-center gap-1 mb-0 small"><i className="fa-solid fa-calendar-days" aria-hidden="true" />{formatUTCToLocal(event.starts_at)}</p>
                     <p className="text-body-secondary d-flex align-items-center gap-1 mb-0 small"><i className="fa-solid fa-location-dot" aria-hidden="true" />{event.address}</p>
-                    {typeof event.registered_attendee_count === 'number' && event.max_capacity && <p className="text-body-secondary d-flex align-items-center gap-1 mb-0 small"><i className="fa-solid fa-users" aria-hidden="true" />{`${event.registered_attendee_count}/${event.max_capacity} spots filled`}</p>}
-                    <p className="text-body-secondary d-flex align-items-center gap-1 mb-0 small"><i className="fa-solid fa-dollar-sign" aria-hidden="true" />${parseFloat(event.price_per_person).toFixed(2)} per person</p>
+                    {typeof event.registered_attendee_count === 'number' && event.max_capacity && <p className="text-body-secondary d-flex align-items-center gap-1 mb-0 small"><i className="fa-solid fa-user-group"></i>{`${event.registered_attendee_count}/${event.max_capacity} spots filled`}</p>}
+                    <p className="text-body-secondary d-flex align-items-center gap-1 mb-0 small"><i className="fa-solid fa-dollar-sign" aria-hidden="true" />{parseFloat(event.price_per_person).toFixed(2)} per person</p>
                   </>
                 )}
               </div>
@@ -709,18 +698,18 @@ const EventList = () => {
         <ConfirmDialog open={cancelDialogOpen} title="Cancel Event Registration" confirmLabel="Yes, Cancel Registration" cancelLabel="No" confirmColor="error" onCancel={() => setCancelDialogOpen(false)} onConfirm={handleCancelConfirm} > Are you sure you want to cancel your registration? Contact your event organizer for refund questions. </ConfirmDialog>
         <ViewRegisteredUsers open={viewRegisteredUsersDialogOpen} event={selectedEventForRegisteredUsers} onClose={() => setViewRegisteredUsersDialogOpen(false)} />
         <AddWalkInAttendee open={walkInDialogOpen} event={selectedEventForWalkIn} onClose={() => setWalkInDialogOpen(false)} />
-        {/* Generate Schedules Dialog */}
-        <ConfirmDialog open={!!eventToRegenerate} title="Re-generate Schedules" confirmLabel="Continue" confirmColor="error" onCancel={() => setEventToRegenerate(null)} onConfirm={handleRegenerateConfirm} >
-          Are you sure you want to Re-generate Schedules?
+        {/* Generate Pairings Dialog */}
+        <ConfirmDialog open={!!eventToRegenerate} title="Re-generate Pairings" confirmLabel="Continue" confirmColor="error" onCancel={() => setEventToRegenerate(null)} onConfirm={handleRegenerateConfirm} >
+          Are you sure you want to Re-generate Pairings?
           <p className="mt-2 mb-0"> This will lose <strong>all</strong> current progress and re-generate each attendee&apos;s schedule. </p>
         </ConfirmDialog>
-        <ConfirmDialog open={checkedInConfirmationOpen} title="Generate Schedules" confirmLabel="Next" cancelLabel="Cancel" onCancel={() => setCheckedInConfirmationOpen(false)} onConfirm={handleCheckedInConfirmation} >
+        <ConfirmDialog open={checkedInConfirmationOpen} title="Generate Pairings" confirmLabel="Next" cancelLabel="Cancel" onCancel={() => setCheckedInConfirmationOpen(false)} onConfirm={handleCheckedInConfirmation} >
           <p className="mt-2 fw-bold mb-0">{checkedInAttendeeCount} people are currently Checked in</p>
           <p className="mt-2 mb-0">Please ask all Attendees to see if they are Checked in</p>
-          <p className="mb-0">Only Checked in attendees will be included in the schedule generation</p>
+          <p className="mb-0">Only Checked in attendees will be included in the pairings generation</p>
         </ConfirmDialog>
         <Modal onClose={() => setIsTableConfigOpen(false)} size="sm" open={isTableConfigOpen}>
-          <div className="modal-header fw-semibold">Generate Schedules</div>
+          <div className="modal-header fw-semibold">Generate Pairings</div>
           <div className="modal-body overflow-y-auto">
             <div>Please specify how many tables and rounds you want for this event.</div>
             <div className="mt-3 mb-3">
@@ -744,8 +733,8 @@ const EventList = () => {
           </div>
         </Modal>
         {/* Start Event Confirmation Dialog */}
-        <ConfirmDialog open={startEventDialogOpen} title="Generate Schedules" confirmLabel="Generate Schedules" confirmColor="success" onCancel={() => setStartEventDialogOpen(false)} onConfirm={handleStartEvent} >
-          Are you sure you want to generate schedules?
+        <ConfirmDialog open={startEventDialogOpen} title="Generate Pairings" confirmLabel="Generate Pairings" confirmColor="success" onCancel={() => setStartEventDialogOpen(false)} onConfirm={handleStartEvent} >
+          Are you sure you want to generate pairings?
           <p className="mt-2 fw-bold mb-0"> This will use {numTables} tables and {numRounds} rounds. </p>
         </ConfirmDialog>
         <ViewAllSchedules open={viewAllSchedulesDialogOpen} event={selectedEventForAllSchedules} onClose={() => setViewAllSchedulesDialogOpen(false)} />
