@@ -190,17 +190,19 @@ const ViewRegisteredUsers = ({ open, event, onClose }: ViewRegisteredUsersProps)
         {registeredUsers.length > 0 ? (
           <>
             <div className="mb-3 px-2 px-sm-0">
-              <button type="button" onClick={() => setShowCheckedInUsers((show) => !show)} className={`mb-3 btn rounded-pill ${showCheckedInUsers ? 'btn-primary' : 'btn-outline-secondary'}`}>
-                {showCheckedInUsers ? 'Show not checked in attendees' : 'Show checked in attendees'}
-              </button>
               <div className="my-2 w-100">
                 <label className="d-block">
-                  <span className="form-label d-block">{'Search by name'}</span>
                   <input className="form-control" placeholder="Search by name" value={searchTerm} onChange={handleSearchChange} />
                 </label>
               </div>
             </div>
-            <p className="text-body-secondary mb-2 px-2 px-sm-0 small"> Showing {visibleRegisteredUsers.length} of {registeredUsers.length} users </p>
+            <div className="d-flex align-items-center mb-1">
+              <p className="text-body-secondary small mb-0"> Showing {visibleRegisteredUsers.length} of {registeredUsers.length} users </p>
+              <button type="button" onClick={() => setShowCheckedInUsers((show) => !show)} className={`btn ms-2 rounded-pill ${showCheckedInUsers ? 'btn-primary' : 'btn-outline-secondary'}`}>
+                Show checked in attendees
+              </button>
+            </div>
+            
             <div className="table-responsive">
               <table className="table table-sm align-middle mb-0">
                 <thead>
@@ -228,12 +230,6 @@ const ViewRegisteredUsers = ({ open, event, onClose }: ViewRegisteredUsersProps)
                     <th className="text-center">
                       <strong>Age</strong>
                     </th>
-                    <th>
-                      <strong>Birthday</strong>
-                    </th>
-                    <th>
-                      <strong>Status</strong>
-                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -252,10 +248,6 @@ const ViewRegisteredUsers = ({ open, event, onClose }: ViewRegisteredUsersProps)
                       <td>{user.registration_date ? formatTableDateTime(user.registration_date) : 'N/A'}</td>
                       <td>{user.gender}</td>
                       <td className="text-center">{user.age}</td>
-                      <td>{user.birthday ? formatUTCToLocal(user.birthday, false) : 'N/A'}</td>
-                      <td>
-                        <span className={ 'badge rounded-pill text-bg-' + (user.status === 'Checked In' ? 'success' : 'primary').replace('error', 'danger') } > {user.status} </span>
-                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -74,7 +74,7 @@ const EventList = () => {
   const [selectedEventForAllSchedules, setSelectedEventForAllSchedules] = useState<Event | null>(null);
 
   const [numTables, setNumTables] = useState<number>(10);
-  const [numRounds, setNumRounds] = useState<number>(10);
+  const [numRounds, setNumRounds] = useState<number>(15);
   const [isTableConfigOpen, setIsTableConfigOpen] = useState<boolean>(false);
   const [checkedInConfirmationOpen, setCheckedInConfirmationOpen] = useState(false);
   const [checkedInAttendeeCount, setCheckedInAttendeeCount] = useState(0);
@@ -379,7 +379,6 @@ const EventList = () => {
             {!!event.waitlist_count && <button type="button" onClick={() => { setSelectedEventForWaitlistUsers(event); setViewWaitlistDialogOpen(true); }} className="rounded btn btn-outline-primary btn-sm w-100 py-1" ><span className="me-2">{<i className="fa-solid fa-list" aria-hidden="true" />}</span>View Waitlist</button>}
             {(event.status === 'In Progress' || event.status === 'Completed') && (<button type="button" onClick={() => { setSelectedEventForAllSchedules(event); setViewAllSchedulesDialogOpen(true); }} className="rounded btn btn-outline-primary btn-sm w-100 py-1" ><span className="me-2">{<i className="fa-solid fa-eye" aria-hidden="true" />}</span>View All Pairings</button>)}
             <button type="button" onClick={() => (event.status === 'In Progress' ? setEventToRegenerate(event) : handleStartEventClick(event))} disabled={event.status === 'Completed'} className="rounded btn btn-outline-primary btn-sm w-100 py-1" ><span className="me-2">{<i className="fa-solid fa-play" aria-hidden="true" />}</span>{event.status === 'In Progress' ? 'Re-generate Pairings' : 'Generate Pairings'}</button>
-            {eventToEdit?.id !== event.id && <button type="button" onClick={() => handleOpenEditEventDialog(event)} className="rounded btn btn-outline-primary btn-sm w-100 py-1"><span className="me-2"><i className="fa-solid fa-pen" aria-hidden="true" /></span>Edit Event</button>}
           </div>
         </div>
       </>
@@ -389,7 +388,7 @@ const EventList = () => {
   // Event status update functions
   const handleStartEventClick = async (event: Event) => {
     setSelectedEventForStarting(event);
-    setNumRounds(10);
+    setNumRounds(15);
     try {
       const response = await eventsApi.getEventAttendees(event.id.toString());
       const checkedInAttendees = response.data.filter((attendee) => attendee.status === 'Checked In');
@@ -523,36 +522,35 @@ const EventList = () => {
       <div key={event.id} className="col-12">
         <div className="rounded card">
           <div className="p-3 p-sm-4 card-body">
-            <div className="d-flex justify-content-between align-items-start gap-2 mb-2 mb-sm-3">
+            <div className="d-flex justify-content-between align-items-start mb-2">
               {isEditing ? (
-                <label className="flex-grow-1">
-                  <span className="form-label small">Event Name</span>
-                  <input className="form-control" name="name" value={editEventForm.name || ''} onChange={handleEditEventFormChange} required />
-                </label>
+                <>
+                  <label className="flex-grow-1">
+                    <span className="form-label small">Event Name</span>
+                    <input className="form-control" name="name" value={editEventForm.name || ''} onChange={handleEditEventFormChange} required />
+                  </label>
+                  <div className="col text-end">
+                    <button type="button" onClick={handleCancelEditEvent} className="border rounded p-2 btn btn-outline-secondary" >
+                      <i className="fa-solid fa-xmark" aria-hidden="true" />
+                    </button>
+                    <button type="button" onClick={handleUpdateEvent} disabled={editEventSaving} className="border rounded p-2 btn btn-outline-secondary" >
+                      <i className="fa-solid fa-check" aria-hidden="true" />
+                    </button>
+                  </div>
+                </>
               ) : (
-                <h2 className="h4 fw-semibold text-break mb-0">{event.name}</h2>
+                <div className="d-flex align-items-center w-100">
+                  <h2 className="h4 fw-semibold m-0">{event.name}</h2>
+                  {canManageEvent(event) && (
+                    <button className="border rounded btn ms-auto p-2 btn-outline-secondary" onClick={() => handleOpenEditEventDialog(event)}>
+                      <i className="fa-solid fa-pen" />
+                    </button>
+                  )}
+                </div>
               )}
-              <div className="d-flex align-items-center gap-2 flex-shrink-0">
-                {isRegisteredForEvent(event.id) &&
-                  event.registration?.status !== 'Waitlisted' &&
-                  (event.registration?.status === 'Checked In' ? (
-                    <span className={'badge rounded-pill text-bg-' + 'success'.replace('error', 'danger')}>
-                      {<i className="fa-solid fa-circle-check" aria-hidden="true" />}
-                      {'Checked In'}
-                    </span>
-                  ) : (
-                    <span className={'badge rounded-pill text-bg-' + 'primary'.replace('error', 'danger')}>{'Registered'}</span>
-                  ))}
-                {isEditing && (
-                  <>
-                    <button type="button" aria-label="Save event changes" title="Save changes" disabled={editEventSaving} onClick={handleUpdateEvent} className="btn btn-success btn-sm"><i className="fa-solid fa-check" aria-hidden="true" /></button>
-                    <button type="button" aria-label="Cancel event editing" title="Cancel" disabled={editEventSaving} onClick={handleCancelEditEvent} className="btn btn-outline-secondary btn-sm"><i className="fa-solid fa-xmark" aria-hidden="true" /></button>
-                  </>
-                )}
-              </div>
             </div>
             {(event.status !== 'In Progress' || isEditing) && (
-              <div className="mb-3 mb-sm-3">
+              <div className="mb-3">
                 {isEditing ? (
                   <label className="d-block">
                     <span className="form-label small">Description</span>

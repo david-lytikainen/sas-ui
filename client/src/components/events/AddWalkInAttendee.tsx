@@ -79,9 +79,9 @@ const AddWalkInAttendee = ({ open, event, onClose }: AddWalkInAttendeeProps) => 
         {addedFirstName ? (
           <div className="py-1">
             <div className="w-100 text-center">
-              <i className="fa-solid fa-circle-check text-success fs-2 mb-1" />
+              <i className="fa-solid fa-circle-check text-success fs-2 mb-2" />
             </div>
-            <ol>
+            <ol className="ms-sm-5">
               <li>Tell the attendee to refresh their page</li>
               <li>Have them Sign up for the event</li>
               <li>Remember to check them in!</li>
